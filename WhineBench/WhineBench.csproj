@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>WhineBench</AssemblyName>
+    <RootNamespace>WhineBench</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\shared\WhineSynth.cs" Link="WhineSynth.cs" />
+    <Compile Include="..\shared\WhineSynthGemini.cs" Link="WhineSynthGemini.cs" />
+  </ItemGroup>
+
+</Project>

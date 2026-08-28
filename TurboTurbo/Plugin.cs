@@ -21,7 +21,8 @@ public sealed class Plugin : BaseUnityPlugin
         _harmony = new Harmony(Guid);
 
         SimInspector.Bind(Config);
-        _harmony.PatchAll(typeof(SimInspectorPatches));
+        TurboModel.Bind(Config);
+        _harmony.PatchAll();
 
         Log.LogInfo($"{Name} {Version} loaded");
     }
@@ -29,5 +30,11 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         _harmony?.UnpatchSelf();
+    }
+
+    private void Update()
+    {
+        SimInspector.Update();
+        TurboModel.HandleUpdate();
     }
 }

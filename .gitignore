@@ -5,6 +5,9 @@ obj/
 # Decompiled game reference sources (generated, not part of the mod)
 decompiled/
 
+# Game log captures
+logs/
+
 # IDE / user files
 .vs/
 .idea/

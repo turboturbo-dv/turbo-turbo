@@ -16,6 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\shared\WhineSynth.cs" Link="WhineSynth.cs" />
     <!-- Provides the .NET 4.7.2 reference assemblies so no VS targeting pack is required -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
@@ -39,6 +40,14 @@
     </Reference>
     <Reference Include="DV.ThingTypes">
       <HintPath>$(ManagedDir)\DV.ThingTypes.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DV.LayeredAudio">
+      <HintPath>$(ManagedDir)\DV.LayeredAudio.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(ManagedDir)\UnityEngine.AudioModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="DV.Utils">
