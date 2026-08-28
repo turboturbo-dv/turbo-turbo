@@ -18,6 +18,8 @@ internal sealed class TurboSmokeEmitter
     private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
 
+    private const float VelocityMult = 1.05f;
+
     private static bool _shaderListLogged;
 
     /// <summary>
@@ -175,12 +177,21 @@ internal sealed class TurboSmokeEmitter
         sootEm.SetBursts(new ParticleSystem.Burst[0]);
         TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
 
+        // anti-flicker: never co-locate with the vanilla exhaust (sort-order
+        // coin flip) and always composite deterministically above it
+        go.transform.localPosition = vanilla.transform.localPosition + new Vector3(0f, 0.15f, 0f);
+        rend.sortingOrder = 10;
+
+        var vrend = vanilla.GetComponent<ParticleSystemRenderer>();
+        int vanillaQueue = vrend.sharedMaterial != null ? vrend.sharedMaterial.renderQueue : -1;
+        int sootQueue = rend.sharedMaterial != null ? rend.sharedMaterial.renderQueue : -1;
         var tex = rend.sharedMaterial != null && rend.sharedMaterial.HasProperty("_MainTex")
             ? rend.sharedMaterial.mainTexture
             : null;
         TurboModel.Log.LogInfo($"soot clone: goActive={go.activeSelf} playing={_soot.isPlaying} " +
                                $"mat={(rend.sharedMaterial ? rend.sharedMaterial.name : "?")} " +
                                $"tex={(tex ? tex.name : "null")} " +
+                               $"queues(vanilla/soot)={vanillaQueue}/{sootQueue} " +
                                $"vanillaPlaying={vanilla.isPlaying}");
     }
 
@@ -204,8 +215,12 @@ internal sealed class TurboSmokeEmitter
             main.startSize = CurrentSize();
         }
 
-        // mirror the vanilla exhaust velocity so both plumes behave alike
-        main.startSpeed = _vanilla.main.startSpeed;
+        // mirror the vanilla exhaust velocity, slightly faster so the plumes
+        // separate immediately instead of interleaving at the stack exit
+        var vanillaSpeed = _vanilla.main.startSpeed;
+        main.startSpeed = vanillaSpeed.mode == ParticleSystemCurveMode.Constant
+            ? vanillaSpeed.constant * VelocityMult
+            : vanillaSpeed;
 
         if (!_loggedEmit && smokeDensity > 0.3f)
         {
