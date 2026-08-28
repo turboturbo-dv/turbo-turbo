@@ -36,7 +36,7 @@ internal static class TurboAudio
     internal static void Bind(ConfigFile config)
     {
         _config = config;
-        WhineVolume = config.Bind("TurboAudio", "WhineVolume", 0.6f,
+        WhineVolume = config.Bind("TurboAudio", "WhineVolume", 0.4f,
             "Turbo whine volume (0..1). Also settable via the 'turbovol' console command.");
         AudioMode = config.Bind("TurboAudio", "AudioMode", "GameStyle",
             "GameStyle = pre-rendered loop + per-frame pitch/volume like vanilla LayeredAudio (always smooth). DSP = live per-sample synthesis.");
@@ -70,7 +70,7 @@ internal static class TurboAudio
     {
         if (_commandsRegistered || Terminal.Shell == null) return;
 
-        CommandInfo cmd = Terminal.Shell.AddCommand(
+        CommandInfo volCmd = Terminal.Shell.AddCommand(
             "turbovol",
             args =>
             {
@@ -84,7 +84,40 @@ internal static class TurboAudio
                 Terminal.Log($"turbo whine volume = {WhineVolume.Value:0.00}");
             },
             0, 1, "Get/set turbo whine volume (0..1).", "[value]");
-        Terminal.Autocomplete.Register(cmd);
+        Terminal.Autocomplete.Register(volCmd);
+
+        CommandInfo smokeCmd = Terminal.Shell.AddCommand(
+            "turbosmoke",
+            args =>
+            {
+                if (args.Length >= 2)
+                {
+                    string key = args[0].String.ToLowerInvariant();
+                    float v = args[1].Float;
+                    if (Terminal.IssuedError) return;
+                    switch (key)
+                    {
+                        case "rate":
+                            TurboModel.SmokeMaxRate.Value = Mathf.Clamp(v, 0f, 500f);
+                            _config.Save();
+                            break;
+                        case "alpha":
+                            TurboModel.SmokeParticleAlpha.Value = Mathf.Clamp(v, 0.05f, 1f);
+                            _config.Save();
+                            break;
+                        case "size":
+                            TurboModel.SmokeSizeMult.Value = Mathf.Clamp(v, 0.5f, 4f);
+                            _config.Save();
+                            break;
+                        default:
+                            Terminal.Log("unknown key - use rate, alpha or size");
+                            return;
+                    }
+                }
+                Terminal.Log($"soot: rate={TurboModel.SmokeMaxRate.Value:0} alpha={TurboModel.SmokeParticleAlpha.Value:0.00} sizeMult={TurboModel.SmokeSizeMult.Value:0.00} enabled={TurboModel.SmokeEnabled.Value}");
+            },
+            0, 2, "Get/set soot emission parameters.", "[rate|alpha|size] [value]");
+        Terminal.Autocomplete.Register(smokeCmd);
 
         _commandsRegistered = true;
         TurboModel.Log.LogInfo("console command 'turbovol' registered");

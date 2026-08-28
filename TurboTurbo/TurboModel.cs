@@ -36,6 +36,7 @@ internal static class TurboModel
     internal static ConfigEntry<bool> DebugLog;
     internal static ConfigEntry<bool> SmokeEnabled;
     internal static ConfigEntry<float> SmokeMaxRate;
+    internal static ConfigEntry<float> SmokeParticleAlpha;
     internal static ConfigEntry<float> SmokeSizeMult;
     internal static ConfigEntry<bool> WhiteTestPuffs;
 
@@ -73,9 +74,11 @@ internal static class TurboModel
             "Floor for the spool-up time constant (stability under heavy overfuel).");
         SmokeEnabled = config.Bind("TurboSmoke", "Enabled", true,
             "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
-        SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 45f,
+        SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,
             "Soot particle emission rate [particles/s] at full smoke density.");
-        SmokeSizeMult = config.Bind("TurboSmoke", "SizeMult", 1.3f,
+        SmokeParticleAlpha = config.Bind("TurboSmoke", "ParticleAlpha", 0.45f,
+            "Peak opacity per soot particle. Lower = more translucent individual puffs.");
+        SmokeSizeMult = config.Bind("TurboSmoke", "SizeMult", 0.9f,
             "Soot particle size relative to the vanilla exhaust particles.");
         WhiteTestPuffs = config.Bind("TurboSmoke", "WhiteTestPuffs", false,
             "Render constant white test puffs instead of soot (render-path diagnostics).");
@@ -221,7 +224,7 @@ internal sealed class EngineTurbo
 
         foreach (ParticleSystem ps in exhausts)
         {
-            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial, TurboModel.SmokeSizeMult.Value));
+            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial));
         }
         _smokeAttached = true;
         TurboModel.Log.LogInfo($"soot emitter attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s))");

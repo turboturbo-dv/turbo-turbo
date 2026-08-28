@@ -13,7 +13,7 @@ internal sealed class TurboSmokeEmitter
 {
     private readonly ParticleSystem _vanilla;
     private readonly ParticleSystem _soot;
-    private readonly float _baseSize;
+    private readonly float _vanillaSize;
     private readonly Material _ownedMaterial;
     private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
@@ -93,7 +93,7 @@ internal sealed class TurboSmokeEmitter
         return null;
     }
 
-    internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial, float sizeMult)
+    internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial)
     {
         _vanilla = vanilla;
 
@@ -136,11 +136,12 @@ internal sealed class TurboSmokeEmitter
 
         var main = _soot.main;
         main.startColor = new Color(0.05f, 0.05f, 0.05f, 1f);
-        _baseSize = main.startSize.constant * sizeMult;
-        main.startSize = new ParticleSystem.MinMaxCurve(0.75f * _baseSize, 1.35f * _baseSize);
+        _vanillaSize = main.startSize.constant;
+        main.startSize = CurrentSize();
 
-        // soft edges: fast fade-in, long opaque plateau, smooth fade-out -
-        // solid smoke without popping, and size irregularity between puffs
+        // soft edges: fast fade-in, long plateau, smooth fade-out - solid smoke
+        // without popping. The plateau alpha lives in startColor (written per
+        // frame) so ParticleAlpha can be tuned live from the console.
         var col = _soot.colorOverLifetime;
         var gradient = new Gradient();
         gradient.SetKeys(
@@ -148,8 +149,8 @@ internal sealed class TurboSmokeEmitter
             new[]
             {
                 new GradientAlphaKey(0.4f, 0f),
-                new GradientAlphaKey(0.95f, 0.12f),
-                new GradientAlphaKey(0.95f, 0.6f),
+                new GradientAlphaKey(1f, 0.12f),
+                new GradientAlphaKey(1f, 0.6f),
                 new GradientAlphaKey(0f, 1f),
             });
         col.enabled = true;
@@ -164,6 +165,15 @@ internal sealed class TurboSmokeEmitter
             TurboModel.Log.LogInfo($"soot: disabled flipbook animation (was {tsa.numTilesX}x{tsa.numTilesY} tiles)");
         }
         _soot.Play();
+
+        // the vanilla emission module also emits per meter travelled and may
+        // carry bursts - the soot must respond to SmokeDensity only
+        var sootEm = _soot.emission;
+        float distRateWas = sootEm.rateOverDistance.constant;
+        int burstsWas = sootEm.burstCount;
+        sootEm.rateOverDistance = 0f;
+        sootEm.SetBursts(new ParticleSystem.Burst[0]);
+        TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
 
         var tex = rend.sharedMaterial != null && rend.sharedMaterial.HasProperty("_MainTex")
             ? rend.sharedMaterial.mainTexture
@@ -180,18 +190,18 @@ internal sealed class TurboSmokeEmitter
         var main = _soot.main;
         if (testMode)
         {
-            // F6 with sim off: unmissable white puffs to verify the render path
+            // unmissable white puffs to verify the render path
             em.rateOverTime = 20f;
             main.startColor = new Color(1f, 1f, 1f, 1f);
-            main.startSize = _baseSize * 1.5f;
+            main.startSize = CurrentSize(1.5f);
         }
         else
         {
             em.rateOverTime = smokeDensity * TurboModel.SmokeMaxRate.Value;
             main.startColor = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, 1f)       // anthracite on alpha blend
-                : new Color(0.14f, 0.14f, 0.14f, 0.95f);   // visible gray on the fallback blend
-            main.startSize = _baseSize;
+                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
+                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboModel.SmokeParticleAlpha.Value + 0.5f));
+            main.startSize = CurrentSize();
         }
 
         // mirror the vanilla exhaust velocity so both plumes behave alike
@@ -209,5 +219,11 @@ internal sealed class TurboSmokeEmitter
     {
         if (_ownedMaterial != null) Object.Destroy(_ownedMaterial);
         if (_soot != null) Object.Destroy(_soot.gameObject);
+    }
+
+    private ParticleSystem.MinMaxCurve CurrentSize(float mult = 1f)
+    {
+        float size = _vanillaSize * TurboModel.SmokeSizeMult.Value * mult;
+        return new ParticleSystem.MinMaxCurve(0.75f * size, 1.35f * size);
     }
 }
