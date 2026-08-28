@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+
+# Decompiled game reference sources (generated, not part of the mod)
+decompiled/
+
+# IDE / user files
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# OS artifacts
+Thumbs.db
+desktop.ini
