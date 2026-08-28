@@ -19,6 +19,7 @@ internal static class TurboAudio
     internal static ConfigEntry<string> AudioMode;
     internal static ConfigEntry<float> GameStylePitchMin;
     internal static ConfigEntry<float> GameStylePitchMax;
+    internal static ConfigEntry<float> VolumeExponent;
     internal static ConfigEntry<float> CabCutoff;
     internal static ConfigEntry<float> ExtCutoff;
     internal static ConfigEntry<float> CabFadeTau;
@@ -43,6 +44,8 @@ internal static class TurboAudio
             "[GameStyle] loop playback pitch at zero boost (loop is rendered at full load).");
         GameStylePitchMax = config.Bind("TurboAudio", "GameStylePitchMax", 1.0f,
             "[GameStyle] loop playback pitch at full boost.");
+        VolumeExponent = config.Bind("TurboAudio", "VolumeExponent", 1.5f,
+            "Steepness of the whine volume curve over boost. Higher = whine stays submerged until high power (dipole aeroacoustic feel).");
         CabCutoff = config.Bind("TurboAudio", "CabCutoff", 2000f,
             "Cab filter cutoff [Hz] when the player is inside the loco.");
         ExtCutoff = config.Bind("TurboAudio", "ExtCutoff", 18000f,
@@ -95,7 +98,7 @@ internal static class TurboAudio
             MaxTurboRpm = MaxTurboRpm.Value,
             BpfScale = PitchScale.Value,
             WhineGain = WhineGain.Value,
-            WhineGainExponent = 1.5,
+            WhineGainExponent = 3.5,
             FlowGain = FlowGain.Value,
             DuctResGain = DuctResGain.Value,
             DuctQ = DuctQ.Value,
@@ -263,9 +266,15 @@ internal sealed class TurboWhineAudio
         }
         else
         {
-            // vanilla LayeredAudio mechanism: per-frame pitch + volume, Unity ramps internally
+            // vanilla LayeredAudio mechanism: per-frame pitch + volume, Unity ramps internally.
+            // Dipole aeroacoustic shaping: steep volume curve, weighted by the normalized
+            // boost pressure delta (w x load) so the whistle only pierces the mix under load.
             float pitch = Mathf.Lerp(TurboAudio.GameStylePitchMin.Value, TurboAudio.GameStylePitchMax.Value, (float)_audioBoost);
-            float vol = TurboAudio.WhineVolume.Value * Mathf.Pow((float)_audioBoost, 0.7f);
+            double boostDelta = Math.Min(1.0, _audioBoost * Math.Max(0.0, _demand));
+            double pressureFactor = 0.10 + 0.90 * boostDelta;
+            float vol = TurboAudio.WhineVolume.Value
+                        * Mathf.Pow((float)_audioBoost, TurboAudio.VolumeExponent.Value)
+                        * (float)pressureFactor;
             _sourceExt.pitch = pitch;
             _sourceCab.pitch = pitch;
             _sourceExt.volume = vol * (float)(1.0 - _cabMix);

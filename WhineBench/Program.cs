@@ -36,6 +36,7 @@ const string usage = """
       --pitchmin <x>    [ours] pitch at zero boost    (default 0.5)
       --pitchmax <x>    [ours] pitch at full boost    (default 2.2)
       --volume <x>      [ours] sweep peak volume      (default 0.8)
+      --volumeexp <x>   dipole volume curve exponent  (default 1.5, gamestyle sweeps)
       --out <path>      loop output                   (default logs/whine_loop.wav)
       --play            open the last written file with the default player
     """;
@@ -126,9 +127,10 @@ if (renderGemini)
         Write($"gamestyle loop (cab{tag})", loopCab, sr, $"logs/whine_loop_cab{tag}.wav");
 
         double pitchMin = D("pitchmin", 0.11), pitchMax = D("pitchmax", 1.0), vol = D("volume", 0.8);
-        Write($"gamestyle sweep (ext{tag})", WhineSynth.RenderSweep(loopExt, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol),
+        double volExp = D("volumeexp", 1.5);
+        Write($"gamestyle sweep (ext{tag})", WhineSynth.RenderSweep(loopExt, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
             sr, $"logs/whine_sweep_ext{tag}.wav");
-        Write($"gamestyle sweep (cab{tag})", WhineSynth.RenderSweep(loopCab, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol),
+        Write($"gamestyle sweep (cab{tag})", WhineSynth.RenderSweep(loopCab, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
             sr, $"logs/whine_sweep_cab{tag}.wav");
     }
 

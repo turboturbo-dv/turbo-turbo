@@ -19,8 +19,10 @@ public sealed class GeminiParams
     public double TauSpool = 1.8;
     public double TauDump = 1.2;
     public double WhineGain = 0.4;
-    /// <summary>Exponent of the whine gain curve (gain = (w/max)^exponent).</summary>
-    public double WhineGainExponent = 2.0;
+    /// <summary>Exponent of the whine gain curve (gain = (w/max)^exponent).
+    /// 3.5 models dipole aeroacoustic scaling (U^4-U^6) - the whistle stays
+    /// submerged at low shaft speed and emerges sharply at high power.</summary>
+    public double WhineGainExponent = 3.5;
     public double FlowGain = 0.6;
     /// <summary>Gain of the resonant intake-duct band-pass (Branch B).</summary>
     public double DuctResGain = 0.5;
@@ -212,7 +214,15 @@ public sealed class GeminiTurboDsp
         double tonal = Math.Tanh(raw * drive) / Math.Tanh(drive);
 
         double w = _turboRpm / p.MaxTurboRpm;
-        double whineGain = Math.Pow(w, p.WhineGainExponent) * p.WhineGain;
+
+        // aeroacoustic loading: sound power tracks boost pressure differential,
+        // not shaft speed alone - right after a load drop the blade loading
+        // collapses even while shaft inertia keeps w high (0.1 floor = faint
+        // high-rpm overrun whistle)
+        double boostDeltaNorm = Clamp01((_boost - 1.0) / 2.5);
+        double pressureFactor = 0.10 + 0.90 * boostDeltaNorm;
+
+        double whineGain = Math.Pow(w, p.WhineGainExponent) * pressureFactor * p.WhineGain;
 
         // Branch B: flow noise, LPF cutoff tracks mass flow
         double cutoff = 400.0 + 6000.0 * w;

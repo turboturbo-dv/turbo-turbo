@@ -63,9 +63,12 @@ public static class WhineSynth
     /// Renders a spool sweep the way the in-game bench plays it: boost target
     /// follows a full cosine cycle over sweepSeconds, eased by tau, pitch
     /// mapped pitchMin..pitchMax over boost, volume = maxVolume * boost^0.7.
+    /// Optional dipole-style shaping: steeper volume exponent and pressure
+    /// coupling (volume weighted by normalized boost delta w x load).
     /// </summary>
     public static float[] RenderSweep(float[] loop, int sampleRate, double sweepSeconds,
-        double tau, double pitchMin, double pitchMax, double maxVolume)
+        double tau, double pitchMin, double pitchMax, double maxVolume,
+        double volumeExponent = 0.7, bool pressureCoupling = false)
     {
         int n = loop.Length;
         int total = (int)(sampleRate * sweepSeconds);
@@ -86,7 +89,14 @@ public static class WhineSynth
             double frac = phase - Math.Floor(phase);
             double s = loop[i0] * (1.0 - frac) + loop[i1] * frac;
 
-            output[i] = (float)(maxVolume * Math.Pow(current, 0.7) * s);
+            double volume = maxVolume * Math.Pow(current, volumeExponent);
+            if (pressureCoupling)
+            {
+                // normalized boost delta proxy: w x load (command acts as governor load)
+                double delta = Math.Min(1.0, current * target);
+                volume *= 0.10 + 0.90 * delta;
+            }
+            output[i] = (float)(volume * s);
         }
         return output;
     }
