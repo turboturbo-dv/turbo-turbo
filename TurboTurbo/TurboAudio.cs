@@ -22,9 +22,12 @@ internal static class TurboAudio
     internal static ConfigEntry<float> CabCutoff;
     internal static ConfigEntry<float> ExtCutoff;
     internal static ConfigEntry<float> CabFadeTau;
-    internal static ConfigEntry<float> BpfScale;
+    internal static ConfigEntry<float> MaxTurboRpm;
+    internal static ConfigEntry<float> PitchScale;
     internal static ConfigEntry<float> WhineGain;
     internal static ConfigEntry<float> FlowGain;
+    internal static ConfigEntry<float> DuctResGain;
+    internal static ConfigEntry<float> DuctQ;
 
     private static ConfigFile _config;
     private static bool _commandsRegistered;
@@ -46,12 +49,18 @@ internal static class TurboAudio
             "Cab filter cutoff [Hz] when outside (near-transparent).");
         CabFadeTau = config.Bind("TurboAudio", "CabFadeTau", 0.5f,
             "Seconds to crossfade the cab filter when entering/leaving the cab.");
-        BpfScale = config.Bind("TurboAudio", "BpfScale", 0.22f,
-            "Blade-passing frequency scale into the audible band.");
+        MaxTurboRpm = config.Bind("TurboAudio", "MaxTurboRpm", 36000f,
+            "Peak turbo shaft speed [rpm] for a large-frame ~1600 kW engine turbo.");
+        PitchScale = config.Bind("TurboAudio", "PitchScale", 1.0f,
+            "Blade-passing frequency scale (1.0 = physical pitch, tops out ~7.2 kHz at full spool).");
         WhineGain = config.Bind("TurboAudio", "WhineGain", 0.4f,
             "Tonal whine branch gain.");
         FlowGain = config.Bind("TurboAudio", "FlowGain", 0.6f,
             "Broadband flow branch gain.");
+        DuctResGain = config.Bind("TurboAudio", "DuctResGain", 0.5f,
+            "Gain of the resonant intake-duct band-pass layered onto the flow branch.");
+        DuctQ = config.Bind("TurboAudio", "DuctQ", 2.0f,
+            "Resonance (Q) of the intake-duct band-pass.");
     }
 
     internal static void HandleUpdate()
@@ -83,10 +92,13 @@ internal static class TurboAudio
         return new GeminiParams
         {
             SampleRate = AudioSettings.outputSampleRate,
-            BpfScale = BpfScale.Value,
+            MaxTurboRpm = MaxTurboRpm.Value,
+            BpfScale = PitchScale.Value,
             WhineGain = WhineGain.Value,
             WhineGainExponent = 1.5,
             FlowGain = FlowGain.Value,
+            DuctResGain = DuctResGain.Value,
+            DuctQ = DuctQ.Value,
             CabFilter = true,
             CabFilterCutoffHz = ExtCutoff.Value,
         };
@@ -196,6 +208,8 @@ internal sealed class TurboWhineAudio
             WhineGain = p.WhineGain,
             WhineGainExponent = p.WhineGainExponent,
             FlowGain = p.FlowGain,
+            DuctResGain = p.DuctResGain,
+            DuctQ = p.DuctQ,
             JitterHz = p.JitterHz,
             JitterAmount = p.JitterAmount,
             SurgeRateThreshold = p.SurgeRateThreshold,
