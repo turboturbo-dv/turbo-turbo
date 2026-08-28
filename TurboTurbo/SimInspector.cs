@@ -153,6 +153,21 @@ internal static class SimInspector
             _log.LogInfo($"fuses: {fuses}");
         }
 
+        foreach (LayeredAudio la in car.GetComponentsInChildren<LayeredAudio>(true))
+        {
+            int layerCount = la.layers != null ? la.layers.Length : 0;
+            var groups = new System.Collections.Generic.List<string>();
+            if (la.layers != null)
+            {
+                foreach (var l in la.layers)
+                {
+                    groups.Add(l?.source != null
+                        ? (l.source.outputAudioMixerGroup != null ? l.source.outputAudioMixerGroup.name : "master")
+                        : "no-src");
+                }
+            }
+            _log.LogInfo($"layeredAudio: '{la.name}' layers={layerCount} groups=[{string.Join(",", groups)}]");
+        }
         foreach (LayeredAudioPortReader reader in car.GetComponentsInChildren<LayeredAudioPortReader>(true))
         {
             LayeredAudio la = reader.GetComponent<LayeredAudio>();

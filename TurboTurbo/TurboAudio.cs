@@ -136,6 +136,10 @@ internal sealed class TurboWhineAudio
     private double _demand;
     private double _rpmNorm;
 
+    private AudioMixerGroup _mixerGroup;
+    private bool _mixerResolved;
+    private float _mixerRetryTimer;
+
     // diagnostics
     private long _pcmCalls;
     private float _lastRms;
@@ -155,13 +159,7 @@ internal sealed class TurboWhineAudio
         _root.transform.SetParent(car.transform, false);
         _root.transform.localPosition = new Vector3(0f, 3f, 0f);
 
-        AudioMixerGroup mixerGroup = null;
-        LayeredAudioPortReader reader = car.GetComponentInChildren<LayeredAudioPortReader>(true);
-        if (reader != null)
-        {
-            LayeredAudio engineAudio = reader.GetComponent<LayeredAudio>();
-            if (engineAudio != null) mixerGroup = engineAudio.audioMixerGroup;
-        }
+        TryResolveMixerGroup();
 
         if (_isDspMode)
         {
@@ -174,11 +172,11 @@ internal sealed class TurboWhineAudio
             _source.minDistance = 5f;
             _source.maxDistance = 300f;
             _source.playOnAwake = false;
-            _source.outputAudioMixerGroup = mixerGroup;
+            _source.outputAudioMixerGroup = _mixerGroup;
             _source.volume = 0f;
             _source.Play();
             TurboModel.Log.LogInfo($"whine audio created (DSP) on [{_car.ID}] sr={sr} " +
-                                   $"mixer={(mixerGroup != null ? mixerGroup.name : "<none>")}");
+                                   $"mixer={(_mixerResolved ? _mixerGroup.name : "<not resolved yet>")}");
         }
         else
         {
@@ -189,11 +187,38 @@ internal sealed class TurboWhineAudio
             _clipCab = MakeLoopClip(cabParams);
 
             _sourceExt = _root.AddComponent<AudioSource>();
-            ConfigureLoopSource(_sourceExt, _clip, mixerGroup);
+            ConfigureLoopSource(_sourceExt, _clip);
             _sourceCab = _root.AddComponent<AudioSource>();
-            ConfigureLoopSource(_sourceCab, _clipCab, mixerGroup);
+            ConfigureLoopSource(_sourceCab, _clipCab);
             TurboModel.Log.LogInfo($"whine audio created (GameStyle) on [{_car.ID}] " +
-                                   $"loop={_clip.samples} samples sr={sr} mixer={(mixerGroup != null ? mixerGroup.name : "<none>")}");
+                                   $"loop={_clip.samples} samples sr={sr} " +
+                                   $"mixer={(_mixerResolved ? _mixerGroup.name : "<not resolved yet>")}");
+        }
+    }
+
+    /// <summary>
+    /// Finds the mixer group vanilla engine audio plays through, so the cab
+    /// snapshot ducking applies to the whine equally. The car's audio model
+    /// may not be loaded at attach time - retried from UpdateFromModel.
+    /// </summary>
+    private void TryResolveMixerGroup()
+    {
+        foreach (LayeredAudio la in _car.GetComponentsInChildren<LayeredAudio>(true))
+        {
+            if (la.layers == null) continue;
+            foreach (LayeredAudio.Layer layer in la.layers)
+            {
+                if (layer?.source != null && layer.source.outputAudioMixerGroup != null)
+                {
+                    _mixerGroup = layer.source.outputAudioMixerGroup;
+                    _mixerResolved = true;
+                    TurboModel.Log.LogInfo($"whine mixer group resolved: '{_mixerGroup.name}' (from LayeredAudio '{la.name}')");
+                    _source.outputAudioMixerGroup = _mixerGroup;
+                    if (_sourceExt != null) _sourceExt.outputAudioMixerGroup = _mixerGroup;
+                    if (_sourceCab != null) _sourceCab.outputAudioMixerGroup = _mixerGroup;
+                    return;
+                }
+            }
         }
     }
 
@@ -230,7 +255,7 @@ internal sealed class TurboWhineAudio
         return clip;
     }
 
-    private static void ConfigureLoopSource(AudioSource src, AudioClip clip, AudioMixerGroup mixerGroup)
+    private static void ConfigureLoopSource(AudioSource src, AudioClip clip)
     {
         src.clip = clip;
         src.loop = true;
@@ -238,7 +263,6 @@ internal sealed class TurboWhineAudio
         src.minDistance = 5f;
         src.maxDistance = 300f;
         src.playOnAwake = false;
-        src.outputAudioMixerGroup = mixerGroup;
         src.volume = 0f;
         src.Play();
     }
@@ -246,6 +270,15 @@ internal sealed class TurboWhineAudio
     /// <summary>Main-thread update: ease audio state toward game state.</summary>
     internal void UpdateFromModel(double boost01, double demand, double rpmNorm, float frameDt)
     {
+        if (!_mixerResolved)
+        {
+            _mixerRetryTimer += frameDt;
+            if (_mixerRetryTimer > 0.5f)
+            {
+                _mixerRetryTimer = 0f;
+                TryResolveMixerGroup();
+            }
+        }
         double boostTarget = TurboModel.SimActive ? boost01 : 0.0;
         _modelBoost = boost01;
         const double audioSpoolTau = 0.8; // seconds; matches the bench sweep easing
