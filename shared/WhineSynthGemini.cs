@@ -7,13 +7,30 @@ public sealed class GeminiParams
     public int SampleRate = 44100;
     public double BladeCount = 12.0;
     public double MaxTurboRpm = 80000.0;
+    /// <summary>
+    /// Scales the physical blade-passing frequency into an alias-safe audible
+    /// band. At full speed (80k rpm, 12 blades) the literal BPF is 16 kHz;
+    /// wavefolding harmonics at 3x would cross Nyquist and fold back down as
+    /// ghost tones. With scale 0.22 the fundamental tops out ~3.5 kHz and the
+    /// 5th wavefold harmonic (~17.6 kHz) stays below Nyquist.
+    /// </summary>
+    public double BpfScale = 0.22;
     public double IdleEngineRpmNorm = 0.332;   // DE6 measured idle
     public double TauSpool = 1.8;
     public double TauDump = 1.2;
     public double WhineGain = 0.4;
+    /// <summary>Exponent of the whine gain curve (gain = (w/max)^exponent).
+    /// 2.0 is the physical default; lower values make partial-spool audible.</summary>
+    public double WhineGainExponent = 2.0;
     public double FlowGain = 0.6;
     public double JitterHz = 10.0;
     public double JitterAmount = 0.008;
+    /// <summary>Load rejection rate (per second) that triggers surge flutter.</summary>
+    public double SurgeRateThreshold = -0.35;
+    /// <summary>Listener-position filter: 2-pole (12 dB/oct) low-pass modeling
+    /// the muffled engine-bay/cab sound when the listener is inside the cab.</summary>
+    public bool CabFilter = false;
+    public double CabFilterCutoffHz = 2000.0;
     public int Seed = 1234;
 }
 
@@ -34,16 +51,53 @@ public sealed class GeminiTurboDsp
 
     private double _turboRpm;
     private double _boost = 1.0;
+    private double _targetTurboRpm;
+    private double _targetBoost = 1.0;
+    private double _rampFromRpm;
+    private double _rampFromBoost = 1.0;
+    private int _rampSamples = 1;
+    private int _rampPos;
     private double _phase;
     private double _jitter;
     private double _lpfState;
     private double _surgeEnvelope;
     private double _surgePhase;
+    private double _cabLp1;
+    private double _cabLp2;
     private double _prevLoad;
     private bool _hasPrevLoad;
 
     public double TurboRpm => _turboRpm;
     public double Boost => _boost;
+
+    /// <summary>
+    /// When true, ProcessSample skips the internal lag physics and synthesizes
+    /// from the state pushed via SetExternalState (game-coupled mode).
+    /// </summary>
+    public bool UseExternalState;
+
+    /// <summary>
+    /// Pushes game-derived turbo state targets: shaft speed [rpm] and boost
+    /// ratio [1..]. Values ramp linearly across each buffer (see BeginBuffer)
+    /// so the whine glides continuously instead of zipper-stepping.
+    /// </summary>
+    public void SetExternalState(double turboRpm, double boostPressure)
+    {
+        _targetTurboRpm = Math.Max(0.0, turboRpm);
+        _targetBoost = Math.Max(1.0, boostPressure);
+    }
+
+    /// <summary>
+    /// Anchors a linear parameter ramp across the upcoming buffer. Call once
+    /// per PCM buffer before the per-sample loop.
+    /// </summary>
+    public void BeginBuffer(int sampleCount)
+    {
+        _rampFromRpm = _turboRpm;
+        _rampFromBoost = _boost;
+        _rampSamples = Math.Max(1, sampleCount);
+        _rampPos = 0;
+    }
 
     public GeminiTurboDsp(GeminiParams p)
     {
@@ -56,12 +110,22 @@ public sealed class GeminiTurboDsp
         GeminiParams p = _p;
         double sr = p.SampleRate;
 
-        double target = engineRpmNorm * engineRpmNorm * (20000.0 + 60000.0 * Math.Max(0.0, load));
-        double tau = target > _turboRpm ? p.TauSpool : p.TauDump;
-        _turboRpm += (target - _turboRpm) * Math.Min(1.0, dt / tau);
-        _boost = 1.0 + 2.5 * (_turboRpm / p.MaxTurboRpm) * Math.Max(0.0, load);
+        if (!UseExternalState)
+        {
+            double target = engineRpmNorm * engineRpmNorm * (20000.0 + 60000.0 * Math.Max(0.0, load));
+            double tau = target > _turboRpm ? p.TauSpool : p.TauDump;
+            _turboRpm += (target - _turboRpm) * Math.Min(1.0, dt / tau);
+            _boost = 1.0 + 2.5 * (_turboRpm / p.MaxTurboRpm) * Math.Max(0.0, load);
+        }
+        else
+        {
+            _rampPos = Math.Min(_rampPos + 1, _rampSamples);
+            double t = (double)_rampPos / _rampSamples;
+            _turboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
+            _boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
+        }
 
-        if (_hasPrevLoad && load - _prevLoad < -0.35 && _boost > 2.0 && _surgeEnvelope <= 0.001)
+        if (_hasPrevLoad && (load - _prevLoad) / dt < p.SurgeRateThreshold && _boost > 2.0 && _surgeEnvelope <= 0.001)
         {
             _surgeEnvelope = 1.0;
             _surgePhase = 0.0;
@@ -69,7 +133,7 @@ public sealed class GeminiTurboDsp
         _prevLoad = load;
         _hasPrevLoad = true;
 
-        double bpf = (_turboRpm / 60.0) * p.BladeCount;
+        double bpf = (_turboRpm / 60.0) * p.BladeCount * p.BpfScale;
         if (bpf > 0.45 * sr) bpf = 0.45 * sr;
 
         double white1 = _rng.NextDouble() * 2.0 - 1.0;
@@ -82,14 +146,17 @@ public sealed class GeminiTurboDsp
         double raw = Math.Sin(_phase);
         double tonal = Math.Tanh(raw * _boost) / Math.Tanh(_boost);
         double w = _turboRpm / p.MaxTurboRpm;
-        double whineGain = w * w * p.WhineGain;
+        double whineGain = Math.Pow(w, p.WhineGainExponent) * p.WhineGain;
 
         double cutoff = 400.0 + 6000.0 * w;
         double rc = 1.0 / (2.0 * Math.PI * cutoff);
         double alpha = dt / (rc + dt);
         double white2 = _rng.NextDouble() * 2.0 - 1.0;
         _lpfState += alpha * (white2 - _lpfState);
-        double flowGain = w * p.FlowGain;
+        // air flow tracks engine demand too - without the load term the rush
+        // stays loud through load rejection while the whine decays away
+        double loadTerm = 0.35 + 0.65 * Clamp01(load);
+        double flowGain = w * loadTerm * p.FlowGain;
 
         double surgeMod = 1.0;
         if (_surgeEnvelope > 0.001)
@@ -99,7 +166,17 @@ public sealed class GeminiTurboDsp
             _surgeEnvelope *= Math.Exp(-4.0 * dt);
         }
 
-        return tonal * whineGain + _lpfState * flowGain * surgeMod;
+        double output = tonal * whineGain + _lpfState * flowGain * surgeMod;
+
+        if (p.CabFilter)
+        {
+            double kCab = 1.0 - Math.Exp(-2.0 * Math.PI * p.CabFilterCutoffHz / sr);
+            _cabLp1 += kCab * (output - _cabLp1);
+            _cabLp2 += kCab * (_cabLp1 - _cabLp2);
+            output = _cabLp2;
+        }
+
+        return output;
     }
 
     public void TriggerSurge()
@@ -107,6 +184,8 @@ public sealed class GeminiTurboDsp
         _surgeEnvelope = 1.0;
         _surgePhase = 0.0;
     }
+
+    private static double Clamp01(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
 }
 
 public static class WhineSynthGemini
@@ -156,6 +235,53 @@ public static class WhineSynthGemini
             if (a > peak) peak = a;
         }
         Normalize(output, peak);
+        return output;
+    }
+
+    /// <summary>
+    /// Renders a seamless loop of the steady-state operating point at the
+    /// given load: spools up, discards the transient, then folds the buffer
+    /// tail into the head (standard loop-equalize) so the wrap is continuous.
+    /// </summary>
+    public static float[] RenderLoop(GeminiParams p, double steadySeconds, double load)
+    {
+        double spoolSeconds = 4.0 * p.TauSpool + 1.0;
+        int total = (int)(p.SampleRate * (spoolSeconds + steadySeconds));
+        var dsp = new GeminiTurboDsp(p);
+        double dt = 1.0 / p.SampleRate;
+        double rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * load;
+
+        int skip = (int)(p.SampleRate * spoolSeconds);
+        int n = total - skip;
+        var kept = new float[n];
+        for (int i = 0; i < total; i++)
+        {
+            double s = dsp.ProcessSample(rpmNorm, load, dt);
+            if (i >= skip) kept[i - skip] = (float)s;
+        }
+
+        int xf = Math.Min(n / 4, (int)(p.SampleRate * 0.05));
+        var output = new float[n - xf];
+        for (int i = 0; i < output.Length; i++)
+        {
+            if (i < xf)
+            {
+                double w = (double)i / xf;
+                output[i] = (float)(kept[i] * w + kept[n - xf + i] * (1.0 - w));
+            }
+            else
+            {
+                output[i] = kept[i];
+            }
+        }
+
+        float peak = 0f;
+        foreach (float v in output) peak = Math.Max(peak, Math.Abs(v));
+        if (peak > 1e-9)
+        {
+            float gain = (float)(0.9 / peak);
+            for (int i = 0; i < output.Length; i++) output[i] *= gain;
+        }
         return output;
     }
 

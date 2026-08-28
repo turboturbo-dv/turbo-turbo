@@ -20,6 +20,9 @@ const string usage = """
       --seconds <s>     [ours] loop duration           (default 2.5)
       --blades <n>      [gemini] compressor blade count          (default 12)
       --turborpm <rpm>  [gemini] max turbo shaft speed          (default 80000)
+      --bpfscale <x>    [gemini] BPF scale into audible band    (default 0.22)
+      --cab             [gemini] enable cab filter (muffled interior sound)
+      --cabcut <hz>     [gemini] cab filter cutoff               (default 2000)
       --gsteady <s>     [gemini] also render steady-state clip at load 0.8 (default off)
       --sweep <s>       render a spool sweep of this duration
       --tau <s>         sweep spool smoothing (ours)  (default 0.8)
@@ -81,7 +84,7 @@ if (renderOurs)
     {
         float[] sw = WhineSynth.RenderSweep(loop, p.SampleRate,
             D("sweep", 8), D("tau", 0.8), D("pitchmin", 0.5), D("pitchmax", 2.2), D("volume", 0.8));
-        Write("sweep", sw, p.SampleRate, "logs/whine_sweep.wav");
+        Write("sweep", sw, p.SampleRate, opts.TryGetValue("sweepout", out var so) ? so : "logs/whine_sweep.wav");
     }
 }
 
@@ -92,24 +95,27 @@ if (renderGemini)
         SampleRate = I("samplerate", 44100),
         BladeCount = D("blades", 12),
         MaxTurboRpm = D("turborpm", 80000),
+        BpfScale = D("bpfscale", 0.22),
+        CabFilter = opts.ContainsKey("cab"),
+        CabFilterCutoffHz = D("cabcut", 2000),
     };
 
     if (sweep)
     {
         float[] sw = WhineSynthGemini.RenderSweep(g, D("sweep", 8));
-        Write("gemini sweep", sw, g.SampleRate, "logs/whine_sweep_gemini.wav");
+        Write("gemini sweep", sw, g.SampleRate, opts.TryGetValue("sweepout", out var so) ? so : "logs/whine_sweep_gemini.wav");
     }
     else if (style == "gemini")
     {
         // gemini-only run without --sweep: default to a steady clip so something renders
         float[] steady = WhineSynthGemini.RenderSteady(g, D("gsteady", 6), 0.8);
-        Write("gemini steady", steady, g.SampleRate, "logs/whine_steady_gemini.wav");
+        Write("gemini steady", steady, g.SampleRate, opts.TryGetValue("steadyout", out var so) ? so : "logs/whine_steady_gemini.wav");
     }
 
     if (opts.ContainsKey("gsteady"))
     {
         float[] steady = WhineSynthGemini.RenderSteady(g, D("gsteady", 6), 0.8);
-        Write("gemini steady", steady, g.SampleRate, "logs/whine_steady_gemini.wav");
+        Write("gemini steady", steady, g.SampleRate, opts.TryGetValue("steadyout", out var so2) ? so2 : "logs/whine_steady_gemini.wav");
     }
 }
 

@@ -69,6 +69,11 @@ internal static class TurboModel
             Log.LogInfo($"turbo simulation {state}");
             Debug.Log($"[TurboTurbo] turbo simulation {state}");
         }
+
+        foreach (EngineTurbo turbo in Turbos.Values)
+        {
+            turbo.UpdateFrame(Time.deltaTime);
+        }
     }
 
     private static bool IsTurboLoco(TrainCarType carType)
@@ -107,14 +112,19 @@ internal static class TurboModel
 
         Turbos[flow] = new EngineTurbo(car, throttlePort, rpmNormPort);
         car.OnDestroyCar += OnCarDestroyed;
+        Turbos[flow].AttachAudio(new TurboWhineAudio(car, TurboAudio.CreateParams()));
         Log.LogInfo($"turbo model attached to {car.carType} [{car.ID}] (fuel demand port: {throttlePort.id})");
     }
 
     private static void OnCarDestroyed(TrainCar car)
     {
         car.OnDestroyCar -= OnCarDestroyed;
-        SimulationFlow flow = Turbos.FirstOrDefault(t => t.Value.Car == car).Key;
-        if (flow != null) Turbos.Remove(flow);
+        var match = Turbos.FirstOrDefault(t => t.Value.Car == car);
+        if (match.Key != null)
+        {
+            match.Value.Destroy();
+            Turbos.Remove(match.Key);
+        }
     }
 
     internal static void TickFlow(SimulationFlow flow, float delta)
@@ -132,7 +142,11 @@ internal sealed class EngineTurbo
 
     private readonly Port _throttlePort;
     private readonly Port _rpmNormPort;
+    private TurboWhineAudio _whine;
     private float _boost;
+    private float _demand;
+    private float _rpmNorm;
+    private float _prevDemand;
     private float _lastDebugLog;
 
     internal EngineTurbo(TrainCar car, Port throttlePort, Port rpmNormPort)
@@ -142,10 +156,25 @@ internal sealed class EngineTurbo
         _rpmNormPort = rpmNormPort;
     }
 
+    internal void AttachAudio(TurboWhineAudio whine) => _whine = whine;
+
+    internal void UpdateFrame(float frameDt)
+    {
+        _whine?.UpdateFromModel(_boost, _demand, _rpmNorm, frameDt);
+    }
+
+    internal void Destroy()
+    {
+        _whine?.Destroy();
+        _whine = null;
+    }
+
     internal void Tick(float delta)
     {
         float demand = _throttlePort.Value;
         float rpmNorm = _rpmNormPort.Value;
+        _demand = demand;
+        _rpmNorm = rpmNorm;
 
         float gate = Mathf.InverseLerp(TurboModel.SpoolStartRpmNorm.Value, TurboModel.SpoolFullRpmNorm.Value, rpmNorm);
         float target = Mathf.Clamp01(demand) * gate;
@@ -154,6 +183,12 @@ internal sealed class EngineTurbo
         _boost += (target - _boost) * (1f - Mathf.Exp(-delta / tau));
 
         if (!TurboModel.SimActive) return;
+
+        if (_prevDemand - demand > 0.3f && _boost > 0.75f)
+        {
+            _whine?.TriggerSurge();
+        }
+        _prevDemand = demand;
 
         float boostCap = TurboModel.BoostFloor.Value + (1f - TurboModel.BoostFloor.Value) * _boost;
         float capWeight = Mathf.Clamp01(demand / Mathf.Max(0.001f, TurboModel.DemandRef.Value));
