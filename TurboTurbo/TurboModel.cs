@@ -25,11 +25,19 @@ internal static class TurboModel
     private static ConfigEntry<string> _turboLocos;
     internal static ConfigEntry<float> TauUp;
     internal static ConfigEntry<float> TauDown;
-    internal static ConfigEntry<float> BoostFloor;
-    internal static ConfigEntry<float> SpoolStartRpmNorm;
-    internal static ConfigEntry<float> SpoolFullRpmNorm;
-    internal static ConfigEntry<float> DemandRef;
+    internal static ConfigEntry<float> AirNAFraction;
+    internal static ConfigEntry<float> LambdaCalibration;
+    internal static ConfigEntry<float> RpmTorqueExponent;
+    internal static ConfigEntry<float> SmokeOnsetLambda;
+    internal static ConfigEntry<float> SmokeOpaqueLambda;
+    internal static ConfigEntry<float> TorqueLambdaFloor;
+    internal static ConfigEntry<float> ThermalK;
+    internal static ConfigEntry<float> MinSpoolTau;
     internal static ConfigEntry<bool> DebugLog;
+    internal static ConfigEntry<bool> SmokeEnabled;
+    internal static ConfigEntry<float> SmokeMaxRate;
+    internal static ConfigEntry<float> SmokeSizeMult;
+    internal static ConfigEntry<bool> WhiteTestPuffs;
 
     internal static bool SimActive => _enabled.Value;
 
@@ -44,17 +52,33 @@ internal static class TurboModel
         _turboLocos = config.Bind("Turbo", "TurboLocos", "LocoDiesel",
             "Comma-separated TrainCarType names whose engines are turbocharged (e.g. LocoDiesel,LocoDM3).");
         TauUp = config.Bind("Turbo", "TauUp", 3.0f,
-            "Seconds of spool-up time constant.");
+            "Seconds of spool-up time constant (clean combustion).");
         TauDown = config.Bind("Turbo", "TauDown", 1.0f,
-            "Seconds of blow-down (boost release) time constant.");
-        BoostFloor = config.Bind("Turbo", "BoostFloor", 0.55f,
-            "Fuel/power cap at zero boost (1 = no limiting, 0.55 = 55% fuel when unspooled).");
-        SpoolStartRpmNorm = config.Bind("Turbo", "SpoolStartRpmNorm", 0.35f,
-            "Normalized engine rpm where the turbo starts to spool.");
-        SpoolFullRpmNorm = config.Bind("Turbo", "SpoolFullRpmNorm", 0.65f,
-            "Normalized engine rpm where the turbo can reach full boost.");
-        DemandRef = config.Bind("Turbo", "DemandRef", 0.2f,
-            "Governor demand at which fuel limiting reaches full strength (limiting fades in below this to keep idle stable).");
+            "Seconds of blow-down (boost release) time constant. Active only when demand drops below boost.");
+        AirNAFraction = config.Bind("Turbo", "AirNAFraction", 0.55f,
+            "Per-stroke charge index of naturally-aspirated operation (zero boost vs max boost).");
+        LambdaCalibration = config.Bind("Turbo", "LambdaCalibration", 2.5f,
+            "Air-to-fuel calibration constant for the lambda proxy (2.5 = full boost, full rack is exactly clean).");
+        RpmTorqueExponent = config.Bind("Turbo", "RpmTorqueExponent", 0.4f,
+            "RPM blending in the torque cap: 0 = pure per-stroke charge, 1 = strict airflow. Low values reduce low-rpm torque restriction.");
+        SmokeOnsetLambda = config.Bind("Turbo", "SmokeOnsetLambda", 0.85f,
+            "Lambda where soot formation begins (fueling above this vs air is overfueling).");
+        SmokeOpaqueLambda = config.Bind("Turbo", "SmokeOpaqueLambda", 0.45f,
+            "Lambda where smoke reaches full opacity.");
+        TorqueLambdaFloor = config.Bind("Turbo", "TorqueLambdaFloor", 0.7f,
+            "Lambda below which extra fuel contributes no torque. Sets both the NA torque fraction at zero boost and how long the oxygen cap binds during spool (higher = wider power surge window, weaker lugging).");
+        ThermalK = config.Bind("Turbo", "ThermalK", 0.8f,
+            "Thermal enthalpy feedback strength: overfueling shortens spool-up time.");
+        MinSpoolTau = config.Bind("Turbo", "MinSpoolTau", 0.5f,
+            "Floor for the spool-up time constant (stability under heavy overfuel).");
+        SmokeEnabled = config.Bind("TurboSmoke", "Enabled", true,
+            "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
+        SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 45f,
+            "Soot particle emission rate [particles/s] at full smoke density.");
+        SmokeSizeMult = config.Bind("TurboSmoke", "SizeMult", 1.3f,
+            "Soot particle size relative to the vanilla exhaust particles.");
+        WhiteTestPuffs = config.Bind("TurboSmoke", "WhiteTestPuffs", false,
+            "Render constant white test puffs instead of soot (render-path diagnostics).");
         DebugLog = config.Bind("Turbo", "DebugLog", false,
             "Log overfuel/boost values while driving.");
         Log = BepInEx.Logging.Logger.CreateLogSource("TurboModel");
@@ -103,6 +127,8 @@ internal static class TurboModel
             : null;
         Port rpmNormPort = engine.GetAllPorts()
             .FirstOrDefault(p => p.id.EndsWith(".RPM_NORMALIZED", StringComparison.OrdinalIgnoreCase));
+        Port engineOnPort = engine.GetAllPorts()
+            .FirstOrDefault(p => p.id.EndsWith(".ENGINE_ON", StringComparison.OrdinalIgnoreCase));
 
         if (throttlePort == null || rpmNormPort == null)
         {
@@ -110,9 +136,10 @@ internal static class TurboModel
             return;
         }
 
-        Turbos[flow] = new EngineTurbo(car, throttlePort, rpmNormPort);
+        Turbos[flow] = new EngineTurbo(car, throttlePort, rpmNormPort, engineOnPort);
         car.OnDestroyCar += OnCarDestroyed;
         Turbos[flow].AttachAudio(new TurboWhineAudio(car, TurboAudio.CreateParams()));
+        Turbos[flow].TryAttachSmoke();
         Log.LogInfo($"turbo model attached to {car.carType} [{car.ID}] (fuel demand port: {throttlePort.id})");
     }
 
@@ -142,29 +169,98 @@ internal sealed class EngineTurbo
 
     private readonly Port _throttlePort;
     private readonly Port _rpmNormPort;
+    private readonly Port _engineOnPort;
     private TurboWhineAudio _whine;
+    private readonly List<TurboSmokeEmitter> _smoke = new();
+    private bool _smokeAttached;
+    private float _smokeRetryTimer;
     private float _boost;
     private float _demand;
     private float _rpmNorm;
     private float _prevDemand;
     private float _lastDebugLog;
 
-    internal EngineTurbo(TrainCar car, Port throttlePort, Port rpmNormPort)
+    /// <summary>Smoke density [0..1] - phase 2: drives exhaust particles.</summary>
+    internal float SmokeDensity { get; private set; }
+
+    /// <summary>Air-fuel ratio proxy (calibrated: ~1.0 = edge of clean full load).</summary>
+    internal float Lambda { get; private set; }
+
+    /// <summary>Overfueling amount [0..1] - fuel beyond available air.</summary>
+    internal float Overfuel { get; private set; }
+
+    internal EngineTurbo(TrainCar car, Port throttlePort, Port rpmNormPort, Port engineOnPort)
     {
         Car = car;
         _throttlePort = throttlePort;
         _rpmNormPort = rpmNormPort;
+        _engineOnPort = engineOnPort;
     }
 
     internal void AttachAudio(TurboWhineAudio whine) => _whine = whine;
 
+    /// <summary>
+    /// Clones the vanilla exhaust system into a soot emitter. The car model
+    /// may not be loaded at attach time - retried from UpdateFrame.
+    /// </summary>
+    internal void TryAttachSmoke()
+    {
+        if (_smokeAttached) return;
+        var allPs = Car.GetComponentsInChildren<ParticleSystem>(true);
+        var exhausts = allPs
+            .Where(ps => ps.name == "ExhaustEngineSmoke")
+            .ToList();
+        if (exhausts.Count == 0) return;
+
+        // the damaged-engine smoke system renders proven visible black -
+        // borrow its material for the soot emitter
+        var damaged = allPs.FirstOrDefault(ps => ps.name == "DamagedEngineSmoke");
+        Material blackMaterial = damaged != null
+            ? damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial
+            : null;
+
+        foreach (ParticleSystem ps in exhausts)
+        {
+            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial, TurboModel.SmokeSizeMult.Value));
+        }
+        _smokeAttached = true;
+        TurboModel.Log.LogInfo($"soot emitter attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s))");
+    }
+
     internal void UpdateFrame(float frameDt)
     {
+        if (!_smokeAttached)
+        {
+            if (TurboModel.SmokeEnabled.Value)
+            {
+                _smokeRetryTimer += frameDt;
+                if (_smokeRetryTimer > 2f)
+                {
+                    _smokeRetryTimer = 0f;
+                    TryAttachSmoke();
+                }
+            }
+        }
+        else
+        {
+            float smoke = TurboModel.SimActive ? SmokeDensity : 0f;
+            bool testMode = TurboModel.WhiteTestPuffs.Value;
+            foreach (TurboSmokeEmitter emitter in _smoke)
+            {
+                emitter.Update(smoke, testMode);
+            }
+        }
+
         _whine?.UpdateFromModel(_boost, _demand, _rpmNorm, frameDt);
     }
 
     internal void Destroy()
     {
+        foreach (TurboSmokeEmitter emitter in _smoke)
+        {
+            emitter.Destroy();
+        }
+        _smoke.Clear();
         _whine?.Destroy();
         _whine = null;
     }
@@ -173,31 +269,59 @@ internal sealed class EngineTurbo
     {
         float demand = _throttlePort.Value;
         float rpmNorm = _rpmNormPort.Value;
-        _demand = demand;
+
+        // the layshaft port reads ~1.0 with the engine shut down - gate all
+        // combustion effects on the engine's own running state
+        bool engineOn = _engineOnPort != null ? _engineOnPort.Value > 0.5f : rpmNorm > 0.05f;
+        float fuelDemand = engineOn ? demand : 0f;
+
+        _demand = fuelDemand;
         _rpmNorm = rpmNorm;
 
-        float gate = Mathf.InverseLerp(TurboModel.SpoolStartRpmNorm.Value, TurboModel.SpoolFullRpmNorm.Value, rpmNorm);
-        float target = Mathf.Clamp01(demand) * gate;
-        float tau = target > _boost ? TurboModel.TauUp.Value : TurboModel.TauDown.Value;
-        tau = Mathf.Max(0.01f, tau);
+        // per-stroke cylinder charge index: 1.0 = naturally aspirated,
+        // 2.125 = full boost. This is the combustion-relevant air quantity.
+        float charge = TurboModel.AirNAFraction.Value
+                       + (1f - TurboModel.AirNAFraction.Value) * (1f + 2.5f * _boost);
+
+        // per-stroke air-fuel ratio proxy and smoke density
+        float lambda = charge / (TurboModel.LambdaCalibration.Value * Mathf.Max(0.01f, fuelDemand));
+        Lambda = lambda;
+        SmokeDensity = fuelDemand < 0.02f
+            ? 0f
+            : Mathf.Clamp01((TurboModel.SmokeOnsetLambda.Value - lambda)
+                / (TurboModel.SmokeOnsetLambda.Value - TurboModel.SmokeOpaqueLambda.Value));
+
+        // torque cap: per-stroke charge sets usable work, blended with engine
+        // speed via RpmTorqueExponent (0 = pure per-stroke, 1 = strict airflow).
+        // Between SmokeOnsetLambda and TorqueLambdaFloor the engine still pulls
+        // hard - it just smokes - which keeps a lugging engine from stalling.
+        float rpmFactor = Mathf.Pow(rpmNorm, TurboModel.RpmTorqueExponent.Value);
+        float fuelMaxTorque = rpmFactor * charge
+            / (TurboModel.LambdaCalibration.Value * TurboModel.TorqueLambdaFloor.Value);
+        float effective = Mathf.Min(demand, fuelMaxTorque);
+
+        // thermal enthalpy feedback: overfueling shortens spool-up time
+        Overfuel = Mathf.Max(0f, fuelDemand - charge / TurboModel.LambdaCalibration.Value);
+        float target = fuelDemand;
+        float tau = target > _boost
+            ? Mathf.Max(TurboModel.MinSpoolTau.Value,
+                TurboModel.TauUp.Value / (1f + TurboModel.ThermalK.Value * Overfuel))
+            : TurboModel.TauDown.Value;
         _boost += (target - _boost) * (1f - Mathf.Exp(-delta / tau));
 
         if (!TurboModel.SimActive) return;
 
-        if (_prevDemand - demand > 0.3f && _boost > 0.75f)
+        if (engineOn && _prevDemand - demand > 0.3f && _boost > 0.75f)
         {
             _whine?.TriggerSurge();
         }
         _prevDemand = demand;
 
-        float boostCap = TurboModel.BoostFloor.Value + (1f - TurboModel.BoostFloor.Value) * _boost;
-        float capWeight = Mathf.Clamp01(demand / Mathf.Max(0.001f, TurboModel.DemandRef.Value));
-        float effective = demand * Mathf.Lerp(1f, boostCap, capWeight);
-
-        if (TurboModel.DebugLog.Value && demand - effective > 0.05f && Time.time - _lastDebugLog > 0.5f)
+        if (TurboModel.DebugLog.Value && SmokeDensity > 0.05f && Time.time - _lastDebugLog > 0.5f)
         {
             _lastDebugLog = Time.time;
-            TurboModel.Log.LogInfo($"overfuel={demand - effective:0.00} boost={_boost:0.00} demand={demand:0.00} rpmNorm={rpmNorm:0.00} [{Car.ID}]");
+            TurboModel.Log.LogInfo($"smoke={SmokeDensity:0.00} lambda={lambda:0.00} overfuel={Overfuel:0.00} " +
+                                   $"boost={_boost:0.00} charge={charge:0.00} demand={demand:0.00} rpmNorm={rpmNorm:0.00} [{Car.ID}]");
         }
 
         _throttlePort.Value = effective;

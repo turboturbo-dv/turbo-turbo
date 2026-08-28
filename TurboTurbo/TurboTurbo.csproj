@@ -55,6 +55,10 @@
       <HintPath>$(ManagedDir)\UnityEngine.AudioModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(ManagedDir)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="DV.Utils">
       <HintPath>$(ManagedDir)\DV.Utils.dll</HintPath>
       <Private>false</Private>

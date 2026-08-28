@@ -4,6 +4,7 @@ using System.Text;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using DV.Simulation.Cars;
+using DV.Simulation.Controllers;
 using DV.Simulation.Ports;
 using DV.ThingTypes;
 using HarmonyLib;
@@ -180,6 +181,46 @@ internal static class SimInspector
         {
             string clips = reader.clips != null ? string.Join(",", reader.clips.Select(c => c ? c.name : "?")) : "";
             _log.LogInfo($"oneshot: [{reader.playType} @{reader.playAudioThreshold:0.###}] port={reader.portId} clips=[{clips}]");
+        }
+
+        foreach (ParticlesPortReadersController ctrl in car.GetComponentsInChildren<ParticlesPortReadersController>(true))
+        {
+            _log.LogInfo($"particlesController '{ctrl.name}' readers={ctrl.particlePortReaders?.Count ?? 0} colorReaders={ctrl.particleColorPortReaders?.Count ?? 0}");
+            if (ctrl.particlePortReaders != null)
+            {
+                foreach (var r in ctrl.particlePortReaders)
+                {
+                    string parent = r.particlesParent ? r.particlesParent.name : "?";
+                    string updaters = r.particleUpdaters != null
+                        ? string.Join(" | ", r.particleUpdaters.Select(u =>
+                        {
+                            string props = u.propertiesToUpdate != null
+                                ? string.Join("+", u.propertiesToUpdate.Select(p =>
+                                    $"{p.propertyType}:{(p.propertyChangeCurve != null ? $"{p.propertyChangeCurve.keys.Length}keys[{p.propertyChangeCurve.keys.FirstOrDefault().time:0.##}->{p.propertyChangeCurve.keys.LastOrDefault().time:0.##}]" : "no-curve")}"))
+                                : "";
+                            return $"port={u.portId} mod(m={u.inputModifier.valueMultiplier:0.##},o={u.inputModifier.valueOffset:0.##}) {props}";
+                        }))
+                        : "";
+                    _log.LogInfo($"  reader parent='{parent}' {updaters}");
+                    if (r.particlesParent != null)
+                    {
+                        foreach (ParticleSystem ps in r.particlesParent.GetComponentsInChildren<ParticleSystem>(true))
+                        {
+                            var main = ps.main;
+                            var rend = ps.GetComponent<ParticleSystemRenderer>();
+                            string mat = rend.sharedMaterial ? rend.sharedMaterial.name : "?";
+                            _log.LogInfo($"    ps '{ps.name}' max={main.maxParticles} size={main.startSize.constant:0.##} life={main.startLifetime.constant:0.##} color={main.startColor.color} mat='{mat}'");
+                        }
+                    }
+                }
+            }
+            if (ctrl.particleColorPortReaders != null)
+            {
+                foreach (var r in ctrl.particleColorPortReaders)
+                {
+                    _log.LogInfo($"  colorReader parent='{(r.particlesParent ? r.particlesParent.name : "?")}' port={r.portId} min={r.startColorMin} max={r.startColorMax}");
+                }
+            }
         }
     }
 
