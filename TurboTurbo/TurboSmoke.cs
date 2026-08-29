@@ -112,7 +112,10 @@ internal sealed class TurboSmokeEmitter
         TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
     }
 
-    internal void Update(float smokeDensity, float rpmNorm, bool engineOn)
+    private const float HeatDecayTime = 3f;
+    private float _heat;
+
+    internal void Update(float smokeDensity, float rpmNorm, float fuelNorm, bool engineOn)
     {
         var em = _soot.emission;
         var main = _soot.main;
@@ -150,8 +153,22 @@ internal sealed class TurboSmokeEmitter
             ? rpmNorm * TurboConfig.ExhaustSpeed.Value
             : _vanilla.main.startSpeed;
 
-        // hot exhaust = heat shimmer source (stronger while sooting)
-        HeatIntensity = engineOn ? 0.3f + 0.7f * soot : 0f;
+        // heat shimmer tracks engine mass flow (normalized fuel consumption),
+        // not soot - incomplete combustion shouldn't matter. Small floor so
+        // the idle column stays visible. Asymmetric thermal inertia: the
+        // stack heats instantly on a throttle kick but cools down slowly.
+        float heatTarget = engineOn ? Mathf.Clamp01(0.2f + 0.8f * fuelNorm) : 0f;
+        if (heatTarget > _heat)
+        {
+            _heat = heatTarget;
+        }
+        else
+        {
+            float decay = 1f - Mathf.Exp(-Time.deltaTime / HeatDecayTime);
+            _heat = Mathf.Lerp(_heat, heatTarget, decay);
+            if (_heat < 0.01f) _heat = 0f;
+        }
+        HeatIntensity = _heat;
 
         if (!_loggedEmit && smokeDensity > 0.3f)
         {

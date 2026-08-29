@@ -71,6 +71,8 @@ internal static class TurboModel
             .FirstOrDefault(p => p.id.EndsWith(".RPM_NORMALIZED", StringComparison.OrdinalIgnoreCase));
         Port engineOnPort = engine.GetAllPorts()
             .FirstOrDefault(p => p.id.EndsWith(".ENGINE_ON", StringComparison.OrdinalIgnoreCase));
+        Port fuelPort = engine.GetAllPorts()
+            .FirstOrDefault(p => p.id.EndsWith(".FUEL_CONSUMPTION_NORMALIZED", StringComparison.OrdinalIgnoreCase));
 
         if (throttlePort == null || rpmNormPort == null)
         {
@@ -78,11 +80,12 @@ internal static class TurboModel
             return;
         }
 
-        Turbos[flow] = new EngineTurbo(car, flow, throttlePort, rpmNormPort, engineOnPort);
+        Turbos[flow] = new EngineTurbo(car, flow, throttlePort, rpmNormPort, engineOnPort, fuelPort);
         car.OnDestroyCar += OnCarDestroyed;
         Turbos[flow].AttachAudio(new TurboWhineAudio(car, TurboAudio.CreateParams()));
         Turbos[flow].TryAttachSmoke(flow);
-        Log.LogInfo($"turbo model attached to {car.carType} [{car.ID}] (fuel demand port: {throttlePort.id})");
+        Log.LogInfo($"turbo model attached to {car.carType} [{car.ID}] (fuel demand port: {throttlePort.id}, " +
+                    $"fuel consumption port: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
     private static void OnCarDestroyed(TrainCar car)
@@ -112,6 +115,7 @@ internal sealed class EngineTurbo
     private readonly Port _throttlePort;
     private readonly Port _rpmNormPort;
     private readonly Port _engineOnPort;
+    private readonly Port _fuelPort;
     private readonly SimulationFlow _flow;
     private TurboWhineAudio _whine;
     private readonly List<TurboSmokeEmitter> _smoke = new();
@@ -120,6 +124,7 @@ internal sealed class EngineTurbo
     private float _boost;
     private float _demand;
     private float _rpmNorm;
+    private float _fuelNorm;
     private float _prevDemand;
     private float _lastDebugLog;
 
@@ -135,13 +140,14 @@ internal sealed class EngineTurbo
     /// <summary>Overfueling amount [0..1] - fuel beyond available air.</summary>
     internal float Overfuel { get; private set; }
 
-    internal EngineTurbo(TrainCar car, SimulationFlow flow, Port throttlePort, Port rpmNormPort, Port engineOnPort)
+    internal EngineTurbo(TrainCar car, SimulationFlow flow, Port throttlePort, Port rpmNormPort, Port engineOnPort, Port fuelPort)
     {
         Car = car;
         _flow = flow;
         _throttlePort = throttlePort;
         _rpmNormPort = rpmNormPort;
         _engineOnPort = engineOnPort;
+        _fuelPort = fuelPort;
     }
 
     internal void AttachAudio(TurboWhineAudio whine) => _whine = whine;
@@ -228,7 +234,7 @@ internal sealed class EngineTurbo
             float soot = TurboModel.SimActive ? SmokeDensity : 0f;
             foreach (TurboSmokeEmitter emitter in _smoke)
             {
-                emitter.Update(soot, _rpmNorm, EngineRunning);
+                emitter.Update(soot, _rpmNorm, _fuelNorm, EngineRunning);
             }
         }
 
@@ -259,6 +265,7 @@ internal sealed class EngineTurbo
 
         _demand = fuelDemand;
         _rpmNorm = rpmNorm;
+        _fuelNorm = _fuelPort != null ? Mathf.Clamp01(_fuelPort.Value) : 0f;
 
         // per-stroke cylinder charge index: 1.0 = naturally aspirated,
         // 2.125 = full boost. This is the combustion-relevant air quantity.
