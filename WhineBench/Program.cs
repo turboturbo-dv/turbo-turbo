@@ -1,118 +1,152 @@
-using System.Globalization;
+using System.Diagnostics;
+using System.Runtime;
+using System.Text;
+using NAudio.Wave;
 using TurboTurbo;
 using WhineBench;
 
-const string usage = """
-    WhineBench - renders the GameStyle turbo whine and writes WAVs.
+const double PitchMin = 0.11, PitchMax = 1.0;   // loop pitch range over boost
+const double SpoolTau = 0.8;                    // boost easing time constant
 
-    Usage: dotnet run --project WhineBench -c Release [-- options]
+GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
-    Options (all optional):
-      --blades <n>      compressor blade count                (default 12)
-      --turborpm <rpm>  max turbo shaft speed                (default 36000)
-      --bpfscale <x>    BPF scale (1.0 = physical)           (default 1.0)
-      --whinegain <x>   tonal whine branch gain              (default 0.4)
-      --whineexp <x>    whine gain exponent                  (default 3.5)
-      --flowgain <x>    broadband flow branch gain           (default 0.6)
-      --ductgain <x>    intake duct resonance gain           (default 0.5)
-      --ductq <x>       intake duct resonance Q              (default 2.0)
-      --jitter <x>      pitch jitter amount                  (default 0.008)
-      --cab             enable cab filter (muffled interior sound)
-      --cabcut <hz>     cab filter cutoff                    (default 2000)
-      --gamestyle       render the exact in-game loops + pitch-mapped sweep preview
-      --loopseconds <s> [gamestyle] loop duration             (default 2.0)
-      --sweep <s>       render a spool sweep of this duration
-      --gsteady <s>     also render steady-state clip at load 0.8 (default off)
-      --tau <s>         sweep spool smoothing                (default 0.8)
-      --pitchmin <x>    sweep pitch at zero boost            (default 0.11)
-      --pitchmax <x>    sweep pitch at full boost            (default 1.0)
-      --volume <x>      sweep peak volume                    (default 0.8)
-      --volumeexp <x>   dipole volume curve exponent         (default 1.5, gamestyle sweeps)
-      --out <path>      loop output                          (default logs/whine_loop.wav)
-      --play            open the last written file with the default player
-    """;
+double throttleTarget = 0.0, boost = 0.0;
+bool engineOn = false;
+double masterVolume = 0.8;
+double blades = 12, bpfScale = 1.0, whineGain = 0.4, flowGain = 0.6, ductGain = 0.5, ductQ = 2.0, jitter = 0.008;
+bool cabFilter = false;
+bool rebuild = true;
+bool showHelp = true;
+bool quit = false;
 
-if (args.Contains("--help") || args.Contains("-h"))
-{
-    Console.WriteLine(usage);
-    return;
-}
-
-var opts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-for (int i = 0; i + 1 < args.Length; i++)
-{
-    if (args[i].StartsWith("--")) opts[args[i][2..]] = args[i + 1];
-}
-
-double D(string key, double fallback) =>
-    opts.TryGetValue(key, out var raw) && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)
-        ? v : fallback;
-
-int I(string key, int fallback) => (int)D(key, fallback);
-
-int sr = I("samplerate", 44100);
-bool sweep = opts.ContainsKey("sweep");
+var provider = new TurboPlaybackProvider();
+IWavePlayer output = new WaveOutEvent { DesiredLatency = 200, NumberOfBuffers = 4 };
+output.Init(provider.ToWaveProvider());
+output.Play();
 
 GeminiParams MakeParams(bool filtered) => new GeminiParams
 {
-    SampleRate = sr,
-    BladeCount = D("blades", 12),
-    MaxTurboRpm = D("turborpm", 36000),
-    BpfScale = D("bpfscale", 1.0),
-    WhineGain = D("whinegain", 0.4),
-    WhineGainExponent = D("whineexp", 3.5),
-    FlowGain = D("flowgain", 0.6),
-    DuctResGain = D("ductgain", 0.5),
-    DuctQ = D("ductq", 2.0),
-    JitterAmount = D("jitter", 0.008),
-    JitterHz = D("jitterhz", 10),
+    SampleRate = 48000,
+    BladeCount = blades,
+    MaxTurboRpm = 36000,
+    BpfScale = bpfScale,
+    IdleEngineRpmNorm = 0.332,
+    TauSpool = 1.8,
+    TauDump = 1.2,
+    WhineGain = whineGain,
+    WhineGainExponent = 3.5,
+    FlowGain = flowGain,
+    DuctResGain = ductGain,
+    DuctQ = ductQ,
+    JitterAmount = jitter,
+    JitterHz = 10,
     CabFilter = filtered,
-    CabFilterCutoffHz = D("cabcut", 2000),
+    CabFilterCutoffHz = 2000,
 };
 
-string lastWritten = null;
-
-void Write(string label, float[] samples, int sampleRate, string path)
+void RebuildLoop()
 {
-    WavWriter.ExportWav(samples, sampleRate, path);
-    Console.WriteLine($"{label}: {Path.GetFullPath(path)}");
-    lastWritten = path;
+    // renders the exact loop the mod's GameStyle path would play with the
+    // current synthesis parameters (full load, seamless)
+    provider.SetLoop(WhineSynthGemini.RenderLoop(MakeParams(cabFilter), 8.0, 1.0));
 }
 
-if (opts.ContainsKey("gamestyle"))
-{
-    string tag = opts.TryGetValue("tag", out var tg) ? "_" + tg : "";
-    // exactly what the mod plays: full-load seamless loop, pitched over boost
-    float[] loopExt = WhineSynthGemini.RenderLoop(MakeParams(false), D("loopseconds", 2.0), 1.0);
-    Write($"gamestyle loop (ext{tag})", loopExt, sr, $"logs/whine_loop_ext{tag}.wav");
-    float[] loopCab = WhineSynthGemini.RenderLoop(MakeParams(true), D("loopseconds", 2.0), 1.0);
-    Write($"gamestyle loop (cab{tag})", loopCab, sr, $"logs/whine_loop_cab{tag}.wav");
+RebuildLoop();
 
-    double pitchMin = D("pitchmin", 0.11), pitchMax = D("pitchmax", 1.0), vol = D("volume", 0.8);
-    double volExp = D("volumeexp", 1.5);
-    Write($"gamestyle sweep (ext{tag})", SweepPlayer.RenderSweep(loopExt, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
-        sr, $"logs/whine_sweep_ext{tag}.wav");
-    Write($"gamestyle sweep (cab{tag})", SweepPlayer.RenderSweep(loopCab, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
-        sr, $"logs/whine_sweep_cab{tag}.wav");
-}
+Console.Clear();
+Console.CursorVisible = false;
+var clock = Stopwatch.StartNew();
+double lastTick = 0;
+double lastDraw = -1;
+double wobblePhase = 0;
+var panel = new StringBuilder(1024);
 
-if (sweep)
+while (!quit)
 {
-    float[] sw = WhineSynthGemini.RenderSweep(MakeParams(false), D("sweep", 8));
-    Write("gemini sweep", sw, sr, opts.TryGetValue("sweepout", out var so) ? so : "logs/whine_sweep_gemini.wav");
-}
-
-if (opts.ContainsKey("gsteady"))
-{
-    float[] steady = WhineSynthGemini.RenderSteady(MakeParams(false), D("gsteady", 6), 0.8);
-    Write("gemini steady", steady, sr, opts.TryGetValue("steadyout", out var so2) ? so2 : "logs/whine_steady_gemini.wav");
-}
-
-if (lastWritten != null && opts.ContainsKey("play"))
-{
-    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+    // ---- keyboard ----------------------------------------------------
+    while (Console.KeyAvailable)
     {
-        FileName = Path.GetFullPath(lastWritten),
-        UseShellExecute = true,
-    });
+        switch (Console.ReadKey(true).Key)
+        {
+            case ConsoleKey.UpArrow: engineOn = true; throttleTarget = Math.Min(1.0, throttleTarget + 0.05); break;
+            case ConsoleKey.DownArrow: throttleTarget = Math.Max(0.0, throttleTarget - 0.05); break;
+            case ConsoleKey.E: engineOn = !engineOn; if (!engineOn) throttleTarget = 0.0; break;
+            case ConsoleKey.O: masterVolume = Math.Min(1.0, masterVolume + 0.1); break;
+            case ConsoleKey.P: masterVolume = Math.Max(0.0, masterVolume - 0.1); break;
+            case ConsoleKey.Z: blades = Math.Max(8, blades - 1); rebuild = true; break;
+            case ConsoleKey.X: blades = Math.Min(20, blades + 1); rebuild = true; break;
+            case ConsoleKey.C: bpfScale = Math.Min(1.4, bpfScale + 0.05); rebuild = true; break;
+            case ConsoleKey.V: bpfScale = Math.Max(0.5, bpfScale - 0.05); rebuild = true; break;
+            case ConsoleKey.D1: whineGain = Math.Min(1.5, whineGain + 0.1); rebuild = true; break;
+            case ConsoleKey.D2: whineGain = Math.Max(0.0, whineGain - 0.1); rebuild = true; break;
+            case ConsoleKey.D3: flowGain = Math.Min(2.0, flowGain + 0.1); rebuild = true; break;
+            case ConsoleKey.D4: flowGain = Math.Max(0.0, flowGain - 0.1); rebuild = true; break;
+            case ConsoleKey.D5: ductGain = Math.Min(2.0, ductGain + 0.1); rebuild = true; break;
+            case ConsoleKey.D6: ductGain = Math.Max(0.0, ductGain - 0.1); rebuild = true; break;
+            case ConsoleKey.D7: ductQ = Math.Min(6.0, ductQ + 0.25); rebuild = true; break;
+            case ConsoleKey.D8: ductQ = Math.Max(0.5, ductQ - 0.25); rebuild = true; break;
+            case ConsoleKey.D9: jitter = Math.Min(0.03, jitter + 0.002); rebuild = true; break;
+            case ConsoleKey.D0: jitter = Math.Max(0.0, jitter - 0.002); rebuild = true; break;
+            case ConsoleKey.F: cabFilter = !cabFilter; rebuild = true; break;
+            case ConsoleKey.W: WavWriter.ExportWav(provider.CurrentLoop, 48000, "logs/whine_bench_export.wav"); break;
+            case ConsoleKey.H: showHelp = !showHelp; Console.Clear(); break;
+            case ConsoleKey.Escape: quit = true; break;
+        }
+    }
+
+    if (rebuild)
+    {
+        RebuildLoop();
+        rebuild = false;
+    }
+
+    // ---- engine state --------------------------------------------------
+    double now = clock.ElapsedTicks / (double)Stopwatch.Frequency;
+    double dt = Math.Min(0.1, now - lastTick);
+    lastTick = now;
+
+    double demand = engineOn ? throttleTarget : 0.0;
+    boost += (demand - boost) * (1.0 - Math.Exp(-dt / SpoolTau));
+
+    // slow organic pitch wobble (replaces the loop-render jitter)
+    wobblePhase += dt * 2.0 * Math.PI * 0.5;
+    double wobble = 1.0 + 0.003 * Math.Sin(wobblePhase);
+
+    double pitch = (PitchMin + (PitchMax - PitchMin) * boost) * wobble;
+    double boostDelta = Math.Min(1.0, boost * demand);
+    double volume = masterVolume * Math.Pow(boost, 1.5) * (0.10 + 0.90 * boostDelta);
+    provider.SetOutput(pitch, volume);
+
+    // ---- status panel (5 Hz, pre-built to keep the audio thread GC-quiet) --
+    if (now - lastDraw > 0.2)
+    {
+        lastDraw = now;
+        var sb = panel;
+        sb.Clear();
+        if (showHelp)
+        {
+            sb.AppendLine("TurboTurbo realtime bench");
+            sb.AppendLine("=========================");
+            sb.AppendLine("Up/Down  throttle +/-0.05        E        engine on/off");
+            sb.AppendLine("O/P      master volume -/+       Z/X      blades -/+");
+            sb.AppendLine("C/V      bpf scale -/+0.05       1/2      whine gain -/+");
+            sb.AppendLine("3/4      flow gain -/+           5/6      duct gain -/+");
+            sb.AppendLine("7/8      duct Q -/+0.25          9/0      pitch jitter -/+");
+            sb.AppendLine("F        cab filter toggle       W        export loop to WAV");
+            sb.AppendLine("H        hide help               Esc      quit");
+        }
+        sb.AppendLine(
+            $"engine={(engineOn ? "RUNNING" : "OFF     ")} boost={boost:0.00} tone={7200 * pitch:0} Hz  " +
+            $"vol={volume:0.00} cab={(cabFilter ? "IN " : "OUT")} blades={blades:0} bpf={bpfScale:0.00} " +
+            $"wGain={whineGain:0.00} fGain={flowGain:0.00} duct={ductGain:0.00}/Q{ductQ:0.00} jit={jitter:0.000}");
+        Console.SetCursorPosition(0, 0);
+        Console.Write(sb.ToString());
+    }
+
+    Thread.Sleep(10);
 }
+
+output.Stop();
+output.Dispose();
+Console.CursorVisible = true;
+Console.Clear();

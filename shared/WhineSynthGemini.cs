@@ -337,18 +337,21 @@ public static class WhineSynthGemini
 
     /// <summary>
     /// Renders a seamless loop of the steady-state operating point at the
-    /// given load: spools up, discards the transient, then folds the buffer
-    /// tail into the head (standard loop-equalize) so the wrap is continuous.
+    /// given load: spools up, discards the transient, then wraps the buffer
+    /// with an equal-power crossfade. Jitter is zeroed for the render so the
+    /// tonal component stays as periodic as possible - organic wobble belongs
+    /// to the realtime playback layer, where it cannot break the seam.
     /// </summary>
     public static float[] RenderLoop(GeminiParams p, double steadySeconds, double load)
     {
-        double spoolSeconds = 4.0 * p.TauSpool + 1.0;
-        int total = (int)(p.SampleRate * (spoolSeconds + steadySeconds));
-        var dsp = new GeminiTurboDsp(p);
-        double dt = 1.0 / p.SampleRate;
-        double rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * load;
+        var pj = CloneForLoop(p);
+        double spoolSeconds = 4.0 * pj.TauSpool + 1.0;
+        int total = (int)(pj.SampleRate * (spoolSeconds + steadySeconds));
+        var dsp = new GeminiTurboDsp(pj);
+        double dt = 1.0 / pj.SampleRate;
+        double rpmNorm = pj.IdleEngineRpmNorm + (1.0 - pj.IdleEngineRpmNorm) * load;
 
-        int skip = (int)(p.SampleRate * spoolSeconds);
+        int skip = (int)(pj.SampleRate * spoolSeconds);
         int n = total - skip;
         var kept = new float[n];
         for (int i = 0; i < total; i++)
@@ -357,14 +360,16 @@ public static class WhineSynthGemini
             if (i >= skip) kept[i - skip] = (float)s;
         }
 
-        int xf = Math.Min(n / 4, (int)(p.SampleRate * 0.05));
+        // equal-power wrap crossfade (long, so residual tonal phase mismatch
+        // smears into a gentle swell instead of a click)
+        int xf = Math.Min(n / 4, (int)(pj.SampleRate * 0.2));
         var output = new float[n - xf];
         for (int i = 0; i < output.Length; i++)
         {
             if (i < xf)
             {
-                double w = (double)i / xf;
-                output[i] = (float)(kept[i] * w + kept[n - xf + i] * (1.0 - w));
+                double th = Math.PI * i / (2.0 * xf);
+                output[i] = (float)(kept[i] * Math.Sin(th) + kept[n - xf + i] * Math.Cos(th));
             }
             else
             {
@@ -380,6 +385,31 @@ public static class WhineSynthGemini
             for (int i = 0; i < output.Length; i++) output[i] *= gain;
         }
         return output;
+    }
+
+    private static GeminiParams CloneForLoop(GeminiParams p)
+    {
+        return new GeminiParams
+        {
+            SampleRate = p.SampleRate,
+            BladeCount = p.BladeCount,
+            MaxTurboRpm = p.MaxTurboRpm,
+            BpfScale = p.BpfScale,
+            IdleEngineRpmNorm = p.IdleEngineRpmNorm,
+            TauSpool = p.TauSpool,
+            TauDump = p.TauDump,
+            WhineGain = p.WhineGain,
+            WhineGainExponent = p.WhineGainExponent,
+            FlowGain = p.FlowGain,
+            DuctResGain = p.DuctResGain,
+            DuctQ = p.DuctQ,
+            JitterAmount = 0.0,
+            JitterHz = p.JitterHz,
+            SurgeRateThreshold = p.SurgeRateThreshold,
+            CabFilter = p.CabFilter,
+            CabFilterCutoffHz = p.CabFilterCutoffHz,
+            Seed = p.Seed,
+        };
     }
 
     private static void Normalize(float[] samples, double peak)

@@ -174,7 +174,9 @@ internal sealed class TurboWhineAudio
 
     private static AudioClip MakeLoopClip(GeminiParams p)
     {
-        float[] samples = WhineSynthGemini.RenderLoop(p, 2.0, 1.0);
+        // 8 s loops: the wrap lands rarely, and the equal-power crossfade has
+        // time to smear residual tonal phase mismatch into a gentle swell
+        float[] samples = WhineSynthGemini.RenderLoop(p, 8.0, 1.0);
         var clip = AudioClip.Create("TurboTurboWhineLoop", samples.Length, 1, p.SampleRate, false);
         clip.SetData(samples, 0);
         return clip;

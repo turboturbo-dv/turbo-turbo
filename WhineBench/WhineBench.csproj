@@ -14,4 +14,8 @@
     <Compile Include="..\shared\WhineSynthGemini.cs" Link="WhineSynthGemini.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
 </Project>
