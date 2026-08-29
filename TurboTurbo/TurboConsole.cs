@@ -87,7 +87,7 @@ internal static class TurboConsole
                             _config.Save();
                             break;
                         case "shimmerradius":
-                            TurboConfig.HeatShimmerRadius.Value = Mathf.Clamp(v, 0.2f, 3f);
+                            TurboConfig.HeatShimmerRadius.Value = Mathf.Clamp(v, 0.2f, 20f);
                             _config.Save();
                             break;
                         case "shimmerheight":
@@ -106,6 +106,10 @@ internal static class TurboConsole
                             TurboConfig.HeatShimmerWire.Value = v > 0.5f;
                             _config.Save();
                             break;
+                        case "shimmerdebug":
+                            TurboConfig.HeatShimmerDebug.Value = (int)Mathf.Clamp(v, 0f, 4f);
+                            _config.Save();
+                            break;
                         default:
                             Terminal.Log("unknown key - use rate, alpha, size, clean, speed or haze");
                             return;
@@ -116,7 +120,7 @@ internal static class TurboConsole
                              $"shimmer={TurboConfig.HeatShimmerEnabled.Value} shimmermode={TurboConfig.HeatShimmerMode.Value} " +
                              $"shimmerstrength={TurboConfig.HeatShimmerStrength.Value:0.00} shimmerradius={TurboConfig.HeatShimmerRadius.Value:0.0} " +
                              $"shimmerheight={TurboConfig.HeatShimmerHeight.Value:0.0} shimmerspeed={TurboConfig.HeatShimmerSpeed.Value:0.0} shimmerfreq={TurboConfig.HeatShimmerFreq.Value:0.0} " +
-                             $"shimmerwire={TurboConfig.HeatShimmerWire.Value}");
+                             $"shimmerwire={TurboConfig.HeatShimmerWire.Value} shimmerdebug={TurboConfig.HeatShimmerDebug.Value}");
             },
             0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|speed|haze|shimmer|shimmermode|shimmerstrength|shimmerradius|shimmerheight|shimmerspeed|shimmerfreq|shimmerwire] [value]");
         Terminal.Autocomplete.Register(smokeCmd);

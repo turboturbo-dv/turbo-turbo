@@ -4,22 +4,20 @@ Shader "TurboTurbo/HeatShimmer"
     {
         _MainTex ("Heat DUDV (RG = offset)", 2D) = "gray" {}
         _Strength ("Distortion Strength", Float) = 0.5
+        _Debug ("Debug View", Float) = 0
     }
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
-        // UNNAMED grab: captured fresh per object per camera. A named grab is
-        // captured once per frame at the first object that uses it - if a
-        // reflection probe or secondary camera renders the quad first, the
-        // view camera reuses a stale/wrong-viewpoint grab (invisible shimmer).
+        // grab the lit scene behind the quad; works in DV's deferred path
         GrabPass { }
 
         Pass
         {
             ZWrite Off
             Cull Off
-            Blend SrcAlpha OneMinusSrcAlpha
+            Blend Off
 
             CGPROGRAM
             #pragma vertex vert
@@ -29,11 +27,11 @@ Shader "TurboTurbo/HeatShimmer"
             sampler2D _MainTex;
             sampler2D _GrabTexture;
             float _Strength;
+            float _Debug;
 
             struct appdata
             {
                 float4 vertex : POSITION;
-                float3 normal : NORMAL;
                 float2 uv : TEXCOORD0;
             };
 
@@ -42,8 +40,6 @@ Shader "TurboTurbo/HeatShimmer"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float4 grabUV : TEXCOORD1;
-                float3 normalWS : TEXCOORD2;
-                float3 worldPos : TEXCOORD3;
             };
 
             v2f vert (appdata v)
@@ -52,25 +48,43 @@ Shader "TurboTurbo/HeatShimmer"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
                 o.grabUV = ComputeGrabScreenPos(o.pos);
-                o.normalWS = UnityObjectToWorldNormal(v.normal);
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
 
             half4 frag (v2f i) : SV_Target
             {
-                // DUDV-style offset map: 0.5 = no distortion
-                float2 offset = (tex2D(_MainTex, i.uv).rg - 0.5) * _Strength;
-                float2 suv = i.grabUV.xy + offset;
-                half4 scene = tex2Dproj(_GrabTexture, float4(suv, i.grabUV.z, i.grabUV.w));
+                float4 map = tex2D(_MainTex, i.uv);
+                float2 offset = (map.rg - 0.5) * _Strength;
 
-                // rim fade: full refraction facing the camera, dissolving at
-                // the column silhouette for a soft volumetric edge
-                float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
-                float rim = saturate(dot(normalize(i.normalWS), viewDir));
-                float alpha = rim * rim;
+                // debug 1: raw map sample (R,G = offsets, B = mask)
+                if (_Debug > 0.5 && _Debug < 1.5)
+                {
+                    return half4(map.rgb, 1.0);
+                }
+                // debug 2: raw grab, no offset - validates the grab path
+                if (_Debug > 1.5 && _Debug < 2.5)
+                {
+                    return tex2D(_GrabTexture, i.grabUV.xy / i.grabUV.w);
+                }
+                // debug 3: computed offset (RG, +-0.05 = full swing) and
+                // _Strength (B, 0..1) - validates the distortion math
+                if (_Debug > 2.5)
+                {
+                    return half4(offset * 20.0 + 0.5, saturate(_Strength), 1.0);
+                }
+                // debug 4: solid magenta - proves geometry + material render
+                if (_Debug > 3.5)
+                {
+                    return half4(1.0, 0.0, 1.0, 1.0);
+                }
 
-                return half4(scene.rgb, alpha);
+                // DUDV-style offset map: 0.5 = no distortion. The mask (map
+                // blue) fades the offset to zero at the quad's edges, so no
+                // rim/alpha trickery is needed: the displaced background IS
+                // the effect. Offset is applied AFTER projection so
+                // _Strength is in true screen-UV units.
+                float2 suv = i.grabUV.xy / i.grabUV.w + offset;
+                return tex2D(_GrabTexture, suv);
             }
             ENDCG
         }

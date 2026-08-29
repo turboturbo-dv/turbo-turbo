@@ -199,7 +199,9 @@ internal static class HeatShimmer
                 }
                 mr.sharedMaterial = _bundleMaterial;
                 if (HeatShimmer.NoiseTexture != null) _bundleMaterial.SetTexture("_MainTex", HeatShimmer.NoiseTexture);
-                _bundleMaterial.SetFloat("_Strength", intensity * TurboConfig.HeatShimmerStrength.Value);
+                // intensity already includes HeatShimmerStrength (UpdateSources)
+                _bundleMaterial.SetFloat("_Strength", intensity);
+                _bundleMaterial.SetFloat("_Debug", TurboConfig.HeatShimmerDebug.Value);
                 }
                 else if (HeatShimmer.AltMaterial != null)
                 {
@@ -580,13 +582,14 @@ internal static class HeatShimmer
                 float mask = 0f;
                 foreach (Source s in Sources)
                 {
-                    if (s.Radius <= 0f || s.Intensity <= 0f) continue;
-                    float dx = (u - s.Viewport.x) * ((float)MapW / MapH);
-                    float dy = v - s.Viewport.y;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy) / s.Radius;
-                    if (d >= 1f) continue;
-                    float falloff = 1f - d;
-                    mask += s.Intensity * falloff * falloff;
+                    if (s.Intensity <= 0f) continue;
+                    // quad-space mask: soft column centered horizontally,
+                    // full strength at the bottom fading toward the top.
+                    // The quad samples this map with its own mesh UVs, so the
+                    // distortion is always glued to the quad's geometry.
+                    float horiz = 1f - Mathf.SmoothStep(0.55f, 0.95f, Mathf.Abs(u - 0.5f) * 2f);
+                    float vert = 1f - Mathf.SmoothStep(0.3f, 0.95f, v);
+                    mask += s.Intensity * horiz * vert;
                 }
                 mask = Mathf.Clamp01(mask);
                 if (mask > maskPeak) maskPeak = mask;
