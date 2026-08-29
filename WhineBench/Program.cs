@@ -1,5 +1,6 @@
 using System.Globalization;
 using TurboTurbo;
+using WhineBench;
 
 const string usage = """
     WhineBench - renders the GameStyle turbo whine and writes WAVs.
@@ -73,7 +74,7 @@ string lastWritten = null;
 
 void Write(string label, float[] samples, int sampleRate, string path)
 {
-    WhineSynth.ExportWav(samples, sampleRate, path);
+    WavWriter.ExportWav(samples, sampleRate, path);
     Console.WriteLine($"{label}: {Path.GetFullPath(path)}");
     lastWritten = path;
 }
@@ -89,9 +90,9 @@ if (opts.ContainsKey("gamestyle"))
 
     double pitchMin = D("pitchmin", 0.11), pitchMax = D("pitchmax", 1.0), vol = D("volume", 0.8);
     double volExp = D("volumeexp", 1.5);
-    Write($"gamestyle sweep (ext{tag})", WhineSynth.RenderSweep(loopExt, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
+    Write($"gamestyle sweep (ext{tag})", SweepPlayer.RenderSweep(loopExt, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
         sr, $"logs/whine_sweep_ext{tag}.wav");
-    Write($"gamestyle sweep (cab{tag})", WhineSynth.RenderSweep(loopCab, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
+    Write($"gamestyle sweep (cab{tag})", SweepPlayer.RenderSweep(loopCab, sr, D("sweep", 8), D("tau", 0.8), pitchMin, pitchMax, vol, volExp, true),
         sr, $"logs/whine_sweep_cab{tag}.wav");
 }
 

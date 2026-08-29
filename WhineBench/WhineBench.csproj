@@ -11,7 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\shared\WhineSynth.cs" Link="WhineSynth.cs" />
     <Compile Include="..\shared\WhineSynthGemini.cs" Link="WhineSynthGemini.cs" />
   </ItemGroup>
 
