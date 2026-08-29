@@ -18,3 +18,30 @@ logs/
 # OS artifacts
 Thumbs.db
 desktop.ini
+
+# Unity (assetbundle/ project)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+sysinfo.txt
+*.sysinfo
+*.csproj
+*.sln
+*.pidb
+*.booproj
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.apk
+*.unitypackage
+AssetBundles/
+
+# Logs and license request files
+*.log
+*.alf
