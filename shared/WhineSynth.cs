@@ -3,62 +3,12 @@ using System.IO;
 
 namespace TurboTurbo;
 
-public sealed class WhineParams
-{
-    public double BaseHz = 1150.0;
-    public double Harmonic2 = 0.5;
-    public double Harmonic3 = 0.25;
-    public double NoiseGain = 0.18;
-    public double Seconds = 2.5;
-    public int SampleRate = 44100;
-}
-
 /// <summary>
-/// Procedural turbo whine synthesis (pure .NET, no engine dependencies).
-/// Partials are quantized to whole cycles over the loop duration so the loop
-/// is seamless; inharmonic offsets between partials produce natural beating.
+/// Loop-playback simulator for the GameStyle audio path: renders a loop the
+/// way the mod plays it (pitch-mapped resampling + volume law), plus WAV export.
 /// </summary>
 public static class WhineSynth
 {
-    public static float[] Synthesize(WhineParams p)
-    {
-        int n = (int)Math.Round(p.SampleRate * p.Seconds);
-        int c1 = Math.Max(1, (int)Math.Round(p.BaseHz * p.Seconds));
-        int c2 = 2 * c1 + 1;
-        int c3 = 3 * c1 + 2;
-
-        var samples = new float[n];
-        for (int i = 0; i < n; i++)
-        {
-            double ph = 2.0 * Math.PI * i / n;
-            double beat = 0.8 + 0.2 * Math.Sin(ph * 3.0);
-            samples[i] = (float)(Math.Sin(ph * c1)
-                                 + p.Harmonic2 * beat * Math.Sin(ph * c2)
-                                 + p.Harmonic3 * Math.Sin(ph * c3));
-        }
-
-        var rng = new Random(1234);
-        double lowState = 0.0, bandState = 0.0;
-        double kLow = 1.0 - Math.Exp(-2.0 * Math.PI * (p.BaseHz * 1.4) / p.SampleRate);
-        double kBand = 1.0 - Math.Exp(-2.0 * Math.PI * (p.BaseHz * 0.35) / p.SampleRate);
-        int fade = Math.Max(1, (int)(p.SampleRate * 0.005));
-        for (int i = 0; i < n; i++)
-        {
-            double white = rng.NextDouble() * 2.0 - 1.0;
-            lowState += kLow * (white - lowState);
-            bandState += kBand * (lowState - bandState);
-            float noise = (float)((lowState - bandState) * p.NoiseGain);
-            float edge = Math.Min(i, n - 1 - i) / (float)fade;
-            samples[i] += noise * Clamp(edge, 0f, 1f);
-        }
-
-        float peak = 0f;
-        foreach (float v in samples) peak = Math.Max(peak, Math.Abs(v));
-        float gain = 0.9f / Math.Max(0.0001f, peak);
-        for (int i = 0; i < n; i++) samples[i] *= gain;
-        return samples;
-    }
-
     /// <summary>
     /// Renders a spool sweep the way the in-game bench plays it: boost target
     /// follows a full cosine cycle over sweepSeconds, eased by tau, pitch

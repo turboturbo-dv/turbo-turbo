@@ -16,7 +16,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\shared\WhineSynth.cs" Link="WhineSynth.cs" />
     <Compile Include="..\shared\WhineSynthGemini.cs" Link="WhineSynthGemini.cs" />
     <!-- Provides the .NET 4.7.2 reference assemblies so no VS targeting pack is required -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
