@@ -23,6 +23,7 @@ public sealed class Plugin : BaseUnityPlugin
         SimInspector.Bind(Config);
         TurboModel.Bind(Config);
         TurboAudio.Bind(Config);
+        TurboConsole.Bind(Config);
         _harmony.PatchAll();
 
         Log.LogInfo($"{Name} {Version} loaded");
@@ -37,6 +38,6 @@ public sealed class Plugin : BaseUnityPlugin
     {
         SimInspector.Update();
         TurboModel.HandleUpdate();
-        TurboAudio.HandleUpdate();
+        TurboConsole.HandleUpdate();
     }
 }
