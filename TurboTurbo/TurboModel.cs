@@ -4,6 +4,7 @@ using System.Linq;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using DV.Simulation.Cars;
+using DV.Simulation.Controllers;
 using DV.ThingTypes;
 using HarmonyLib;
 using LocoSim.Implementations;
@@ -36,10 +37,12 @@ internal static class TurboModel
     internal static ConfigEntry<float> RpmBoostExponent;
     internal static ConfigEntry<bool> DebugLog;
     internal static ConfigEntry<bool> SmokeEnabled;
+    internal static ConfigEntry<bool> TakeOverExhaust;
+    internal static ConfigEntry<float> CleanRate;
+    internal static ConfigEntry<float> ExhaustSpeed;
     internal static ConfigEntry<float> SmokeMaxRate;
     internal static ConfigEntry<float> SmokeParticleAlpha;
     internal static ConfigEntry<float> SmokeSizeMult;
-    internal static ConfigEntry<bool> WhiteTestPuffs;
 
     internal static bool SimActive => _enabled.Value;
 
@@ -77,14 +80,18 @@ internal static class TurboModel
             "RPM exponent bounding the boost equilibrium - exhaust mass flow scales with engine speed, so a lugging engine can never reach rated boost.");
         SmokeEnabled = config.Bind("TurboSmoke", "Enabled", true,
             "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
+        TakeOverExhaust = config.Bind("TurboSmoke", "TakeOverExhaust", true,
+            "Our emitter replaces the vanilla exhaust system entirely (clean haze + soot in one). When false, vanilla keeps driving the clean exhaust and we only add soot.");
+        CleanRate = config.Bind("TurboSmoke", "CleanRate", 30f,
+            "Clean exhaust particle rate [particles/s] at full engine rpm (TakeOverExhaust only).");
+        ExhaustSpeed = config.Bind("TurboSmoke", "ExhaustSpeed", 2.5f,
+            "Exhaust particle exit speed at full engine rpm (TakeOverExhaust only).");
         SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,
             "Soot particle emission rate [particles/s] at full smoke density.");
         SmokeParticleAlpha = config.Bind("TurboSmoke", "ParticleAlpha", 0.45f,
             "Peak opacity per soot particle. Lower = more translucent individual puffs.");
         SmokeSizeMult = config.Bind("TurboSmoke", "SizeMult", 0.9f,
             "Soot particle size relative to the vanilla exhaust particles.");
-        WhiteTestPuffs = config.Bind("TurboSmoke", "WhiteTestPuffs", false,
-            "Render constant white test puffs instead of soot (render-path diagnostics).");
         DebugLog = config.Bind("Turbo", "DebugLog", false,
             "Log overfuel/boost values while driving.");
         Log = BepInEx.Logging.Logger.CreateLogSource("TurboModel");
@@ -142,10 +149,10 @@ internal static class TurboModel
             return;
         }
 
-        Turbos[flow] = new EngineTurbo(car, throttlePort, rpmNormPort, engineOnPort);
+        Turbos[flow] = new EngineTurbo(car, flow, throttlePort, rpmNormPort, engineOnPort);
         car.OnDestroyCar += OnCarDestroyed;
         Turbos[flow].AttachAudio(new TurboWhineAudio(car, TurboAudio.CreateParams()));
-        Turbos[flow].TryAttachSmoke();
+        Turbos[flow].TryAttachSmoke(flow);
         Log.LogInfo($"turbo model attached to {car.carType} [{car.ID}] (fuel demand port: {throttlePort.id})");
     }
 
@@ -176,6 +183,7 @@ internal sealed class EngineTurbo
     private readonly Port _throttlePort;
     private readonly Port _rpmNormPort;
     private readonly Port _engineOnPort;
+    private readonly SimulationFlow _flow;
     private TurboWhineAudio _whine;
     private readonly List<TurboSmokeEmitter> _smoke = new();
     private bool _smokeAttached;
@@ -189,15 +197,19 @@ internal sealed class EngineTurbo
     /// <summary>Smoke density [0..1] - phase 2: drives exhaust particles.</summary>
     internal float SmokeDensity { get; private set; }
 
+    /// <summary>Whether the engine is currently combusting (gates exhaust).</summary>
+    internal bool EngineRunning { get; private set; }
+
     /// <summary>Air-fuel ratio proxy (calibrated: ~1.0 = edge of clean full load).</summary>
     internal float Lambda { get; private set; }
 
     /// <summary>Overfueling amount [0..1] - fuel beyond available air.</summary>
     internal float Overfuel { get; private set; }
 
-    internal EngineTurbo(TrainCar car, Port throttlePort, Port rpmNormPort, Port engineOnPort)
+    internal EngineTurbo(TrainCar car, SimulationFlow flow, Port throttlePort, Port rpmNormPort, Port engineOnPort)
     {
         Car = car;
+        _flow = flow;
         _throttlePort = throttlePort;
         _rpmNormPort = rpmNormPort;
         _engineOnPort = engineOnPort;
@@ -206,10 +218,12 @@ internal sealed class EngineTurbo
     internal void AttachAudio(TurboWhineAudio whine) => _whine = whine;
 
     /// <summary>
-    /// Clones the vanilla exhaust system into a soot emitter. The car model
-    /// may not be loaded at attach time - retried from UpdateFrame.
+    /// Clones the vanilla exhaust system into our emitter, and (when
+    /// TakeOverExhaust is on) unhooks the vanilla port readers and parks the
+    /// vanilla system so our emitter is the sole exhaust. The car model may
+    /// not be loaded at attach time - retried from UpdateFrame.
     /// </summary>
-    internal void TryAttachSmoke()
+    internal void TryAttachSmoke(SimulationFlow flow)
     {
         if (_smokeAttached) return;
         var allPs = Car.GetComponentsInChildren<ParticleSystem>(true);
@@ -218,8 +232,10 @@ internal sealed class EngineTurbo
             .ToList();
         if (exhausts.Count == 0) return;
 
+        bool ownsExhaust = TurboModel.TakeOverExhaust.Value;
+
         // the damaged-engine smoke system renders proven visible black -
-        // borrow its material for the soot emitter
+        // borrow its material for the emitter
         var damaged = allPs.FirstOrDefault(ps => ps.name == "DamagedEngineSmoke");
         Material blackMaterial = damaged != null
             ? damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial
@@ -227,10 +243,39 @@ internal sealed class EngineTurbo
 
         foreach (ParticleSystem ps in exhausts)
         {
-            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial));
+            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial, ownsExhaust));
         }
+
+        if (ownsExhaust)
+        {
+            // unsubscribe the vanilla exhaust readers from their sim ports,
+            // then stop and park the vanilla system - it stays out of the way
+            foreach (ParticlesPortReadersController ctrl in Car.GetComponentsInChildren<ParticlesPortReadersController>(true))
+            {
+                if (ctrl.particlePortReaders == null) continue;
+                foreach (var reader in ctrl.particlePortReaders
+                    .Where(r => r.particlesParent != null && r.particlesParent.name == "ExhaustEngineSmoke")
+                    .ToList())
+                {
+                    if (reader.particleUpdaters != null)
+                    {
+                        foreach (var updater in reader.particleUpdaters)
+                        {
+                            updater.Deinit(flow);
+                        }
+                    }
+                }
+            }
+            foreach (ParticleSystem ps in exhausts)
+            {
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                ps.gameObject.SetActive(false);
+            }
+            TurboModel.Log.LogInfo($"vanilla exhaust taken over on [{Car.ID}] (readers deinit'd, system parked)");
+        }
+
         _smokeAttached = true;
-        TurboModel.Log.LogInfo($"soot emitter attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s))");
+        TurboModel.Log.LogInfo($"soot emitter attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s), ownsExhaust={ownsExhaust})");
     }
 
     internal void UpdateFrame(float frameDt)
@@ -240,20 +285,19 @@ internal sealed class EngineTurbo
             if (TurboModel.SmokeEnabled.Value)
             {
                 _smokeRetryTimer += frameDt;
-                if (_smokeRetryTimer > 2f)
-                {
-                    _smokeRetryTimer = 0f;
-                    TryAttachSmoke();
-                }
+            if (_smokeRetryTimer > 2f)
+            {
+                _smokeRetryTimer = 0f;
+                TryAttachSmoke(_flow);
+            }
             }
         }
         else
         {
-            float smoke = TurboModel.SimActive ? SmokeDensity : 0f;
-            bool testMode = TurboModel.WhiteTestPuffs.Value;
+            float soot = TurboModel.SimActive ? SmokeDensity : 0f;
             foreach (TurboSmokeEmitter emitter in _smoke)
             {
-                emitter.Update(smoke, testMode);
+                emitter.Update(soot, _rpmNorm, EngineRunning);
             }
         }
 
@@ -279,6 +323,7 @@ internal sealed class EngineTurbo
         // the layshaft port reads ~1.0 with the engine shut down - gate all
         // combustion effects on the engine's own running state
         bool engineOn = _engineOnPort != null ? _engineOnPort.Value > 0.5f : rpmNorm > 0.05f;
+        EngineRunning = engineOn;
         float fuelDemand = engineOn ? demand : 0f;
 
         _demand = fuelDemand;

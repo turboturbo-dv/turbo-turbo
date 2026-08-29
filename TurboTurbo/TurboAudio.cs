@@ -138,14 +138,23 @@ internal static class TurboAudio
                             TurboModel.SmokeSizeMult.Value = Mathf.Clamp(v, 0.5f, 4f);
                             _config.Save();
                             break;
+                        case "clean":
+                            TurboModel.CleanRate.Value = Mathf.Clamp(v, 0f, 300f);
+                            _config.Save();
+                            break;
+                        case "speed":
+                            TurboModel.ExhaustSpeed.Value = Mathf.Clamp(v, 0.5f, 15f);
+                            _config.Save();
+                            break;
                         default:
-                            Terminal.Log("unknown key - use rate, alpha or size");
+                            Terminal.Log("unknown key - use rate, alpha, size, clean or speed");
                             return;
                     }
                 }
-                Terminal.Log($"soot: rate={TurboModel.SmokeMaxRate.Value:0} alpha={TurboModel.SmokeParticleAlpha.Value:0.00} sizeMult={TurboModel.SmokeSizeMult.Value:0.00} enabled={TurboModel.SmokeEnabled.Value}");
+                Terminal.Log($"soot: rate={TurboModel.SmokeMaxRate.Value:0} alpha={TurboModel.SmokeParticleAlpha.Value:0.00} sizeMult={TurboModel.SmokeSizeMult.Value:0.00} " +
+                             $"clean={TurboModel.CleanRate.Value:0} speed={TurboModel.ExhaustSpeed.Value:0.00} enabled={TurboModel.SmokeEnabled.Value}");
             },
-            0, 2, "Get/set soot emission parameters.", "[rate|alpha|size] [value]");
+            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed = base haze).", "[rate|alpha|size|clean|speed] [value]");
         Terminal.Autocomplete.Register(smokeCmd);
 
         _commandsRegistered = true;

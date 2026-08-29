@@ -4,29 +4,156 @@ using UnityEngine;
 namespace TurboTurbo;
 
 /// <summary>
-/// A dedicated soot emitter cloned from the vanilla exhaust particle system,
-/// driven per-frame by the turbo model's smoke density signal. Following the
-/// game's own pattern (DamagedEngineSmoke): black plume as a separate system,
-/// leaving the vanilla port-driven exhaust untouched.
+/// The exhaust smoke emitter. When TakeOverExhaust is on, this is the sole
+/// exhaust system: a clone of the vanilla exhaust, driven per frame by engine
+/// rpm (clean haze) plus the turbo model's smoke density (soot), with color
+/// lerping between the two. Otherwise it supplements the vanilla system with
+/// soot only, following the game's own DamagedEngineSmoke pattern.
 /// </summary>
 internal sealed class TurboSmokeEmitter
 {
     private readonly ParticleSystem _vanilla;
     private readonly ParticleSystem _soot;
     private readonly float _vanillaSize;
+    private readonly Color _cleanColor;
+    private readonly bool _ownsExhaust;
     private readonly Material _ownedMaterial;
     private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
 
-    private const float VelocityMult = 1.05f;
+    internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial, bool ownsExhaust)
+    {
+        _vanilla = vanilla;
+        _ownsExhaust = ownsExhaust;
+        _cleanColor = vanilla.main.startColor.color;
 
-    private static bool _shaderListLogged;
+        var go = Object.Instantiate(vanilla.gameObject, vanilla.transform.parent);
+        go.name = ownsExhaust ? "TurboTurbo.Exhaust" : "TurboTurbo.Soot";
+        foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            Object.Destroy(mb);
+        }
 
-    /// <summary>
-    /// DV/SmokeShader is additive: dark tints are invisible. For true black
-    /// soot we need an alpha-blended or multiplicative shader - hunt for one
-    /// shipped in the build, copying the smoke texture onto it.
-    /// </summary>
+        // the vanilla exhaust GO is parked inactive while the engine is off
+        // (TurnOffPS) - a clone made at spawn would stay invisible forever
+        go.SetActive(true);
+
+        _soot = go.GetComponent<ParticleSystem>();
+
+        var rend = _soot.GetComponent<ParticleSystemRenderer>();
+        Material sourceMat = blackMaterial;
+        if (sourceMat == null)
+        {
+            var vanillaRend = vanilla.GetComponent<ParticleSystemRenderer>();
+            sourceMat = vanillaRend.sharedMaterial;
+        }
+
+        Material darkBlend = CreateDarkBlendMaterial(sourceMat);
+        if (darkBlend != null)
+        {
+            _ownedMaterial = darkBlend;
+            _darkBlendUsed = true;
+            rend.material = darkBlend; // instance material, owned by us
+        }
+        else if (sourceMat != null)
+        {
+            rend.sharedMaterial = sourceMat;
+        }
+
+        var main = _soot.main;
+        main.startColor = _cleanColor;
+        _vanillaSize = main.startSize.constant;
+        main.startSize = CurrentSize();
+
+        // soft edges: fast fade-in, long plateau, smooth fade-out. The plateau
+        // alpha lives in startColor (written per frame) so ParticleAlpha can be
+        // tuned live from the console.
+        var col = _soot.colorOverLifetime;
+        var gradient = new Gradient();
+        gradient.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+            new[]
+            {
+                new GradientAlphaKey(0.4f, 0f),
+                new GradientAlphaKey(1f, 0.12f),
+                new GradientAlphaKey(1f, 0.6f),
+                new GradientAlphaKey(0f, 1f),
+            });
+        col.enabled = true;
+        col.color = new ParticleSystem.MinMaxGradient(gradient);
+
+        // the vanilla exhaust flipbooks through a sprite atlas - our single
+        // puff texture would get sampled per-tile, producing hard squares
+        var tsa = _soot.textureSheetAnimation;
+        if (tsa.enabled)
+        {
+            tsa.enabled = false;
+            TurboModel.Log.LogInfo($"soot: disabled flipbook animation (was {tsa.numTilesX}x{tsa.numTilesY} tiles)");
+        }
+        _soot.Play();
+
+        // the vanilla emission module also emits per meter travelled and may
+        // carry bursts - the emitter must respond to its inputs only
+        var sootEm = _soot.emission;
+        float distRateWas = sootEm.rateOverDistance.constant;
+        int burstsWas = sootEm.burstCount;
+        sootEm.rateOverDistance = 0f;
+        sootEm.SetBursts(new ParticleSystem.Burst[0]);
+        TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
+    }
+
+    internal void Update(float smokeDensity, float rpmNorm, bool engineOn)
+    {
+        var em = _soot.emission;
+        var main = _soot.main;
+        float soot = TurboModel.SimActive ? smokeDensity : 0f;
+        if (!engineOn)
+        {
+            em.rateOverTime = 0f;
+            main.startColor = _cleanColor;
+        }
+        else if (_ownsExhaust)
+        {
+            // clean haze scales with rpm; soot darkens and thickens on top
+            em.rateOverTime = rpmNorm * TurboModel.CleanRate.Value
+                              + soot * TurboModel.SmokeMaxRate.Value;
+            Color sootCol = _darkBlendUsed
+                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
+                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboModel.SmokeParticleAlpha.Value + 0.5f));
+            main.startColor = Color.Lerp(_cleanColor, sootCol, soot);
+        }
+        else
+        {
+            em.rateOverTime = soot * TurboModel.SmokeMaxRate.Value;
+            main.startColor = _darkBlendUsed
+                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
+                : new Color(0.14f, 0.14f, 0.14f, 0.95f);
+        }
+
+        main.startSpeed = _ownsExhaust
+            ? rpmNorm * TurboModel.ExhaustSpeed.Value
+            : _vanilla.main.startSpeed;
+
+        if (!_loggedEmit && smokeDensity > 0.3f)
+        {
+            _loggedEmit = true;
+            TurboModel.Log.LogInfo($"soot emitting: S={smokeDensity:0.00} playing={_soot.isPlaying} " +
+                                   $"count={_soot.particleCount} goActive={_soot.gameObject.activeSelf}");
+        }
+    }
+
+    internal void Destroy()
+    {
+        if (_ownedMaterial != null) Object.Destroy(_ownedMaterial);
+        if (_soot != null) Object.Destroy(_soot.gameObject);
+    }
+
+    private ParticleSystem.MinMaxCurve CurrentSize(float mult = 1f)
+    {
+        float size = _vanillaSize * TurboModel.SmokeSizeMult.Value * mult;
+        return new ParticleSystem.MinMaxCurve(0.75f * size, 1.35f * size);
+    }
+
     /// <summary>
     /// The DieselSmoke texture is DV/SmokeShader-internal (noise-like, near
     /// uniform alpha) - useless as a sprite mask on standard shaders. Build a
@@ -56,6 +183,11 @@ internal sealed class TurboSmokeEmitter
         return tex;
     }
 
+    /// <summary>
+    /// DV/SmokeShader is additive: dark tints are invisible. For true black
+    /// soot we need an alpha-blended or multiplicative shader - hunt for one
+    /// shipped in the build, copying the smoke texture onto it.
+    /// </summary>
     private static Material CreateDarkBlendMaterial(Material source)
     {
         if (!_shaderListLogged)
@@ -95,150 +227,5 @@ internal sealed class TurboSmokeEmitter
         return null;
     }
 
-    internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial)
-    {
-        _vanilla = vanilla;
-
-        var go = Object.Instantiate(vanilla.gameObject, vanilla.transform.parent);
-        go.name = "TurboTurbo.Soot";
-        foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
-        {
-            Object.Destroy(mb);
-        }
-
-        // the vanilla exhaust GO is parked inactive while the engine is off
-        // (TurnOffPS) - a clone made at spawn would stay invisible forever
-        go.SetActive(true);
-
-        _soot = go.GetComponent<ParticleSystem>();
-
-        // use the game's proven visible-black material when available
-        // (the exhaust material may blend too faintly for a dark tint)
-        var rend = _soot.GetComponent<ParticleSystemRenderer>();
-        Material sourceMat = blackMaterial;
-        if (sourceMat == null)
-        {
-            var vanillaRend = vanilla.GetComponent<ParticleSystemRenderer>();
-            sourceMat = vanillaRend.sharedMaterial;
-        }
-
-        Material darkBlend = CreateDarkBlendMaterial(sourceMat);
-        if (darkBlend != null)
-        {
-            _ownedMaterial = darkBlend;
-            _darkBlendUsed = true;
-            rend.material = darkBlend; // instance material, owned by us
-        }
-        else if (sourceMat != null)
-        {
-            // fallback: vanilla-blend material with a vanilla-visible gray -
-            // dense plume instead of true black until we find a dark shader
-            rend.sharedMaterial = sourceMat;
-        }
-
-        var main = _soot.main;
-        main.startColor = new Color(0.05f, 0.05f, 0.05f, 1f);
-        _vanillaSize = main.startSize.constant;
-        main.startSize = CurrentSize();
-
-        // soft edges: fast fade-in, long plateau, smooth fade-out - solid smoke
-        // without popping. The plateau alpha lives in startColor (written per
-        // frame) so ParticleAlpha can be tuned live from the console.
-        var col = _soot.colorOverLifetime;
-        var gradient = new Gradient();
-        gradient.SetKeys(
-            new[] { new GradientColorKey(Color.black, 0f), new GradientColorKey(Color.black, 1f) },
-            new[]
-            {
-                new GradientAlphaKey(0.4f, 0f),
-                new GradientAlphaKey(1f, 0.12f),
-                new GradientAlphaKey(1f, 0.6f),
-                new GradientAlphaKey(0f, 1f),
-            });
-        col.enabled = true;
-        col.color = new ParticleSystem.MinMaxGradient(gradient);
-
-        // the vanilla exhaust flipbooks through a sprite atlas - our single
-        // puff texture would get sampled per-tile, producing hard squares
-        var tsa = _soot.textureSheetAnimation;
-        if (tsa.enabled)
-        {
-            tsa.enabled = false;
-            TurboModel.Log.LogInfo($"soot: disabled flipbook animation (was {tsa.numTilesX}x{tsa.numTilesY} tiles)");
-        }
-        _soot.Play();
-
-        // the vanilla emission module also emits per meter travelled and may
-        // carry bursts - the soot must respond to SmokeDensity only
-        var sootEm = _soot.emission;
-        float distRateWas = sootEm.rateOverDistance.constant;
-        int burstsWas = sootEm.burstCount;
-        sootEm.rateOverDistance = 0f;
-        sootEm.SetBursts(new ParticleSystem.Burst[0]);
-        TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
-
-        // anti-flicker: never co-locate with the vanilla exhaust (sort-order
-        // coin flip) and always composite deterministically above it
-        go.transform.localPosition = vanilla.transform.localPosition + new Vector3(0f, 0.15f, 0f);
-        rend.sortingOrder = 10;
-
-        var vrend = vanilla.GetComponent<ParticleSystemRenderer>();
-        int vanillaQueue = vrend.sharedMaterial != null ? vrend.sharedMaterial.renderQueue : -1;
-        int sootQueue = rend.sharedMaterial != null ? rend.sharedMaterial.renderQueue : -1;
-        var tex = rend.sharedMaterial != null && rend.sharedMaterial.HasProperty("_MainTex")
-            ? rend.sharedMaterial.mainTexture
-            : null;
-        TurboModel.Log.LogInfo($"soot clone: goActive={go.activeSelf} playing={_soot.isPlaying} " +
-                               $"mat={(rend.sharedMaterial ? rend.sharedMaterial.name : "?")} " +
-                               $"tex={(tex ? tex.name : "null")} " +
-                               $"queues(vanilla/soot)={vanillaQueue}/{sootQueue} " +
-                               $"vanillaPlaying={vanilla.isPlaying}");
-    }
-
-    internal void Update(float smokeDensity, bool testMode)
-    {
-        var em = _soot.emission;
-        var main = _soot.main;
-        if (testMode)
-        {
-            // unmissable white puffs to verify the render path
-            em.rateOverTime = 20f;
-            main.startColor = new Color(1f, 1f, 1f, 1f);
-            main.startSize = CurrentSize(1.5f);
-        }
-        else
-        {
-            em.rateOverTime = smokeDensity * TurboModel.SmokeMaxRate.Value;
-            main.startColor = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
-                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboModel.SmokeParticleAlpha.Value + 0.5f));
-            main.startSize = CurrentSize();
-        }
-
-        // mirror the vanilla exhaust velocity, slightly faster so the plumes
-        // separate immediately instead of interleaving at the stack exit
-        var vanillaSpeed = _vanilla.main.startSpeed;
-        main.startSpeed = vanillaSpeed.mode == ParticleSystemCurveMode.Constant
-            ? vanillaSpeed.constant * VelocityMult
-            : vanillaSpeed;
-
-        if (!_loggedEmit && smokeDensity > 0.3f)
-        {
-            _loggedEmit = true;
-            TurboModel.Log.LogInfo($"soot emitting: S={smokeDensity:0.00} rate={smokeDensity * TurboModel.SmokeMaxRate.Value:0} " +
-                                   $"playing={_soot.isPlaying} count={_soot.particleCount} goActive={_soot.gameObject.activeSelf}");
-        }
-    }
-
-    internal void Destroy()
-    {
-        if (_ownedMaterial != null) Object.Destroy(_ownedMaterial);
-        if (_soot != null) Object.Destroy(_soot.gameObject);
-    }
-
-    private ParticleSystem.MinMaxCurve CurrentSize(float mult = 1f)
-    {
-        float size = _vanillaSize * TurboModel.SmokeSizeMult.Value * mult;
-        return new ParticleSystem.MinMaxCurve(0.75f * size, 1.35f * size);
-    }
+    private static bool _shaderListLogged;
 }
