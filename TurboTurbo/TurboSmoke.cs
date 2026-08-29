@@ -21,7 +21,7 @@ internal sealed class TurboSmokeEmitter
     private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
 
-    private const float StackOffset = 0.6f;
+    private const float StackOffset = 0.05f;
 
     internal TrainCar Car { get; set; }
 

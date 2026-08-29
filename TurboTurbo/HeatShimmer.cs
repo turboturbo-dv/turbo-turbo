@@ -24,41 +24,32 @@ internal static class HeatShimmer
     {
         internal GameObject Go;
         internal Material Material;
+        internal LineRenderer Outline;
 
         internal void Init(Material source, Texture2D noise, Transform parent, Vector3 localPosition)
         {
-            // open-ended cylinder = column of hot air above the stack exit.
-            // No billboarding needed: grab refraction is screen-space, and a
-            // cylinder presents a facing surface from every horizontal angle
-            // regardless of which camera renders the view (F1/F2/F3).
-            const int segments = 20;
-            var verts = new Vector3[segments * 2];
-            var norms = new Vector3[segments * 2];
-            var uvs = new Vector2[segments * 2];
-            var tris = new int[segments * 6];
-            for (int s = 0; s < segments; s++)
+            // single vertical quad, yaw-billboarded to the active camera each
+            // frame (UpdateTransform). Conceptually simple; F2/F3 external
+            // views will be addressed later.
+            var verts = new[]
             {
-                float a = (float)s / segments * Mathf.PI * 2f;
-                float x = Mathf.Cos(a) * 0.5f;
-                float z = Mathf.Sin(a) * 0.5f;
-                float u = (float)s / segments;
-                verts[s * 2] = new Vector3(x, 0f, z);
-                verts[s * 2 + 1] = new Vector3(x, 1f, z);
-                norms[s * 2] = new Vector3(x, 0f, z);
-                norms[s * 2 + 1] = new Vector3(x, 0f, z);
-                uvs[s * 2] = new Vector2(u, 0f);
-                uvs[s * 2 + 1] = new Vector2(u, 1f);
-                int s1 = (s + 1) % segments;
-                tris[s * 6 + 0] = s * 2;
-                tris[s * 6 + 1] = s1 * 2;
-                tris[s * 6 + 2] = s * 2 + 1;
-                tris[s * 6 + 3] = s1 * 2;
-                tris[s * 6 + 4] = s1 * 2 + 1;
-                tris[s * 6 + 5] = s * 2 + 1;
-            }
+                new Vector3(-0.5f, 0f, 0f),
+                new Vector3(0.5f, 0f, 0f),
+                new Vector3(-0.5f, 1f, 0f),
+                new Vector3(0.5f, 1f, 0f),
+            };
+            var norms = new[]
+            {
+                Vector3.forward, Vector3.forward, Vector3.forward, Vector3.forward,
+            };
+            var uvs = new[]
+            {
+                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f),
+            };
+            var tris = new[] { 0, 2, 1, 2, 3, 1 };
             var mesh = new Mesh
             {
-                name = "TurboTurbo.HeatColumn",
+                name = "TurboTurbo.HeatQuad",
                 vertices = verts,
                 normals = norms,
                 uv = uvs,
@@ -67,10 +58,9 @@ internal static class HeatShimmer
                 bounds = new Bounds(Vector3.zero, Vector3.one * 100f),
             };
 
-            Go = new GameObject("TurboTurbo.HeatColumn");
+            Go = new GameObject("TurboTurbo.HeatQuad");
             Go.transform.SetParent(parent, false);
             Go.transform.localPosition = localPosition;
-            Go.transform.localScale = new Vector3(1.6f, 2.4f, 1.6f);
             var mf = Go.AddComponent<MeshFilter>();
             mf.sharedMesh = mesh;
             var mr = Go.AddComponent<MeshRenderer>();
@@ -85,6 +75,30 @@ internal static class HeatShimmer
             if (Material.HasProperty("_useSecondGrabPass")) Material.SetInt("_useSecondGrabPass", 0);
             if (noise != null && Material.HasProperty("_MistBumpMap")) Material.SetTexture("_MistBumpMap", noise);
             mr.sharedMaterial = Material;
+
+            // debug wireframe: rectangle outline in local space, inherits the
+            // quad's billboard transform and config-driven scale
+            var lineGo = new GameObject("TurboTurbo.HeatQuadOutline");
+            lineGo.transform.SetParent(Go.transform, false);
+            Outline = lineGo.AddComponent<LineRenderer>();
+            Outline.useWorldSpace = false;
+            Outline.loop = true;
+            Outline.positionCount = 4;
+            Outline.SetPositions(new[]
+            {
+                new Vector3(-0.5f, 0f, 0f),
+                new Vector3(0.5f, 0f, 0f),
+                new Vector3(0.5f, 1f, 0f),
+                new Vector3(-0.5f, 1f, 0f),
+            });
+            Outline.startWidth = 0.015f;
+            Outline.endWidth = 0.015f;
+            Outline.startColor = Color.yellow;
+            Outline.endColor = Color.yellow;
+            Outline.material = new Material(Shader.Find("Sprites/Default"));
+            Outline.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Outline.receiveShadows = false;
+            Outline.enabled = TurboConfig.HeatShimmerWire.Value;
 
             // probe diagnostics: keywords + refraction-capable shader inventory
             Log.LogInfo($"shimmer: column material '{Material.name}' shader='{Material.shader.name}' " +
@@ -124,6 +138,21 @@ internal static class HeatShimmer
                     Log.LogInfo($"shimmer: alt glass material ready from '{AltGlassShader.name}'");
                 }
             }
+        }
+
+        internal void UpdateTransform(Camera cam, Vector3 worldOrigin)
+        {
+            if (Go == null || cam == null) return;
+            float h = TurboConfig.HeatShimmerHeight.Value;
+            // the quad's local origin is its bottom vertex - anchor it directly
+            // at the stack mouth; height grows upward only
+            Go.transform.position = worldOrigin;
+            Vector3 toCam = cam.transform.position - Go.transform.position;
+            toCam.y = 0f;
+            if (toCam.sqrMagnitude < 0.001f) toCam = Vector3.forward;
+            Go.transform.rotation = Quaternion.LookRotation(toCam.normalized, Vector3.up);
+            Go.transform.localScale = new Vector3(TurboConfig.HeatShimmerRadius.Value * 2f, h, 1f);
+            if (Outline != null) Outline.enabled = TurboConfig.HeatShimmerWire.Value;
         }
 
         internal void UpdateFade(float intensity)
@@ -197,6 +226,7 @@ internal static class HeatShimmer
         internal void Destroy()
         {
             if (Material != null) UnityEngine.Object.Destroy(Material);
+            if (Outline != null) UnityEngine.Object.Destroy(Outline.material);
             if (Go != null) UnityEngine.Object.Destroy(Go);
         }
     }
@@ -503,14 +533,9 @@ internal static class HeatShimmer
 
             if (s.Quad != null)
             {
-                // column geometry follows config live
-                s.Quad.Go.transform.localScale = new Vector3(
-                    TurboConfig.HeatShimmerRadius.Value * 2f,
-                    TurboConfig.HeatShimmerHeight.Value,
-                    TurboConfig.HeatShimmerRadius.Value * 2f);
-
-                // column is world-anchored above the stack exit; only the
-                // refraction strength tracks engine heat
+                // billboard quad anchored above the stack exit, yaw-facing the
+                // active camera; refraction strength tracks engine heat
+                s.Quad.UpdateTransform(_camera, emitter.HeatOrigin);
                 float fade = onScreen
                     ? s.Intensity * TurboConfig.HeatShimmerStrength.Value
                     : 0f;
