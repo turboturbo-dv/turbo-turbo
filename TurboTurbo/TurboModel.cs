@@ -33,6 +33,7 @@ internal static class TurboModel
     internal static ConfigEntry<float> TorqueLambdaFloor;
     internal static ConfigEntry<float> ThermalK;
     internal static ConfigEntry<float> MinSpoolTau;
+    internal static ConfigEntry<float> RpmBoostExponent;
     internal static ConfigEntry<bool> DebugLog;
     internal static ConfigEntry<bool> SmokeEnabled;
     internal static ConfigEntry<float> SmokeMaxRate;
@@ -60,8 +61,8 @@ internal static class TurboModel
             "Per-stroke charge index of naturally-aspirated operation (zero boost vs max boost).");
         LambdaCalibration = config.Bind("Turbo", "LambdaCalibration", 2.5f,
             "Air-to-fuel calibration constant for the lambda proxy (2.5 = full boost, full rack is exactly clean).");
-        RpmTorqueExponent = config.Bind("Turbo", "RpmTorqueExponent", 0.4f,
-            "RPM blending in the torque cap: 0 = pure per-stroke charge, 1 = strict airflow. Low values reduce low-rpm torque restriction.");
+        RpmTorqueExponent = config.Bind("Turbo", "RpmTorqueExponent", 0f,
+            "RPM blending in the torque cap: 0 = pure per-stroke charge (recommended - the boost envelope already carries the RPM dependence), 1 = strict airflow on top.");
         SmokeOnsetLambda = config.Bind("Turbo", "SmokeOnsetLambda", 0.85f,
             "Lambda where soot formation begins (fueling above this vs air is overfueling).");
         SmokeOpaqueLambda = config.Bind("Turbo", "SmokeOpaqueLambda", 0.45f,
@@ -72,6 +73,8 @@ internal static class TurboModel
             "Thermal enthalpy feedback strength: overfueling shortens spool-up time.");
         MinSpoolTau = config.Bind("Turbo", "MinSpoolTau", 0.5f,
             "Floor for the spool-up time constant (stability under heavy overfuel).");
+        RpmBoostExponent = config.Bind("Turbo", "RpmBoostExponent", 1.2f,
+            "RPM exponent bounding the boost equilibrium - exhaust mass flow scales with engine speed, so a lugging engine can never reach rated boost.");
         SmokeEnabled = config.Bind("TurboSmoke", "Enabled", true,
             "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
         SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,
@@ -305,8 +308,14 @@ internal sealed class EngineTurbo
 
         // thermal enthalpy feedback: overfueling shortens spool-up time
         Overfuel = Mathf.Max(0f, fuelDemand - charge / TurboModel.LambdaCalibration.Value);
-        float target = fuelDemand;
-        float tau = target > _boost
+
+        // boost equilibrium ceiling: exhaust mass flow scales with engine
+        // speed, so even a pinned rack at low rpm cannot reach rated boost.
+        // Spool mode keys off demand (not target) so a lug-driven ceiling drop
+        // eases boost down with turbine inertia instead of blowing it off.
+        float rpmMassFlow = Mathf.Pow(Mathf.Clamp01(rpmNorm), TurboModel.RpmBoostExponent.Value);
+        float target = Mathf.Clamp01(fuelDemand) * rpmMassFlow;
+        float tau = fuelDemand > _boost
             ? Mathf.Max(TurboModel.MinSpoolTau.Value,
                 TurboModel.TauUp.Value / (1f + TurboModel.ThermalK.Value * Overfuel))
             : TurboModel.TauDown.Value;

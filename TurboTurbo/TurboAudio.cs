@@ -86,6 +86,35 @@ internal static class TurboAudio
             0, 1, "Get/set turbo whine volume (0..1).", "[value]");
         Terminal.Autocomplete.Register(volCmd);
 
+        CommandInfo cfgCmd = Terminal.Shell.AddCommand(
+            "turbocfg",
+            args =>
+            {
+                if (args.Length >= 2)
+                {
+                    string key = args[0].String.ToLowerInvariant();
+                    float v = args[1].Float;
+                    if (Terminal.IssuedError) return;
+                    switch (key)
+                    {
+                        case "tqexp":
+                            TurboModel.RpmTorqueExponent.Value = Mathf.Clamp(v, 0f, 1f);
+                            _config.Save();
+                            break;
+                        case "boostexp":
+                            TurboModel.RpmBoostExponent.Value = Mathf.Clamp(v, 0.5f, 2f);
+                            _config.Save();
+                            break;
+                        default:
+                            Terminal.Log("unknown key - use tqexp or boostexp");
+                            return;
+                    }
+                }
+                Terminal.Log($"turbo: tqexp={TurboModel.RpmTorqueExponent.Value:0.00} boostexp={TurboModel.RpmBoostExponent.Value:0.00}");
+            },
+            0, 2, "Get/set turbo physics exponents (tqexp = torque cap rpm blend, boostexp = boost ceiling rpm exponent).", "[tqexp|boostexp] [value]");
+        Terminal.Autocomplete.Register(cfgCmd);
+
         CommandInfo smokeCmd = Terminal.Shell.AddCommand(
             "turbosmoke",
             args =>
