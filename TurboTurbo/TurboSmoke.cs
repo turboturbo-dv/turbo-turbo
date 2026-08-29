@@ -111,7 +111,7 @@ internal sealed class TurboSmokeEmitter
         // the vanilla tint ships near-opaque (tuned for their additive shader);
         // scale its alpha down for honest alpha-blended haze
         Color clean = new Color(_cleanColor.r, _cleanColor.g, _cleanColor.b,
-            _cleanColor.a * TurboModel.CleanAlpha.Value);
+            _cleanColor.a * TurboConfig.CleanAlpha.Value);
 
         if (!engineOn)
         {
@@ -121,23 +121,23 @@ internal sealed class TurboSmokeEmitter
         else if (_ownsExhaust)
         {
             // clean haze scales with rpm; soot darkens and thickens on top
-            em.rateOverTime = rpmNorm * TurboModel.CleanRate.Value
-                              + soot * TurboModel.SmokeMaxRate.Value;
+            em.rateOverTime = rpmNorm * TurboConfig.CleanRate.Value
+                              + soot * TurboConfig.SmokeMaxRate.Value;
             Color sootCol = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
-                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboModel.SmokeParticleAlpha.Value + 0.5f));
+                ? new Color(0.05f, 0.05f, 0.05f, TurboConfig.SmokeParticleAlpha.Value)
+                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboConfig.SmokeParticleAlpha.Value + 0.5f));
             main.startColor = Color.Lerp(clean, sootCol, soot);
         }
         else
         {
-            em.rateOverTime = soot * TurboModel.SmokeMaxRate.Value;
+            em.rateOverTime = soot * TurboConfig.SmokeMaxRate.Value;
             main.startColor = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
+                ? new Color(0.05f, 0.05f, 0.05f, TurboConfig.SmokeParticleAlpha.Value)
                 : new Color(0.14f, 0.14f, 0.14f, 0.95f);
         }
 
         main.startSpeed = _ownsExhaust
-            ? rpmNorm * TurboModel.ExhaustSpeed.Value
+            ? rpmNorm * TurboConfig.ExhaustSpeed.Value
             : _vanilla.main.startSpeed;
 
         if (!_loggedEmit && smokeDensity > 0.3f)
@@ -156,7 +156,7 @@ internal sealed class TurboSmokeEmitter
 
     private ParticleSystem.MinMaxCurve CurrentSize(float mult = 1f)
     {
-        float size = _vanillaSize * TurboModel.SmokeSizeMult.Value * mult;
+        float size = _vanillaSize * TurboConfig.SmokeSizeMult.Value * mult;
         return new ParticleSystem.MinMaxCurve(0.75f * size, 1.35f * size);
     }
 

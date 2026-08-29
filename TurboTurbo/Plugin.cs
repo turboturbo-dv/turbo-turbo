@@ -20,9 +20,7 @@ public sealed class Plugin : BaseUnityPlugin
         Log = Logger;
         _harmony = new Harmony(Guid);
 
-        SimInspector.Bind(Config);
-        TurboModel.Bind(Config);
-        TurboAudio.Bind(Config);
+        TurboConfig.Bind(Config);
         TurboConsole.Bind(Config);
         _harmony.PatchAll();
 
