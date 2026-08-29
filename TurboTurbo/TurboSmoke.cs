@@ -107,10 +107,16 @@ internal sealed class TurboSmokeEmitter
         var em = _soot.emission;
         var main = _soot.main;
         float soot = TurboModel.SimActive ? smokeDensity : 0f;
+
+        // the vanilla tint ships near-opaque (tuned for their additive shader);
+        // scale its alpha down for honest alpha-blended haze
+        Color clean = new Color(_cleanColor.r, _cleanColor.g, _cleanColor.b,
+            _cleanColor.a * TurboModel.CleanAlpha.Value);
+
         if (!engineOn)
         {
             em.rateOverTime = 0f;
-            main.startColor = _cleanColor;
+            main.startColor = clean;
         }
         else if (_ownsExhaust)
         {
@@ -120,7 +126,7 @@ internal sealed class TurboSmokeEmitter
             Color sootCol = _darkBlendUsed
                 ? new Color(0.05f, 0.05f, 0.05f, TurboModel.SmokeParticleAlpha.Value)
                 : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboModel.SmokeParticleAlpha.Value + 0.5f));
-            main.startColor = Color.Lerp(_cleanColor, sootCol, soot);
+            main.startColor = Color.Lerp(clean, sootCol, soot);
         }
         else
         {

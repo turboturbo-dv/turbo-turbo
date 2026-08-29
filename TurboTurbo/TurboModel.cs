@@ -39,6 +39,7 @@ internal static class TurboModel
     internal static ConfigEntry<bool> SmokeEnabled;
     internal static ConfigEntry<bool> TakeOverExhaust;
     internal static ConfigEntry<float> CleanRate;
+    internal static ConfigEntry<float> CleanAlpha;
     internal static ConfigEntry<float> ExhaustSpeed;
     internal static ConfigEntry<float> SmokeMaxRate;
     internal static ConfigEntry<float> SmokeParticleAlpha;
@@ -84,6 +85,8 @@ internal static class TurboModel
             "Our emitter replaces the vanilla exhaust system entirely (clean haze + soot in one). When false, vanilla keeps driving the clean exhaust and we only add soot.");
         CleanRate = config.Bind("TurboSmoke", "CleanRate", 30f,
             "Clean exhaust particle rate [particles/s] at full engine rpm (TakeOverExhaust only).");
+        CleanAlpha = config.Bind("TurboSmoke", "CleanAlpha", 0.4f,
+            "Opacity of the clean haze particles (the vanilla tint ships near-opaque for its additive shader - alpha-blend needs less).");
         ExhaustSpeed = config.Bind("TurboSmoke", "ExhaustSpeed", 2.5f,
             "Exhaust particle exit speed at full engine rpm (TakeOverExhaust only).");
         SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,

@@ -70,15 +70,19 @@ internal static class TurboConsole
                             TurboModel.ExhaustSpeed.Value = Mathf.Clamp(v, 0.5f, 15f);
                             _config.Save();
                             break;
+                        case "haze":
+                            TurboModel.CleanAlpha.Value = Mathf.Clamp(v, 0.05f, 1f);
+                            _config.Save();
+                            break;
                         default:
-                            Terminal.Log("unknown key - use rate, alpha, size, clean or speed");
+                            Terminal.Log("unknown key - use rate, alpha, size, clean, speed or haze");
                             return;
                     }
                 }
                 Terminal.Log($"soot: rate={TurboModel.SmokeMaxRate.Value:0} alpha={TurboModel.SmokeParticleAlpha.Value:0.00} sizeMult={TurboModel.SmokeSizeMult.Value:0.00} " +
-                             $"clean={TurboModel.CleanRate.Value:0} speed={TurboModel.ExhaustSpeed.Value:0.00} enabled={TurboModel.SmokeEnabled.Value}");
+                             $"clean={TurboModel.CleanRate.Value:0} haze={TurboModel.CleanAlpha.Value:0.00} speed={TurboModel.ExhaustSpeed.Value:0.00} enabled={TurboModel.SmokeEnabled.Value}");
             },
-            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed = base haze).", "[rate|alpha|size|clean|speed] [value]");
+            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze).", "[rate|alpha|size|clean|speed|haze] [value]");
         Terminal.Autocomplete.Register(smokeCmd);
 
         CommandInfo cfgCmd = Terminal.Shell.AddCommand(
