@@ -169,6 +169,19 @@ internal static class HeatShimmer
             }
             mr.enabled = true;
 
+            // mode 6: solid unlit yellow quad - proves the MeshRenderer and
+            // geometry draw at all, independent of any grab/shader machinery
+            if (mode == 6)
+            {
+                if (_solidMaterial == null)
+                {
+                    _solidMaterial = new Material(Shader.Find("Sprites/Default")) { name = "TurboTurbo.HeatSolid" };
+                    _solidMaterial.color = new Color(1f, 0.9f, 0.1f, 0.85f);
+                }
+                mr.sharedMaterial = _solidMaterial;
+                return;
+            }
+
             if (mode == 5)
             {
                 Shader bundleShader = ModAssets.HeatShimmerShader;
@@ -275,6 +288,7 @@ internal static class HeatShimmer
     private static Shader AltGlassShader;
     private static Material _altMaterial;
     private static Material _bundleMaterial;
+    private static Material _solidMaterial;
 
     internal static Material AltMaterial => _altMaterial;
     internal static Texture2D NoiseTexture => _map;

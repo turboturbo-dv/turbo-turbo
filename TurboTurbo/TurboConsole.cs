@@ -75,7 +75,7 @@ internal static class TurboConsole
                             _config.Save();
                             break;
                         case "shimmermode":
-                            TurboConfig.HeatShimmerMode.Value = (int)Mathf.Clamp(v, 0f, 5f);
+                            TurboConfig.HeatShimmerMode.Value = (int)Mathf.Clamp(v, 0f, 6f);
                             _config.Save();
                             break;
                         case "shimmer":

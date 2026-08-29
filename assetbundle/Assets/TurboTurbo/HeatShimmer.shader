@@ -9,8 +9,11 @@ Shader "TurboTurbo/HeatShimmer"
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
-        // grab the lit scene behind the column; works in DV's deferred path
-        GrabPass { "_TurboHeatGrab" }
+        // UNNAMED grab: captured fresh per object per camera. A named grab is
+        // captured once per frame at the first object that uses it - if a
+        // reflection probe or secondary camera renders the quad first, the
+        // view camera reuses a stale/wrong-viewpoint grab (invisible shimmer).
+        GrabPass { }
 
         Pass
         {
@@ -24,7 +27,7 @@ Shader "TurboTurbo/HeatShimmer"
             #include "UnityCG.cginc"
 
             sampler2D _MainTex;
-            sampler2D _TurboHeatGrab;
+            sampler2D _GrabTexture;
             float _Strength;
 
             struct appdata
@@ -59,7 +62,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // DUDV-style offset map: 0.5 = no distortion
                 float2 offset = (tex2D(_MainTex, i.uv).rg - 0.5) * _Strength;
                 float2 suv = i.grabUV.xy + offset;
-                half4 scene = tex2Dproj(_TurboHeatGrab, float4(suv, i.grabUV.z, i.grabUV.w));
+                half4 scene = tex2Dproj(_GrabTexture, float4(suv, i.grabUV.z, i.grabUV.w));
 
                 // rim fade: full refraction facing the camera, dissolving at
                 // the column silhouette for a soft volumetric edge
