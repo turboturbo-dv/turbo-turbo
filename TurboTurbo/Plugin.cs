@@ -22,6 +22,7 @@ public sealed class Plugin : BaseUnityPlugin
 
         TurboConfig.Bind(Config);
         TurboConsole.Bind(Config);
+        ModAssets.Load();
         _harmony.PatchAll();
 
         Log.LogInfo($"{Name} {Version} loaded");
@@ -36,6 +37,7 @@ public sealed class Plugin : BaseUnityPlugin
     {
         SimInspector.Update();
         TurboModel.HandleUpdate();
+        HeatShimmer.HandleUpdate();
         TurboConsole.HandleUpdate();
     }
 }

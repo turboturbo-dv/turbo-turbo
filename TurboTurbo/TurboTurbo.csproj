@@ -58,6 +58,18 @@
       <HintPath>$(ManagedDir)\UnityEngine.ParticleSystemModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(ManagedDir)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Postprocessing.Runtime">
+      <HintPath>$(ManagedDir)\Unity.Postprocessing.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="sc.posteffects.runtime">
+      <HintPath>$(ManagedDir)\sc.posteffects.runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="DV.Utils">
       <HintPath>$(ManagedDir)\DV.Utils.dll</HintPath>
       <Private>false</Private>

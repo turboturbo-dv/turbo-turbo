@@ -6,6 +6,7 @@ using BepInEx.Logging;
 using DV.Simulation.Cars;
 using DV.Simulation.Controllers;
 using DV.Simulation.Ports;
+using DV.Rain;
 using DV.ThingTypes;
 using HarmonyLib;
 using LocoSim.Definitions;
@@ -193,6 +194,23 @@ internal static class SimInspector
                 {
                     Log.LogInfo($"  colorReader parent='{(r.particlesParent ? r.particlesParent.name : "?")}' port={r.portId} min={r.startColorMin} max={r.startColorMax}");
                 }
+            }
+        }
+
+        // window glass = the game's proven GrabPass refraction. Dump its
+        // material/shader/texture wiring for the heat shimmer GrabPass route.
+        Window[] windows = car.GetComponentsInChildren<Window>(true);
+        Log.LogInfo($"windowMat: {windows.Length} Window component(s)");
+        foreach (Window win in windows.Take(1))
+        {
+            if (win.visuals == null) continue;
+            foreach (MeshRenderer mr in win.visuals)
+            {
+                Material m = mr.sharedMaterial;
+                if (m == null) continue;
+                string texInfo = string.Join(",", m.GetTexturePropertyNames()
+                    .Select(n => { var t = m.GetTexture(n); return $"{n}={(t != null ? t.name : "null")}"; }));
+                Log.LogInfo($"windowMat: mat='{m.name}' shader='{m.shader.name}' tex=[{texInfo}]");
             }
         }
     }

@@ -55,6 +55,15 @@ internal static class TurboConfig
     // --- Exhaust smoke ---------------------------------------------------
     internal static ConfigEntry<bool> SmokeEnabled;
     internal static ConfigEntry<bool> TakeOverExhaust;
+    internal static ConfigEntry<bool> HeatShimmerEnabled;
+    internal static ConfigEntry<float> HeatShimmerStrength;
+    internal static ConfigEntry<int> HeatShimmerMode;
+    internal static ConfigEntry<float> HeatShimmerRadius;
+    internal static ConfigEntry<float> HeatShimmerHeight;
+    internal static ConfigEntry<float> HeatShimmerSpeed;
+    internal static ConfigEntry<float> HeatShimmerFreq;
+    internal static ConfigEntry<bool> HeatShimmerUsePostStack;
+    internal static ConfigEntry<bool> HeatShimmerFullscreenTriangle;
     internal static ConfigEntry<float> CleanRate;
     internal static ConfigEntry<float> CleanAlpha;
     internal static ConfigEntry<float> ExhaustSpeed;
@@ -145,6 +154,24 @@ internal static class TurboConfig
         // Exhaust smoke
         SmokeEnabled = config.Bind("TurboSmoke", "Enabled", true,
             "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
+        HeatShimmerEnabled = config.Bind("TurboSmoke", "HeatShimmerEnabled", true,
+            "Screen-space heat shimmer above hot exhausts (Route A: drives the shipped SCPE.Refraction effect with a generated DUDV map).");
+        HeatShimmerStrength = config.Bind("TurboSmoke", "HeatShimmerStrength", 0.5f,
+            "Heat shimmer strength multiplier.");
+        HeatShimmerMode = config.Bind("TurboSmoke", "HeatShimmerMode", 0,
+            "Glass shader probe preset: 0=mist pass A, 1=mist pass B, 2=weak mist, 3=droplet path, 4=column hidden, 5=custom bundle shader.");
+        HeatShimmerRadius = config.Bind("TurboSmoke", "HeatShimmerRadius", 0.8f,
+            "Heat column radius [m] (mode 5).");
+        HeatShimmerHeight = config.Bind("TurboSmoke", "HeatShimmerHeight", 2.4f,
+            "Heat column height [m] above the stack exit (mode 5).");
+        HeatShimmerSpeed = config.Bind("TurboSmoke", "HeatShimmerSpeed", 1f,
+            "Heat shimmer animation speed multiplier (mode 5).");
+        HeatShimmerFreq = config.Bind("TurboSmoke", "HeatShimmerFreq", 1f,
+            "Heat shimmer noise frequency multiplier - higher = finer wobble (mode 5).");
+        HeatShimmerUsePostStack = config.Bind("TurboSmoke", "HeatShimmerUsePostStack", false,
+            "Use the SCPE post-stack route (broken: zooms in DV's setup). When false, per-object GrabPass heat quads on the window glass shader are used instead.");
+        HeatShimmerFullscreenTriangle = config.Bind("TurboSmoke", "HeatShimmerFullscreenTriangle", true,
+            "Use PPv2's fullscreen-triangle blit instead of a plain Blit (post-stack route only; plain Blit breaks in DV's stack).");
         TakeOverExhaust = config.Bind("TurboSmoke", "TakeOverExhaust", true,
             "Our emitter replaces the vanilla exhaust system entirely (clean haze + soot in one). When false, vanilla keeps driving the clean exhaust and we only add soot.");
         CleanRate = config.Bind("TurboSmoke", "CleanRate", 30f,

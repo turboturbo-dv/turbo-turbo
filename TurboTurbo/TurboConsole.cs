@@ -74,15 +74,46 @@ internal static class TurboConsole
                             TurboConfig.CleanAlpha.Value = Mathf.Clamp(v, 0.05f, 1f);
                             _config.Save();
                             break;
+                        case "shimmermode":
+                            TurboConfig.HeatShimmerMode.Value = (int)Mathf.Clamp(v, 0f, 5f);
+                            _config.Save();
+                            break;
+                        case "shimmer":
+                            TurboConfig.HeatShimmerEnabled.Value = v > 0.5f;
+                            _config.Save();
+                            break;
+                        case "shimmerstrength":
+                            TurboConfig.HeatShimmerStrength.Value = Mathf.Clamp(v, 0f, 5f);
+                            _config.Save();
+                            break;
+                        case "shimmerradius":
+                            TurboConfig.HeatShimmerRadius.Value = Mathf.Clamp(v, 0.2f, 3f);
+                            _config.Save();
+                            break;
+                        case "shimmerheight":
+                            TurboConfig.HeatShimmerHeight.Value = Mathf.Clamp(v, 0.5f, 8f);
+                            _config.Save();
+                            break;
+                        case "shimmerspeed":
+                            TurboConfig.HeatShimmerSpeed.Value = Mathf.Clamp(v, 0f, 10f);
+                            _config.Save();
+                            break;
+                        case "shimmerfreq":
+                            TurboConfig.HeatShimmerFreq.Value = Mathf.Clamp(v, 0.2f, 6f);
+                            _config.Save();
+                            break;
                         default:
                             Terminal.Log("unknown key - use rate, alpha, size, clean, speed or haze");
                             return;
                     }
                 }
                 Terminal.Log($"soot: rate={TurboConfig.SmokeMaxRate.Value:0} alpha={TurboConfig.SmokeParticleAlpha.Value:0.00} sizeMult={TurboConfig.SmokeSizeMult.Value:0.00} " +
-                             $"clean={TurboConfig.CleanRate.Value:0} haze={TurboConfig.CleanAlpha.Value:0.00} speed={TurboConfig.ExhaustSpeed.Value:0.00} enabled={TurboConfig.SmokeEnabled.Value}");
+                             $"clean={TurboConfig.CleanRate.Value:0} haze={TurboConfig.CleanAlpha.Value:0.00} speed={TurboConfig.ExhaustSpeed.Value:0.00} enabled={TurboConfig.SmokeEnabled.Value} " +
+                             $"shimmer={TurboConfig.HeatShimmerEnabled.Value} shimmermode={TurboConfig.HeatShimmerMode.Value} " +
+                             $"shimmerstrength={TurboConfig.HeatShimmerStrength.Value:0.00} shimmerradius={TurboConfig.HeatShimmerRadius.Value:0.0} " +
+                             $"shimmerheight={TurboConfig.HeatShimmerHeight.Value:0.0} shimmerspeed={TurboConfig.HeatShimmerSpeed.Value:0.0} shimmerfreq={TurboConfig.HeatShimmerFreq.Value:0.0}");
             },
-            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze).", "[rate|alpha|size|clean|speed|haze] [value]");
+            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|speed|haze|shimmer|shimmermode|shimmerstrength|shimmerradius|shimmerheight|shimmerspeed|shimmerfreq] [value]");
         Terminal.Autocomplete.Register(smokeCmd);
 
         CommandInfo cfgCmd = Terminal.Shell.AddCommand(

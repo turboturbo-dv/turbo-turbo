@@ -21,6 +21,16 @@ internal sealed class TurboSmokeEmitter
     private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
 
+    private const float StackOffset = 0.6f;
+
+    internal TrainCar Car { get; set; }
+
+    /// <summary>Heat shimmer strength [0..1], fed to HeatShimmer every frame.</summary>
+    internal float HeatIntensity { get; private set; }
+
+    /// <summary>World position the shimmer hovers above (exhaust stack exit).</summary>
+    internal Vector3 HeatOrigin => _vanilla.transform.position + Vector3.up * StackOffset;
+
     internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial, bool ownsExhaust)
     {
         _vanilla = vanilla;
@@ -140,6 +150,9 @@ internal sealed class TurboSmokeEmitter
             ? rpmNorm * TurboConfig.ExhaustSpeed.Value
             : _vanilla.main.startSpeed;
 
+        // hot exhaust = heat shimmer source (stronger while sooting)
+        HeatIntensity = engineOn ? 0.3f + 0.7f * soot : 0f;
+
         if (!_loggedEmit && smokeDensity > 0.3f)
         {
             _loggedEmit = true;
@@ -150,6 +163,7 @@ internal sealed class TurboSmokeEmitter
 
     internal void Destroy()
     {
+        HeatShimmer.Unregister(this);
         if (_ownedMaterial != null) Object.Destroy(_ownedMaterial);
         if (_soot != null) Object.Destroy(_soot.gameObject);
     }

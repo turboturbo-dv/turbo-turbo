@@ -172,7 +172,9 @@ internal sealed class EngineTurbo
 
         foreach (ParticleSystem ps in exhausts)
         {
-            _smoke.Add(new TurboSmokeEmitter(ps, blackMaterial, ownsExhaust));
+            var emitter = new TurboSmokeEmitter(ps, blackMaterial, ownsExhaust) { Car = Car };
+            _smoke.Add(emitter);
+            HeatShimmer.Register(emitter);
         }
 
         if (ownsExhaust)
