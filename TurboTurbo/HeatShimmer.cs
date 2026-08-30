@@ -527,7 +527,10 @@ internal static class HeatShimmer
 
     private static void UpdateSources()
     {
-        if (_camera == null) _camera = GetViewCamera();
+        // refresh every frame: PlayerManager.ActiveCamera tracks the game's
+        // own camera switches (F1 first person <-> F2/F3 external via
+        // PlayerCameraOverride), so never cache the camera here
+        _camera = GetViewCamera();
         if (_camera == null) return;
 
         float tanHalf = Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
