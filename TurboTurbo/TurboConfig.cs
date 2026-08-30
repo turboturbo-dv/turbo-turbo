@@ -58,11 +58,8 @@ internal static class TurboConfig
     internal static ConfigEntry<bool> HeatShimmerEnabled;
     internal static ConfigEntry<float> HeatShimmerStrength;
     internal static ConfigEntry<int> HeatShimmerMode;
-    internal static ConfigEntry<float> HeatShimmerRadius;
-    internal static ConfigEntry<float> HeatShimmerHeight;
     internal static ConfigEntry<float> HeatShimmerSpeed;
     internal static ConfigEntry<float> HeatShimmerFreq;
-    internal static ConfigEntry<bool> HeatShimmerWire;
     internal static ConfigEntry<int> HeatShimmerDebug;
     internal static ConfigEntry<bool> HeatShimmerUsePostStack;
     internal static ConfigEntry<bool> HeatShimmerFullscreenTriangle;
@@ -161,17 +158,11 @@ internal static class TurboConfig
         HeatShimmerStrength = config.Bind("TurboSmoke", "HeatShimmerStrength", 0.01f,
             "Heat shimmer strength multiplier (true screen-UV offset at full heat).");
         HeatShimmerMode = config.Bind("TurboSmoke", "HeatShimmerMode", 5,
-            "Heat shimmer route: 5=custom bundle shader (default), 0-3=glass shader probe presets, 4=column hidden.");
-        HeatShimmerRadius = config.Bind("TurboSmoke", "HeatShimmerRadius", 2f,
-            "Heat shimmer quad width [m] (the flow-scaled effect fills the quad at full flow).");
-        HeatShimmerHeight = config.Bind("TurboSmoke", "HeatShimmerHeight", 2.4f,
-            "Heat shimmer quad height [m] above the stack exit.");
+            "Heat shimmer route: 5=particle shimmer (default), 4=hidden; 0-3 and 6 are retired probe modes (treated as hidden).");
         HeatShimmerSpeed = config.Bind("TurboSmoke", "HeatShimmerSpeed", 4f,
             "Heat shimmer animation speed multiplier. The base rate rises with engine flow (0.5 at idle to 2.0 at full flow); this scales it.");
         HeatShimmerFreq = config.Bind("TurboSmoke", "HeatShimmerFreq", 6f,
             "Heat shimmer noise frequency multiplier - higher = finer wobble.");
-        HeatShimmerWire = config.Bind("TurboSmoke", "HeatShimmerWire", false,
-            "Draw a yellow wireframe outline around the heat shimmer quad (debug).");
         HeatShimmerDebug = config.Bind("TurboSmoke", "HeatShimmerDebug", 0,
             "Heat shimmer shader debug view: 0=off, 1=mask coverage, 2=raw grab, 3=computed offset+mask, 4=solid magenta (geometry test).");
         HeatShimmerUsePostStack = config.Bind("TurboSmoke", "HeatShimmerUsePostStack", false,

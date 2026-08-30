@@ -49,6 +49,7 @@ namespace TurboTurbo
         public float fullRadius = 1f;
         public float idleAnimSpeed = 0.5f;
         public float fullAnimSpeed = 2f;
+        public float speedMultiplier = 1f;
 
         /// <summary>Shader override for contexts where Shader.Find cannot see
         /// the shader (e.g. it lives in an asset bundle) - set before the
@@ -177,7 +178,7 @@ namespace TurboTurbo
             if (_material != null)
             {
                 // same uniform semantics as HeatQuad.UpdateFade in the mod
-                float speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat);
+                float speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat) * speedMultiplier;
                 _animTime += Time.deltaTime * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
