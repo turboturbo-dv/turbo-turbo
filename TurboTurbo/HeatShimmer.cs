@@ -27,9 +27,7 @@ internal static class HeatShimmer
     {
         internal GameObject Go;
         internal Material Material;
-        internal Material BundleMaterial;
         internal LineRenderer Outline;
-        private float _animTime;
 
         internal void Init(Material source, Texture2D noise, Transform parent, Vector3 localPosition)
         {
@@ -172,6 +170,13 @@ internal static class HeatShimmer
                 mr.enabled = false;
                 return;
             }
+            if (mode == 5)
+            {
+                // mode 5 renders through ShimmerParticles; the quad stays
+                // disabled (still used by probe modes 0-3)
+                mr.enabled = false;
+                return;
+            }
             mr.enabled = true;
 
             // mode 6: solid unlit yellow quad - proves the MeshRenderer and
@@ -184,55 +189,6 @@ internal static class HeatShimmer
                     _solidMaterial.color = new Color(1f, 0.9f, 0.1f, 0.85f);
                 }
                 mr.sharedMaterial = _solidMaterial;
-                return;
-            }
-
-            if (mode == 5)
-            {
-                Shader bundleShader = ModAssets.HeatShimmerShader;
-                if (bundleShader != null)
-                {
-                    // per-quad material: each engine animates at its own
-                    // flow-dependent rate, so the shader state can't be shared
-                    if (BundleMaterial == null || BundleMaterial.shader != bundleShader)
-                    {
-                        BundleMaterial = new Material(bundleShader) { name = "TurboTurbo.HeatShimmerMat" };
-                        // render BEFORE the smoke particles (3000): the grab
-                        // must not contain the additive plume (refracting it
-                        // reads as a yellow blob). The shader tag default is
-                        // overridden here; changing the tag breaks LoadFromFile.
-                        BundleMaterial.renderQueue = 2990;
-                        Log.LogInfo("shimmer: mode 5 material built from bundle shader 'TurboTurbo/HeatShimmer' (queue 2990)");
-                    }
-                    mr.sharedMaterial = BundleMaterial;
-
-                    // animation rate rises with engine flow: idle 0.5, full
-                    // flow 2.0 (hot air leaves the stack faster)
-                    float speed = Mathf.Lerp(0.5f, 2f, rawHeat) * TurboConfig.HeatShimmerSpeed.Value;
-                    _animTime += dt * speed;
-                    if (_animTime > 10000f) _animTime -= 10000f;
-
-                    BundleMaterial.SetFloat("_Strength", rawHeat * TurboConfig.HeatShimmerStrength.Value);
-                    // effect region grows with flow: small blob above the
-                    // chimney at idle, taper reaching the quad edges at full
-                    BundleMaterial.SetFloat("_EffectRadius", Mathf.Lerp(0.3f, 1f, rawHeat));
-                    BundleMaterial.SetFloat("_AnimTime", _animTime);
-                    BundleMaterial.SetFloat("_Freq", TurboConfig.HeatShimmerFreq.Value);
-                    BundleMaterial.SetFloat("_Debug", TurboConfig.HeatShimmerDebug.Value);
-                }
-                else if (HeatShimmer.AltMaterial != null)
-                {
-                    // fallback: plain instrument glass - mostly invisible, kept for probing
-                    mr.sharedMaterial = HeatShimmer.AltMaterial;
-                    if (AltMaterial.HasProperty("_MainTex") && HeatShimmer.NoiseTexture != null)
-                    {
-                        AltMaterial.SetTexture("_MainTex", HeatShimmer.NoiseTexture);
-                    }
-                    if (AltMaterial.HasProperty("_Color"))
-                    {
-                        AltMaterial.SetColor("_Color", new Color(1f, 1f, 1f, Mathf.Clamp01(intensity * 0.8f)));
-                    }
-                }
                 return;
             }
 
@@ -258,7 +214,6 @@ internal static class HeatShimmer
         internal void Destroy()
         {
             if (Material != null) UnityEngine.Object.Destroy(Material);
-            if (BundleMaterial != null) UnityEngine.Object.Destroy(BundleMaterial);
             if (Outline != null) UnityEngine.Object.Destroy(Outline.material);
             if (Go != null) UnityEngine.Object.Destroy(Go);
         }
@@ -268,6 +223,8 @@ internal static class HeatShimmer
     {
         internal TurboSmokeEmitter Emitter;
         internal HeatQuad Quad;
+        internal GameObject ParticlesGo;
+        internal ShimmerParticles Particles;
         internal Vector3 Viewport;
         internal float Radius;
         internal float Intensity;
@@ -353,6 +310,7 @@ internal static class HeatShimmer
         if (s != null)
         {
             s.Quad?.Destroy();
+            if (s.ParticlesGo != null) UnityEngine.Object.Destroy(s.ParticlesGo);
             Sources.Remove(s);
         }
         Log.LogInfo($"shimmer: unregistered heat source ({Sources.Count} remain)");
@@ -575,14 +533,44 @@ internal static class HeatShimmer
 
             if (s.Quad != null)
             {
-                // billboard quad anchored above the stack exit, yaw-facing the
-                // active camera; the shader-side offset field is driven by the
-                // engine's raw heat (amplitude, radius, animation rate)
+                // billboard quad kept only for the droplet probe modes (0-3);
+                // mode 5 renders through ShimmerParticles below
                 s.Quad.UpdateTransform(_camera, emitter.HeatOrigin);
                 float fade = onScreen
                     ? s.Intensity * TurboConfig.HeatShimmerStrength.Value
                     : 0f;
                 s.Quad.UpdateFade(fade, s.Intensity, Time.deltaTime);
+            }
+
+            // particle emitter route (mode 5): lazily created, parented to
+            // the car so the exhaust follows it; particles simulate in world
+            // space so the plume trails behind a moving loco
+            bool particlesActive = TurboConfig.HeatShimmerMode.Value == 5;
+            if (particlesActive && s.Particles == null)
+            {
+                s.ParticlesGo = new GameObject("TurboTurbo.ShimmerParticles");
+                s.ParticlesGo.transform.SetParent(emitter.Car.transform, false);
+                s.ParticlesGo.transform.localPosition =
+                    emitter.Car.transform.InverseTransformPoint(emitter.HeatOrigin);
+                s.ParticlesGo.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
+                s.Particles = s.ParticlesGo.AddComponent<ShimmerParticles>();
+                s.Particles.shaderOverride = ModAssets.HeatShimmerShader;
+                s.Particles.strength = TurboConfig.HeatShimmerStrength.Value;
+                s.Particles.Configure();
+                Log.LogInfo($"shimmer: particle emitter created for {emitter.Car.ID}");
+            }
+            if (s.ParticlesGo != null)
+            {
+                s.ParticlesGo.SetActive(particlesActive);
+            }
+            if (particlesActive && s.Particles != null)
+            {
+                // raw heat (0..1): the component applies HeatShimmerStrength
+                // itself. Not gated on onScreen - the plume exists in the
+                // world even when unobserved, building a trail.
+                s.Particles.SetFlow(s.Intensity);
+                s.Particles.strength = TurboConfig.HeatShimmerStrength.Value;
+                s.Particles.freq = TurboConfig.HeatShimmerFreq.Value;
             }
         }
     }
