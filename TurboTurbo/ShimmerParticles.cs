@@ -52,6 +52,16 @@ namespace TurboTurbo
         public float fullAnimSpeed = 2f;
         public float speedMultiplier = 1f;
 
+        [Header("Inherited motion (train velocity + air resistance)")]
+        [Range(0f, 1f)] public float inheritFactor = 1f;
+        public float drag = 0.8f;
+        public float buoyancy = 0.3f;
+
+        /// <summary>World velocity of the vehicle carrying this emitter -
+        /// set by the caller every frame (mod: Car velocity, bench: frame
+        /// speed). Particles inherit this at emission, then drag decays it.</summary>
+        public Vector3 locoVelocity;
+
         /// <summary>Shader override for contexts where Shader.Find cannot see
         /// the shader (e.g. it lives in an asset bundle) - set before the
         /// first Configure call, or call Configure again after setting.</summary>
@@ -63,6 +73,7 @@ namespace TurboTurbo
         private ParticleSystem _ps;
         private Material _material;
         private float _animTime;
+        private float _emitAccumulator;
 
         /// <summary>Live particle count, for console dumps.</summary>
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
@@ -139,6 +150,32 @@ namespace TurboTurbo
             shape.angle = 8f;
             shape.radius = 0.1f;
 
+            // air resistance: drag decays the inherited train velocity
+            // exponentially once the particle is expelled
+            var lvol = _ps.limitVelocityOverLifetime;
+            lvol.enabled = true;
+            lvol.space = ParticleSystemSimulationSpace.World;
+            lvol.limit = 25f;
+            lvol.dampen = 0f;
+            lvol.drag = drag;
+            lvol.multiplyDragByParticleSize = false;
+            lvol.multiplyDragByParticleVelocity = true;
+
+            // buoyancy: constant undamped upward drift so particles keep
+            // rising after drag has killed the initial kick
+            var vol = _ps.velocityOverLifetime;
+            vol.enabled = true;
+            vol.space = ParticleSystemSimulationSpace.World;
+            vol.y = buoyancy;
+            vol.x = 0f;
+            vol.z = 0f;
+
+            // manual emission: automatic emission can't add the vehicle's
+            // velocity to each particle, so Update() emits via EmitParams
+            var em = _ps.emission;
+            em.enabled = false;
+            em.rateOverTime = 0f;
+
             var rend = GetComponent<ParticleSystemRenderer>();
             if (useShimmerShader)
             {
@@ -171,13 +208,36 @@ namespace TurboTurbo
             // (cheap module writes; the material is created only once)
             Configure();
 
-            var em = _ps.emission;
-            em.rateOverTime = Mathf.Lerp(idleRate, fullRate, heat);
+            // manual emission with inherited vehicle velocity:
+            //   v = up * upSpeed(heat) + locoVel * inheritFactor + spread
+            // drag (limitVelocityOverLifetime) then decays it in sim.
+            float rate = Mathf.Lerp(idleRate, fullRate, heat);
+            _emitAccumulator += rate * Time.deltaTime;
+            int n = (int)_emitAccumulator;
+            if (n > 0)
+            {
+                _emitAccumulator -= n;
+                n = Mathf.Min(n, 30); // burst cap after long frames
 
-            // initial velocity scales up with the heat signal: hot exhaust
-            // leaves the stack faster (applies to newly emitted particles)
-            var main = _ps.main;
-            main.startSpeed = startSpeed * Mathf.Lerp(1f, velocityHeatScale, heat);
+                float upSpeed = startSpeed * Mathf.Lerp(1f, velocityHeatScale, heat);
+                Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
+                Vector3 inherited = locoVelocity * inheritFactor;
+
+                for (int i = 0; i < n; i++)
+                {
+                    var ep = new ParticleSystem.EmitParams
+                    {
+                        position = transform.position,
+                        velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
+                                 + Random.insideUnitSphere * 0.15f
+                                 + inherited,
+                        startSize = Random.Range(startSizeMin, startSizeMax),
+                        startColor = color,
+                        startLifetime = lifetime * Random.Range(0.9f, 1.1f),
+                    };
+                    _ps.Emit(ep, 1);
+                }
+            }
 
             if (_material != null)
             {

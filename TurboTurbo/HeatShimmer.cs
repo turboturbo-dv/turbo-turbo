@@ -264,8 +264,11 @@ internal static class HeatShimmer
             {
                 s.ParticlesGo = new GameObject("TurboTurbo.ShimmerParticles");
                 s.ParticlesGo.transform.SetParent(emitter.Car.transform, false);
-                s.ParticlesGo.transform.localPosition =
-                    emitter.Car.transform.InverseTransformPoint(emitter.HeatOrigin);
+                // emitter sits 0.2 m above the stack mouth (world up
+                // converted to car-local space, so gradients/roll are fine)
+                Vector3 localMouth = emitter.Car.transform.InverseTransformPoint(emitter.HeatOrigin);
+                Vector3 localUp = emitter.Car.transform.InverseTransformDirection(Vector3.up);
+                s.ParticlesGo.transform.localPosition = localMouth + localUp * 0.2f;
                 s.ParticlesGo.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
                 s.Particles = s.ParticlesGo.AddComponent<ShimmerParticles>();
                 s.Particles.shaderOverride = ModAssets.HeatShimmerShader;
@@ -287,6 +290,13 @@ internal static class HeatShimmer
                 s.Particles.freq = TurboConfig.HeatShimmerFreq.Value;
                 s.Particles.speedMultiplier = TurboConfig.HeatShimmerSpeed.Value;
                 s.Particles.debug = TurboConfig.HeatShimmerDebug.Value;
+                s.Particles.outline = TurboConfig.HeatShimmerOutline.Value;
+                // particles inherit the loco's world velocity at emission;
+                // drag (in the component) then bleeds it off
+                if (emitter.Car.rb != null)
+                {
+                    s.Particles.locoVelocity = emitter.Car.rb.velocity;
+                }
                 s.Particles.outline = TurboConfig.HeatShimmerOutline.Value;
             }
         }

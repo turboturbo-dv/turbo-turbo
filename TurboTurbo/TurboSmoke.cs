@@ -154,10 +154,10 @@ internal sealed class TurboSmokeEmitter
             : _vanilla.main.startSpeed;
 
         // heat shimmer tracks engine mass flow directly (normalized fuel
-        // consumption, 0..1): incomplete combustion shouldn't matter.
+        // consumption): fuel 0 -> heat 0.15 (idle), fuel 1 -> heat 1.
         // Asymmetric thermal inertia: the stack heats instantly on a throttle
         // kick but cools down slowly.
-        float heatTarget = engineOn ? Mathf.Clamp01(fuelNorm) : 0f;
+        float heatTarget = engineOn ? Mathf.Clamp01(0.15f + 0.85f * fuelNorm) : 0f;
         if (heatTarget > _heat)
         {
             _heat = heatTarget;

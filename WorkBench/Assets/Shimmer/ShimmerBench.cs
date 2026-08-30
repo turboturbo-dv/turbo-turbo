@@ -88,6 +88,14 @@ namespace TurboTurbo.WorkBench
             {
                 _frame.transform.position += Vector3.right * (moveSpeed * Time.deltaTime);
             }
+
+            // the emitter rides the frame, so the vehicle's world velocity is
+            // the frame velocity: particles inherit it at emission, then drag
+            // bleeds it off (the plume bends backward)
+            if (_particleEmitter != null)
+            {
+                _particleEmitter.locoVelocity = Vector3.right * moveSpeed;
+            }
         }
 
         private static Texture2D MakeChecker(int size, int cells)
