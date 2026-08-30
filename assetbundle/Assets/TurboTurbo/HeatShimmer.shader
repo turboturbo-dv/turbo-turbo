@@ -35,6 +35,7 @@ Shader "TurboTurbo/HeatShimmer"
             float _Freq;
             float _Debug;
             sampler2D _GrabTexture;
+            sampler2D_float _CameraDepthTexture;
 
             struct appdata
             {
@@ -47,6 +48,7 @@ Shader "TurboTurbo/HeatShimmer"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float4 grabUV : TEXCOORD1;
+                float eyeDepth : TEXCOORD2;
             };
 
             v2f vert (appdata v)
@@ -55,6 +57,7 @@ Shader "TurboTurbo/HeatShimmer"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
                 o.grabUV = ComputeGrabScreenPos(o.pos);
+                o.eyeDepth = -UnityObjectToViewPos(v.vertex).z;
                 return o;
             }
 
@@ -95,6 +98,17 @@ Shader "TurboTurbo/HeatShimmer"
 
             half4 frag (v2f i) : SV_Target
             {
+                float2 suvBase = i.grabUV.xy / i.grabUV.w;
+
+                // foreground bleed fix: opaque geometry nearer than the quad
+                // (handrails, other cars) is inside the grab - leave it
+                // undisplaced. Smoke/particles never write depth, so they
+                // stay displaceable. rawZ == 0/1 means no valid depth reading
+                // (depth texture unbound or sky), which never occludes.
+                float rawZ = tex2D(_CameraDepthTexture, suvBase).r;
+                float sceneZ = LinearEyeDepth(rawZ);
+                float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - 0.05) ? 1.0 : 0.0;
+
                 // quad-uv mask: blob anchored at the bottom-center (the stack
                 // mouth). The radius grows with engine flow; the taper always
                 // reaches zero at dn = 1, which at full flow (radius 1) is
@@ -103,7 +117,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // stretches upward.
                 float2 d = float2(abs(i.uv.x - 0.5) * 2.0, i.uv.y * 1.35);
                 float dn = length(d) / max(_EffectRadius, 0.05);
-                float mask = 1.0 - smoothstep(0.55, 1.0, dn);
+                float mask = (1.0 - smoothstep(0.55, 1.0, dn)) * (1.0 - occluded);
 
                 // rising turbulent field: vertically stretched cells, moving
                 // up at the flow-dependent speed, slow lateral evolution
@@ -121,7 +135,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // debug 2: raw grab, no offset - validates the grab path
                 if (_Debug > 1.5 && _Debug < 2.5)
                 {
-                    return tex2D(_GrabTexture, i.grabUV.xy / i.grabUV.w);
+                    return tex2D(_GrabTexture, suvBase);
                 }
                 // debug 3: computed offset (RG, +-0.05 = full swing) + mask (B)
                 if (_Debug > 2.5 && _Debug < 3.5)
@@ -136,8 +150,7 @@ Shader "TurboTurbo/HeatShimmer"
 
                 // offset applied AFTER projection: _Strength is in true
                 // screen-UV units, independent of view distance
-                float2 suv = i.grabUV.xy / i.grabUV.w + offset;
-                return tex2D(_GrabTexture, suv);
+                return tex2D(_GrabTexture, suvBase + offset);
             }
             ENDCG
         }

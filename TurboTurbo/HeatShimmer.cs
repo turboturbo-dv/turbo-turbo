@@ -533,6 +533,14 @@ internal static class HeatShimmer
         _camera = GetViewCamera();
         if (_camera == null) return;
 
+        // foreground bleed fix needs the scene depth; in deferred rendering
+        // this reuses the G-buffer depth (no extra prepass). PPv2 only
+        // enables it for effects that ask, so set the flag every frame.
+        if ((_camera.depthTextureMode & DepthTextureMode.Depth) == 0)
+        {
+            _camera.depthTextureMode |= DepthTextureMode.Depth;
+        }
+
         float tanHalf = Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
 
         foreach (Source s in Sources)
