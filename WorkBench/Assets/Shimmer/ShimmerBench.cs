@@ -30,10 +30,12 @@ namespace TurboTurbo.WorkBench
         [Header("Where the heat quad spawns (manual, tuned to the DE6 stack)")]
         public Vector3 heatQuadPosition = new Vector3(-2.54f, 1.5f, 8f);
 
-        [Header("Second shimmer (multi-effect grab test)")]
-        public bool secondShimmer = true;
-        public float secondOffsetX = 3f;
-        [Range(0f, 1f)] public float secondHeat = 0.7f;
+        [Header("Plain particle emitter (no shimmer - particle R&D)")]
+        public bool particles = true;
+        public float particleOffsetX = 3f;
+
+        [Header("Reference frame movement (world-sim trail test)")]
+        [Range(0f, 8f)] public float moveSpeed = 1.5f;
 
         private class ShimmerInstance
         {
@@ -44,10 +46,18 @@ namespace TurboTurbo.WorkBench
 
         private readonly List<ShimmerInstance> _shimmers = new List<ShimmerInstance>();
         private Renderer _background;
+        private ShimmerParticles _particleEmitter;
+        private GameObject _frame;
+        private Vector3 _frameStartPos;
 
         private void Start()
         {
             Shader shader = Shader.Find("TurboTurbo/HeatShimmer");
+
+            // everything bench-side lives under one reference frame; moving
+            // the frame while particles simulate in world space leaves them
+            // trailing behind, like a loco driving away from its plume
+            _frame = new GameObject("ReferenceFrame");
 
             GameObject cam = new GameObject("BenchCamera");
             Camera camComp = cam.AddComponent<Camera>();
@@ -57,23 +67,37 @@ namespace TurboTurbo.WorkBench
             cam.transform.rotation = Quaternion.identity;
             camComp.depthTextureMode |= DepthTextureMode.Depth;
             cam.tag = "MainCamera";
+            cam.transform.SetParent(_frame.transform, false);
 
             // high-contrast checker backdrop - displacement shows as wobble
             Texture2D checker = MakeChecker(512, 16);
             GameObject bg = GameObject.CreatePrimitive(PrimitiveType.Quad);
             bg.name = "Background";
-            bg.transform.position = new Vector3(0f, 0f, 8f);
-            bg.transform.localScale = new Vector3(14f, 8f, 1f);
+            bg.transform.position = new Vector3(0f, 0f, 10f);
+            bg.transform.localScale = new Vector3(14f, 12f, 1f);
             Material bgMat = new Material(Shader.Find("Unlit/Texture"));
             bgMat.mainTexture = checker;
             bg.GetComponent<Renderer>().sharedMaterial = bgMat;
             _background = bg.GetComponent<Renderer>();
+            bg.transform.SetParent(_frame.transform, false);
+
+            // the imported loco joins the reference frame too
+            var loco = GameObject.Find("LocoDE6");
+            if (loco != null) loco.transform.SetParent(_frame.transform, true);
 
             CreateShimmer(shader, heatQuadPosition, heat);
-            if (secondShimmer)
+
+            if (particles)
             {
-                CreateShimmer(shader, heatQuadPosition + new Vector3(secondOffsetX, 0f, 0f), secondHeat);
+                // reusable emitter component (shimmer-particles spike phase 1)
+                var go = new GameObject("PlainParticles");
+                go.transform.position = new Vector3(2.1f, 0.1f, heatQuadPosition.z);
+                go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // aim the cone up
+                _particleEmitter = go.AddComponent<ShimmerParticles>();
+                go.transform.SetParent(_frame.transform, false);
             }
+
+            _frameStartPos = _frame.transform.position;
         }
 
         private void CreateShimmer(Shader shader, Vector3 position, float heat)
@@ -95,23 +119,39 @@ namespace TurboTurbo.WorkBench
 
         private void Update()
         {
-            // same semantics as HeatQuad.UpdateFade in the mod
+            // same semantics as HeatQuad.UpdateFade in the mod; the live
+            // heat slider drives the shimmer (s.Heat is only the creation
+            // default, the slider is the live signal)
             foreach (var s in _shimmers)
             {
-                float speed = Mathf.Lerp(idleSpeed, fullSpeed, s.Heat) * speedMultiplier;
+                float speed = Mathf.Lerp(idleSpeed, fullSpeed, heat) * speedMultiplier;
                 s.AnimTime += Time.deltaTime * speed;
                 if (s.AnimTime > 10000f) s.AnimTime -= 10000f;
 
-                s.Material.SetFloat("_Strength", s.Heat * strength);
-                s.Material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, s.Heat));
+                s.Material.SetFloat("_Strength", heat * strength);
+                s.Material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, heat));
                 s.Material.SetFloat("_AnimTime", s.AnimTime);
                 s.Material.SetFloat("_Freq", freq);
+            }
+
+            // the bench heat slider drives the emitter exactly like the mod's
+            // HeatIntensity will (UpdateSources -> SetFlow per frame)
+            if (_particleEmitter != null)
+            {
+                _particleEmitter.SetFlow(heat);
             }
 
             Material bg = _background != null ? _background.sharedMaterial : null;
             if (bg != null && bg.mainTexture != null)
             {
                 bg.mainTextureOffset = new Vector2(Time.time * backgroundScroll, 0f);
+            }
+
+            // slide the whole reference frame; particles (world sim) stay
+            // behind and form the trail. Linear speed, live slider, 0 = rest
+            if (_frame != null && moveSpeed > 0.001f)
+            {
+                _frame.transform.position += Vector3.right * (moveSpeed * Time.deltaTime);
             }
         }
 
