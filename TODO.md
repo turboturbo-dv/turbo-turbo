@@ -82,6 +82,22 @@
     the plume should gently wobble. Composes with item 4 (smoke doesn't
     write depth → stays displaceable).
 
+- [ ] **Spike: slight gaussian blur in the shimmer.**
+  Add a small gaussian blur to the shimmer to model smaller-scale shimmering
+  that isn't really recognizable on its own and just serves to slightly
+  increase the apparent "density" of the hot air (softens the background a
+  touch inside the mask).
+
+- [ ] **Spike: displaced samples landing on foreground silhouettes.**
+  With the depth fix, background pixels adjacent to foreground objects are
+  correctly left undisplaced *at their own position*, but their computed
+  offset can still resolve to a foreground pixel in the grab, smearing
+  foreground texture into the background. Candidate approaches: validate the
+  offset target with a second depth compare at (base UV + offset) and
+  reject/shrink offsets that cross a depth discontinuity; or dilate/
+  edge-extend the foreground depth so protected regions are wider than the
+  geometry itself.
+
 ## Suggested order
 
 1. Item 1 (flow signal with asymmetric inertia) — build, test.

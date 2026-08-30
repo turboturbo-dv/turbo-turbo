@@ -4,6 +4,9 @@ using UnityEngine;
 
 public static class BuildBundle
 {
+    private const string ShaderAsset = "Assets/Shimmer/HeatShimmer.shader";
+    private const string OutputPath = "AssetBundles";
+
     [MenuItem("TurboTurbo/Build Bundle")]
     public static void Build()
     {
@@ -12,18 +15,17 @@ public static class BuildBundle
             new AssetBundleBuild
             {
                 assetBundleName = "turboturbo_assets",
-                assetNames = new[] { "Assets/TurboTurbo/HeatShimmer.shader" },
+                assetNames = new[] { ShaderAsset },
             },
         };
 
-        const string outputPath = "AssetBundles";
-        if (!Directory.Exists(outputPath))
+        if (!Directory.Exists(OutputPath))
         {
-            Directory.CreateDirectory(outputPath);
+            Directory.CreateDirectory(OutputPath);
         }
 
         BuildPipeline.BuildAssetBundles(
-            outputPath,
+            OutputPath,
             builds,
             BuildAssetBundleOptions.UncompressedAssetBundle,
             BuildTarget.StandaloneWindows64);
@@ -34,13 +36,13 @@ public static class BuildBundle
     [MenuItem("TurboTurbo/Verify Bundle")]
     public static void Verify()
     {
-        var bundle = AssetBundle.LoadFromFile("AssetBundles/turboturbo_assets");
+        var bundle = AssetBundle.LoadFromFile($"{OutputPath}/turboturbo_assets");
         if (bundle == null)
         {
             Debug.LogError("VERIFY FAILED: bundle did not load");
             return;
         }
-        var shader = bundle.LoadAsset<Shader>("Assets/TurboTurbo/HeatShimmer.shader");
+        var shader = bundle.LoadAsset<Shader>(ShaderAsset);
         Debug.Log($"VERIFY OK: shader={(shader != null ? shader.name : "NULL")}, supported={(shader != null && shader.isSupported)}");
         bundle.Unload(false);
     }
