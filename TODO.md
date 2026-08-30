@@ -35,3 +35,35 @@
   reject/shrink offsets that cross a depth discontinuity; or dilate/
   edge-extend the foreground depth so protected regions are wider than the
   geometry itself.
+
+- [ ] **Spike: shimmer particles instead of a fixed quad.**
+  Emit *shimmer particles* from the exhaust like smoke: each particle is a
+  billboard that displaces the grab locally, rising from the stack and left
+  hanging in the air as the loco moves — faithfully modelling the hot-air
+  trail behind a driving locomotive, which the fixed quad cannot do.
+  - *Why the cost is favourable:*
+    - The GrabPass capture is the expensive op, and a particle system renders
+      all its billboards as **one draw call / one renderer** = one unnamed
+      grab per frame, regardless of particle count.
+    - Fragment work scales with *covered pixels*, not particle count — the
+      plume covers roughly the same screen area as today's quad, plus 2–3×
+      overdraw where particles overlap.
+  - *Particle interaction:* none, by design — each particle independently
+    displaces the same captured grab; overlaps saturate (last draw wins)
+    instead of compounding. Physically close enough (turbulence adds
+    sub-linearly anyway).
+  - *Bonus wins:* particle alpha-over-lifetime replaces the analytic mask
+    (flow-scaled taper for free); particle billboarding solves the
+    edge-on-view problem; the noise field rides with each particle (slower
+    internal scroll, more physical advection).
+  - *Risks:*
+    - DV grab semantics with multiple users are treacherous (two-loco
+      incident). A single particle renderer is one grab user (likely fine);
+      two locos = two renderers = must re-verify in game.
+    - 2019.4 plumbing: custom vertex streams (per-particle random phase for
+      the noise) + GrabPass in a particle shader is an unusual combination.
+    - Overlap tuning so dense plumes read coherent, not crawly.
+  - *Prototype plan:* WorkBench first — animate a dummy loco transform on
+    rails, emit shimmer particles (world-sim, billboard mode), custom vertex
+    streams into the shimmer shader (alpha = mask), verify single vs. two
+    emitters, overlap behaviour and perf with 100+ particles.
