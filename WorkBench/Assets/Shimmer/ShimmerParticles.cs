@@ -3,6 +3,23 @@ using UnityEngine;
 namespace TurboTurbo
 {
     /// <summary>
+    /// Shared exhaust exit-velocity calculation for all exhaust emitters
+    /// (shimmer particles + smoke): the exit speed lerps from an idle speed
+    /// (fullLoad / IdleDivisor) to the full-load speed as a function of the
+    /// engine heat signal.
+    /// </summary>
+    public static class ExhaustVelocity
+    {
+        /// <summary>Idle speed = fullLoad / this.</summary>
+        public const float IdleDivisor = 3f;
+
+        public static float Calculate(float fullLoadSpeed, float heat)
+        {
+            return Mathf.Lerp(fullLoadSpeed / IdleDivisor, fullLoadSpeed, Mathf.Clamp01(heat));
+        }
+    }
+
+    /// <summary>
     /// Self-contained exhaust shimmer particle emitter. Designed to be
     /// reusable: zero external dependencies, configures its own
     /// ParticleSystem, and exposes a flow-coupling entry point (SetFlow)
@@ -27,7 +44,7 @@ namespace TurboTurbo
         public float sizeOverLifetimeStart = 1f;
         public float sizeOverLifetimeEnd = 1.5f;
         public float startSpeed = 1.5f;
-        public float velocityHeatScale = 2.5f;
+        public float velocityHeatScale = 3f;
         public float gravity = -0.05f;
         public Color color = new Color(1f, 1f, 1f, 1f); // rgb unused by the shader; alpha scales the decay envelope
 
@@ -214,7 +231,7 @@ namespace TurboTurbo
                 _emitAccumulator -= n;
                 n = Mathf.Min(n, 30); // burst cap after long frames
 
-                float upSpeed = startSpeed * Mathf.Lerp(1f, velocityHeatScale, heat);
+                float upSpeed = ExhaustVelocity.Calculate(startSpeed * velocityHeatScale, heat);
                 Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
                 Vector3 inherited = locoVelocity * inheritFactor;
 
