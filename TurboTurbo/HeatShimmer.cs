@@ -11,12 +11,15 @@ namespace TurboTurbo;
 
 /// <summary>
 /// Heat shimmer above hot exhausts.
-/// Default route: per-object GrabPass quads on a clone of the game's own
-/// window glass shader (DV/NewWindowDropletsShader*) using its mist mode -
-/// the one refraction path proven to work in DV's rendering setup. The
-/// scrolling noise is generated CPU-side into a shared texture used as the
-/// mist normal map, and per-frame strength tracks engine heat.
-/// Legacy route (config-gated): the SCPE post-stack effect (zooms in DV).
+/// Mode 5 (default route): per-object billboard quads with an unnamed GrabPass
+/// shader from our asset bundle. The offset field is computed entirely in the
+/// fragment shader (value-noise fBm): a flow-scaled, tapered mask anchored at
+/// the stack mouth, rising at a flow-dependent speed, with per-quad material
+/// state so multiple engines animate independently. Amplitude/speed/size all
+/// derive from the engine's heat signal (normalized fuel consumption).
+/// Modes 0-3: probe presets on a clone of the game's own window glass shader.
+/// Mode 6: solid unlit debug quad. Legacy route (config-gated): the SCPE
+/// post-stack effect (zooms in DV).
 /// </summary>
 internal static class HeatShimmer
 {
@@ -24,7 +27,9 @@ internal static class HeatShimmer
     {
         internal GameObject Go;
         internal Material Material;
+        internal Material BundleMaterial;
         internal LineRenderer Outline;
+        private float _animTime;
 
         internal void Init(Material source, Texture2D noise, Transform parent, Vector3 localPosition)
         {
@@ -155,7 +160,7 @@ internal static class HeatShimmer
             if (Outline != null) Outline.enabled = TurboConfig.HeatShimmerWire.Value;
         }
 
-        internal void UpdateFade(float intensity)
+        internal void UpdateFade(float intensity, float rawHeat, float dt)
         {
             if (Material == null) return;
             var mr = Go.GetComponent<MeshRenderer>();
@@ -187,21 +192,33 @@ internal static class HeatShimmer
                 Shader bundleShader = ModAssets.HeatShimmerShader;
                 if (bundleShader != null)
                 {
-                if (_bundleMaterial == null || _bundleMaterial.shader != bundleShader)
-                {
-                    _bundleMaterial = new Material(bundleShader) { name = "TurboTurbo.HeatShimmerMat" };
-                    // render BEFORE the smoke particles (3000) so the named
-                    // GrabPass executes pre-plume: refracting the additive
-                    // smoke reads as a yellow cylinder. The shader tag default
-                    // is overridden here; changing the tag breaks LoadFromFile.
-                    _bundleMaterial.renderQueue = 2990;
-                    Log.LogInfo("shimmer: mode 5 material built from bundle shader 'TurboTurbo/HeatShimmer' (queue 2990)");
-                }
-                mr.sharedMaterial = _bundleMaterial;
-                if (HeatShimmer.NoiseTexture != null) _bundleMaterial.SetTexture("_MainTex", HeatShimmer.NoiseTexture);
-                // intensity already includes HeatShimmerStrength (UpdateSources)
-                _bundleMaterial.SetFloat("_Strength", intensity);
-                _bundleMaterial.SetFloat("_Debug", TurboConfig.HeatShimmerDebug.Value);
+                    // per-quad material: each engine animates at its own
+                    // flow-dependent rate, so the shader state can't be shared
+                    if (BundleMaterial == null || BundleMaterial.shader != bundleShader)
+                    {
+                        BundleMaterial = new Material(bundleShader) { name = "TurboTurbo.HeatShimmerMat" };
+                        // render BEFORE the smoke particles (3000): the grab
+                        // must not contain the additive plume (refracting it
+                        // reads as a yellow blob). The shader tag default is
+                        // overridden here; changing the tag breaks LoadFromFile.
+                        BundleMaterial.renderQueue = 2990;
+                        Log.LogInfo("shimmer: mode 5 material built from bundle shader 'TurboTurbo/HeatShimmer' (queue 2990)");
+                    }
+                    mr.sharedMaterial = BundleMaterial;
+
+                    // animation rate rises with engine flow: idle 0.5, full
+                    // flow 2.0 (hot air leaves the stack faster)
+                    float speed = Mathf.Lerp(0.5f, 2f, rawHeat) * TurboConfig.HeatShimmerSpeed.Value;
+                    _animTime += dt * speed;
+                    if (_animTime > 10000f) _animTime -= 10000f;
+
+                    BundleMaterial.SetFloat("_Strength", rawHeat * TurboConfig.HeatShimmerStrength.Value);
+                    // effect region grows with flow: small blob above the
+                    // chimney at idle, taper reaching the quad edges at full
+                    BundleMaterial.SetFloat("_EffectRadius", Mathf.Lerp(0.3f, 1f, rawHeat));
+                    BundleMaterial.SetFloat("_AnimTime", _animTime);
+                    BundleMaterial.SetFloat("_Freq", TurboConfig.HeatShimmerFreq.Value);
+                    BundleMaterial.SetFloat("_Debug", TurboConfig.HeatShimmerDebug.Value);
                 }
                 else if (HeatShimmer.AltMaterial != null)
                 {
@@ -241,6 +258,7 @@ internal static class HeatShimmer
         internal void Destroy()
         {
             if (Material != null) UnityEngine.Object.Destroy(Material);
+            if (BundleMaterial != null) UnityEngine.Object.Destroy(BundleMaterial);
             if (Outline != null) UnityEngine.Object.Destroy(Outline.material);
             if (Go != null) UnityEngine.Object.Destroy(Go);
         }
@@ -256,9 +274,6 @@ internal static class HeatShimmer
         internal bool WasVisible;
     }
 
-    private const int MapW = 256;
-    private const int MapH = 144;
-    private const float MapUpdateHz = 15f;
     private const float HeatWorldRadius = 1.2f;
     private const float StackOffset = 0.6f;
 
@@ -266,17 +281,13 @@ internal static class HeatShimmer
     private static readonly ManualLogSource Log = BepInEx.Logging.Logger.CreateLogSource("HeatShimmer");
 
     private static Texture2D _map;
-    private static Color[] _pixels;
     private static PostProcessVolume _volume;
     private static Camera _camera;
 
     private static bool _initialized;
     private static double _retryTimer;
-    private static double _scroll;
-    private static double _nextMapUpdate;
     private static double _nextDebug;
     private static bool _loggedSourceVisible;
-    private static bool _loggedMapDistortion;
     private static bool _loggedNoLayer;
     private static bool _shaderInventoryLogged;
 
@@ -289,7 +300,6 @@ internal static class HeatShimmer
 
     private static Shader AltGlassShader;
     private static Material _altMaterial;
-    private static Material _bundleMaterial;
     private static Material _solidMaterial;
 
     internal static Material AltMaterial => _altMaterial;
@@ -365,9 +375,7 @@ internal static class HeatShimmer
             if (_camera == null) return;
         }
 
-        _scroll += Time.deltaTime * TurboConfig.HeatShimmerSpeed.Value;
         UpdateSources();
-        UpdateMap();
 
         if (Time.time < _nextDebug) return;
         _nextDebug = Time.time + 5.0;
@@ -396,16 +404,23 @@ internal static class HeatShimmer
     private static void EnsureNoiseTexture()
     {
         if (_map != null) return;
-        _map = new Texture2D(MapW, MapH, TextureFormat.ARGB32, mipChain: false, linear: true)
+        // static random pattern, only used as the legacy droplet modes'
+        // _MistBumpMap (the droplet shader scrolls it itself). The mode 5
+        // shimmer field is computed entirely in the fragment shader now.
+        _map = new Texture2D(128, 128, TextureFormat.ARGB32, mipChain: false, linear: true)
         {
             name = "TurboTurbo.HeatNoise",
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Bilinear,
         };
-        _pixels = new Color[MapW * MapH];
-        _map.SetPixels(_pixels);
+        var pixels = new Color[128 * 128];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value, 1f);
+        }
+        _map.SetPixels(pixels);
         _map.Apply();
-        Log.LogInfo($"shimmer: noise texture created ({MapW}x{MapH}, repeat)");
+        Log.LogInfo("shimmer: static noise texture created (128x128, legacy droplet modes only)");
     }
 
     private static void TryInit()
@@ -498,7 +513,7 @@ internal static class HeatShimmer
 
         Log.LogInfo($"shimmer init: volume created on layer {goLayer} (LayerMask 0x{layerMask.value:X8}), " +
                     $"isGlobal={_volume.isGlobal}, priority={_volume.priority}, " +
-                    $"heatHaze: tex={MapW}x{MapH} linear amount=1.0 blit={(refr.useFullscreenTriangle.value ? "fullscreenTriangle" : "plainBlit")}");
+                    $"heatHaze: linear amount=1.0 blit={(refr.useFullscreenTriangle.value ? "fullscreenTriangle" : "plainBlit")}");
 
         _initialized = true;
     }
@@ -550,72 +565,14 @@ internal static class HeatShimmer
             if (s.Quad != null)
             {
                 // billboard quad anchored above the stack exit, yaw-facing the
-                // active camera; refraction strength tracks engine heat
+                // active camera; the shader-side offset field is driven by the
+                // engine's raw heat (amplitude, radius, animation rate)
                 s.Quad.UpdateTransform(_camera, emitter.HeatOrigin);
                 float fade = onScreen
                     ? s.Intensity * TurboConfig.HeatShimmerStrength.Value
                     : 0f;
-                s.Quad.UpdateFade(fade);
+                s.Quad.UpdateFade(fade, s.Intensity, Time.deltaTime);
             }
-        }
-    }
-
-    private static void UpdateMap()
-    {
-        double now = Time.time;
-        if (now < _nextMapUpdate) return;
-        _nextMapUpdate = now + 1.0 / MapUpdateHz;
-        if (_map == null || _pixels == null) return;
-
-        float t = (float)_scroll;
-        float maskPeak = 0f;
-        float freq = TurboConfig.HeatShimmerFreq.Value;
-
-        int i = 0;
-        for (int y = 0; y < MapH; y++)
-        {
-            float v = (y + 0.5f) / MapH;
-            for (int x = 0; x < MapW; x++, i++)
-            {
-                float u = (x + 0.5f) / MapW;
-
-                float mask = 0f;
-                foreach (Source s in Sources)
-                {
-                    if (s.Intensity <= 0f) continue;
-                    // quad-space mask: soft column centered horizontally,
-                    // full strength at the bottom fading toward the top.
-                    // The quad samples this map with its own mesh UVs, so the
-                    // distortion is always glued to the quad's geometry.
-                    float horiz = 1f - Mathf.SmoothStep(0.55f, 0.95f, Mathf.Abs(u - 0.5f) * 2f);
-                    float vert = 1f - Mathf.SmoothStep(0.3f, 0.95f, v);
-                    mask += s.Intensity * horiz * vert;
-                }
-                mask = Mathf.Clamp01(mask);
-                if (mask > maskPeak) maskPeak = mask;
-
-                float nx = Mathf.Sin((v * 7f - t * 1.9f) * 6.28f * freq + Mathf.Sin(u * 5f + t * 0.8f * freq) * 2.4f)
-                         + 0.5f * Mathf.Sin((v * 13f - t * 3.1f) * 6.28f * freq + u * 11f * freq);
-                float ny = Mathf.Sin((v * 6f - t * 2.4f) * 6.28f * freq + Mathf.Sin(u * 4f - t * 1.3f * freq) * 2.2f)
-                         + 0.5f * Mathf.Sin((u * 9f + t * 1.1f) * 6.28f * freq + v * 13f * freq);
-                nx *= 0.33f;
-                ny *= 0.33f;
-
-                _pixels[i] = new Color(
-                    0.5f + nx * mask * 0.5f,
-                    0.5f + ny * mask * 0.5f,
-                    mask,
-                    1f);
-            }
-        }
-
-        _map.SetPixels(_pixels);
-        _map.Apply();
-
-        if (!_loggedMapDistortion && maskPeak > 0.2f)
-        {
-            _loggedMapDistortion = true;
-            Log.LogInfo($"shimmer: map now carries distortion (maskPeak={maskPeak:0.00})");
         }
     }
 }

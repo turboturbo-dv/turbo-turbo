@@ -2,7 +2,7 @@
 
 ## Tuning / improvement backlog
 
-- [ ] **1. Shimmer strength should track engine mass flow, not soot.**
+- [x] **1. Shimmer strength should track engine mass flow, not soot.**
   Currently strength follows the soot-emission signal. More flow through the
   engine should mean more shimmer; incomplete combustion shouldn't matter.
   Derive heat from RPM + fuel consumption (more fuel burned → more heat →
@@ -15,12 +15,12 @@
       the column lingers after the throttle closes. A plain low-pass would
       wrongly delay the attack too.
 
-- [ ] **2. Shimmer speed as a flow-dependent range.**
+- [x] **2. Shimmer speed as a flow-dependent range.**
   Idle (min flow) → speed 0.5, full flow → speed 2. Boosting flow should
   also boost how fast the shimmer propagates upward (hot air leaving the
   exhaust faster), not just the amplitude.
 
-- [ ] **3. Break up the repetitive pattern.**
+- [x] **3. Break up the repetitive pattern.**
   The displacement shows strong horizontal/vertical repetition (sum-of-sines
   noise). Use a proper noise function (value/Perlin/simplex) for a more
   random, organic look.
@@ -40,7 +40,7 @@
     the grab undisplaced. Transparent smoke doesn't write depth, so it stays
     displaceable (which matters for the smoke spike below).
 
-- [ ] **5. Dynamic effect sizing within the quad.**
+- [x] **5. Dynamic effect sizing within the quad.**
   1. Scale the size of the entire effect within the quad based on engine
      flow.
   2. Smoothly blend the effect edge into the non-shimmering area by

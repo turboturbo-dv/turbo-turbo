@@ -158,33 +158,33 @@ internal static class TurboConfig
             "Emit a black soot plume from the exhaust, driven by the smoke density signal.");
         HeatShimmerEnabled = config.Bind("TurboSmoke", "HeatShimmerEnabled", true,
             "Screen-space heat shimmer above hot exhausts (Route A: drives the shipped SCPE.Refraction effect with a generated DUDV map).");
-        HeatShimmerStrength = config.Bind("TurboSmoke", "HeatShimmerStrength", 0.5f,
-            "Heat shimmer strength multiplier.");
-        HeatShimmerMode = config.Bind("TurboSmoke", "HeatShimmerMode", 0,
-            "Glass shader probe preset: 0=mist pass A, 1=mist pass B, 2=weak mist, 3=droplet path, 4=column hidden, 5=custom bundle shader.");
-        HeatShimmerRadius = config.Bind("TurboSmoke", "HeatShimmerRadius", 0.8f,
-            "Heat column radius [m] (mode 5).");
+        HeatShimmerStrength = config.Bind("TurboSmoke", "HeatShimmerStrength", 0.01f,
+            "Heat shimmer strength multiplier (true screen-UV offset at full heat).");
+        HeatShimmerMode = config.Bind("TurboSmoke", "HeatShimmerMode", 5,
+            "Heat shimmer route: 5=custom bundle shader (default), 0-3=glass shader probe presets, 4=column hidden.");
+        HeatShimmerRadius = config.Bind("TurboSmoke", "HeatShimmerRadius", 2f,
+            "Heat shimmer quad width [m] (the flow-scaled effect fills the quad at full flow).");
         HeatShimmerHeight = config.Bind("TurboSmoke", "HeatShimmerHeight", 2.4f,
-            "Heat column height [m] above the stack exit (mode 5).");
-        HeatShimmerSpeed = config.Bind("TurboSmoke", "HeatShimmerSpeed", 1f,
-            "Heat shimmer animation speed multiplier (mode 5).");
-        HeatShimmerFreq = config.Bind("TurboSmoke", "HeatShimmerFreq", 1f,
-            "Heat shimmer noise frequency multiplier - higher = finer wobble (mode 5).");
+            "Heat shimmer quad height [m] above the stack exit.");
+        HeatShimmerSpeed = config.Bind("TurboSmoke", "HeatShimmerSpeed", 4f,
+            "Heat shimmer animation speed multiplier. The base rate rises with engine flow (0.5 at idle to 2.0 at full flow); this scales it.");
+        HeatShimmerFreq = config.Bind("TurboSmoke", "HeatShimmerFreq", 6f,
+            "Heat shimmer noise frequency multiplier - higher = finer wobble.");
         HeatShimmerWire = config.Bind("TurboSmoke", "HeatShimmerWire", false,
             "Draw a yellow wireframe outline around the heat shimmer quad (debug).");
         HeatShimmerDebug = config.Bind("TurboSmoke", "HeatShimmerDebug", 0,
-            "Heat shimmer shader debug view: 0=off, 1=noise map, 2=raw grab, 3=computed offset+strength, 4=solid magenta (geometry test).");
+            "Heat shimmer shader debug view: 0=off, 1=mask coverage, 2=raw grab, 3=computed offset+mask, 4=solid magenta (geometry test).");
         HeatShimmerUsePostStack = config.Bind("TurboSmoke", "HeatShimmerUsePostStack", false,
             "Use the SCPE post-stack route (broken: zooms in DV's setup). When false, per-object GrabPass heat quads on the window glass shader are used instead.");
         HeatShimmerFullscreenTriangle = config.Bind("TurboSmoke", "HeatShimmerFullscreenTriangle", true,
             "Use PPv2's fullscreen-triangle blit instead of a plain Blit (post-stack route only; plain Blit breaks in DV's stack).");
         TakeOverExhaust = config.Bind("TurboSmoke", "TakeOverExhaust", true,
             "Our emitter replaces the vanilla exhaust system entirely (clean haze + soot in one). When false, vanilla keeps driving the clean exhaust and we only add soot.");
-        CleanRate = config.Bind("TurboSmoke", "CleanRate", 30f,
+        CleanRate = config.Bind("TurboSmoke", "CleanRate", 20f,
             "Clean exhaust particle rate [particles/s] at full engine rpm (TakeOverExhaust only).");
-        CleanAlpha = config.Bind("TurboSmoke", "CleanAlpha", 0.4f,
+        CleanAlpha = config.Bind("TurboSmoke", "CleanAlpha", 0.1f,
             "Opacity of the clean haze particles (the vanilla tint ships near-opaque for its additive shader - alpha-blend needs less).");
-        ExhaustSpeed = config.Bind("TurboSmoke", "ExhaustSpeed", 2.5f,
+        ExhaustSpeed = config.Bind("TurboSmoke", "ExhaustSpeed", 10f,
             "Exhaust particle exit speed at full engine rpm (TakeOverExhaust only).");
         SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,
             "Soot particle emission rate [particles/s] at full smoke density.");
