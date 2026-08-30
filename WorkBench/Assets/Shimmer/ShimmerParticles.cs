@@ -22,17 +22,23 @@ namespace TurboTurbo
     public class ShimmerParticles : MonoBehaviour
     {
         [Header("Emission (particles/s, lerped by heat)")]
-        public float idleRate = 2f;
-        public float fullRate = 12f;
+        public float idleRate = 3f;
+        public float fullRate = 10f;
 
         [Header("Particle look")]
         public float lifetime = 2f;
         public float startSizeMin = 0.8f;
         public float startSizeMax = 0.8f;
+        public float sizeOverLifetimeStart = 1f;
+        public float sizeOverLifetimeEnd = 1.5f;
         public float startSpeed = 1.5f;
         public float velocityHeatScale = 2.5f;
         public float gravity = -0.05f;
         public Color color = new Color(1f, 0.9f, 0.3f, 0.8f);
+
+        [Header("Shimmer decay (seconds, independent of lifetime)")]
+        public float shimmerHoldTime = 0.2f;
+        public float shimmerDecayTime = 0.5f;
 
         [Header("Shimmer (matches HeatQuad.UpdateFade semantics)")]
         public bool useShimmerShader = true;
@@ -50,6 +56,13 @@ namespace TurboTurbo
         private ParticleSystem _ps;
         private Material _material;
         private float _animTime;
+        private AnimationCurve _sizeCurve;
+        private float _sizeCurveStart = -1f;
+        private float _sizeCurveEnd = -1f;
+        private Gradient _alphaGradient;
+        private float _alphaLife = -1f;
+        private float _alphaHold = -1f;
+        private float _alphaDecay = -1f;
 
         private void Awake()
         {
@@ -71,6 +84,45 @@ namespace TurboTurbo
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 200;
             main.gravityModifier = gravity;
+
+            // growth: particles expand over their lifetime (smoke-like);
+            // curve cached so per-frame re-apply doesn't allocate
+            if (_sizeCurve == null || _sizeCurveStart != sizeOverLifetimeStart || _sizeCurveEnd != sizeOverLifetimeEnd)
+            {
+                _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
+                _sizeCurveStart = sizeOverLifetimeStart;
+                _sizeCurveEnd = sizeOverLifetimeEnd;
+            }
+            var sol = _ps.sizeOverLifetime;
+            sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
+
+            // per-particle shimmer envelope: full strength for holdTime,
+            // then linear decay over shimmerDecayTime (seconds). Rides the
+            // Color alpha stream; smoke will later use its own channel so it
+            // can outlive the shimmer.
+            if (_alphaGradient == null || _alphaLife != lifetime || _alphaHold != shimmerHoldTime || _alphaDecay != shimmerDecayTime)
+            {
+                float life = Mathf.Max(lifetime, 0.01f);
+                float holdEnd = Mathf.Clamp01(shimmerHoldTime / life);
+                float decayEnd = Mathf.Clamp01((shimmerHoldTime + shimmerDecayTime) / life);
+                _alphaGradient = new Gradient();
+                _alphaGradient.SetKeys(
+                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new[]
+                    {
+                        new GradientAlphaKey(1f, 0f),
+                        new GradientAlphaKey(1f, holdEnd),
+                        new GradientAlphaKey(0f, decayEnd),
+                        new GradientAlphaKey(0f, 1f),
+                    });
+                _alphaLife = lifetime;
+                _alphaHold = shimmerHoldTime;
+                _alphaDecay = shimmerDecayTime;
+            }
+            var col = _ps.colorOverLifetime;
+            col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(_alphaGradient);
 
             var shape = _ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;

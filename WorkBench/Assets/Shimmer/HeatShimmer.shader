@@ -43,6 +43,7 @@ Shader "TurboTurbo/HeatShimmer"
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                fixed4 color : COLOR;
             };
 
             struct v2f
@@ -51,6 +52,7 @@ Shader "TurboTurbo/HeatShimmer"
                 float2 uv : TEXCOORD0;
                 float4 grabUV : TEXCOORD1;
                 float eyeDepth : TEXCOORD2;
+                fixed4 color : TEXCOORD3;
             };
 
             v2f vert (appdata v)
@@ -60,6 +62,7 @@ Shader "TurboTurbo/HeatShimmer"
                 o.uv = v.uv;
                 o.grabUV = ComputeGrabScreenPos(o.pos);
                 o.eyeDepth = -UnityObjectToViewPos(v.vertex).z;
+                o.color = v.color;
                 return o;
             }
 
@@ -129,7 +132,10 @@ Shader "TurboTurbo/HeatShimmer"
                 // stretches upward.
                 float2 d = float2(abs(i.uv.x - 0.5) * 2.0, i.uv.y * 1.35);
                 float dn = length(d) / max(_EffectRadius, 0.05);
-                float mask = (1.0 - smoothstep(0.55, 1.0, dn)) * (1.0 - occluded);
+                // vertex color alpha carries the per-particle shimmer
+                // envelope (decays with particle age, independent of the
+                // particle lifetime - smoke will use its own channel later)
+                float mask = (1.0 - smoothstep(0.55, 1.0, dn)) * i.color.a * (1.0 - occluded);
 
                 // rising turbulent field: vertically stretched cells, moving
                 // up at the flow-dependent speed, slow lateral evolution
