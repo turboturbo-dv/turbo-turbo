@@ -19,11 +19,20 @@ namespace TurboTurbo.WorkBench
         [Header("Particle emitter placement")]
         public Vector3 emitterPosition = new Vector3(2.1f, 0.1f, 8f);
 
+        [Header("Exhaust smoke emitter (game exhaust clone, TurboSmoke behaviour)")]
+        public bool smokeEnabled = true;
+        public float lambda = 1.2f;
+        [Range(0f, 1f)] public float demand = 0.3f;
+        [Range(0f, 1f)] public float rpmNorm = 0.5f;
+        public float cleanRate = 20f;
+        public float maxRate = 120f;
+
         [Header("Reference frame movement (world-sim trail test)")]
         [Range(0f, 8f)] public float moveSpeed = 1.5f;
 
         private Renderer _background;
         private ShimmerParticles _particleEmitter;
+        private SmokeEmitterBench _smokeBench;
         private GameObject _frame;
 
         private void Start()
@@ -65,6 +74,17 @@ namespace TurboTurbo.WorkBench
             go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // aim the cone up
             _particleEmitter = go.AddComponent<ShimmerParticles>();
             go.transform.SetParent(_frame.transform, false);
+
+            // game-exhaust smoke emitter (TurboSmoke behaviour) side by side
+            // with the shimmer particles, for interaction/draw-order tuning
+            if (smokeEnabled)
+            {
+                var smokeGo = new GameObject("SmokeEmitterBench");
+                _smokeBench = smokeGo.AddComponent<SmokeEmitterBench>();
+                _smokeBench.cleanRate = cleanRate;
+                _smokeBench.maxRate = maxRate;
+                _smokeBench.Build(_frame.transform);
+            }
         }
 
         private void Update()
@@ -74,6 +94,15 @@ namespace TurboTurbo.WorkBench
             if (_particleEmitter != null)
             {
                 _particleEmitter.SetFlow(heat);
+            }
+
+            // smoke model inputs
+            if (_smokeBench != null)
+            {
+                _smokeBench.lambda = lambda;
+                _smokeBench.demand = demand;
+                _smokeBench.rpmNorm = rpmNorm;
+                _smokeBench.heat = heat; // same signal that drives the shimmer
             }
 
             Material bg = _background != null ? _background.sharedMaterial : null;

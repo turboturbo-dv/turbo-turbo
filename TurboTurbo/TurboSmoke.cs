@@ -142,10 +142,9 @@ internal sealed class TurboSmokeEmitter
             main.startColor = smokeColor;
         }
 
-        // aligned exhaust velocity: shared ExhaustVelocity curve, with
-        // ExhaustSpeed as the full-load exit speed (idle = /3)
+        // aligned exhaust velocity: shared curve (idle 1.5 m/s, full load 10 m/s)
         main.startSpeed = _ownsExhaust
-            ? ExhaustVelocity.Calculate(TurboConfig.ExhaustSpeed.Value, HeatIntensity)
+            ? ExhaustVelocity.Calculate(HeatIntensity)
             : _vanilla.main.startSpeed;
 
         // heat shimmer tracks engine mass flow directly (normalized fuel

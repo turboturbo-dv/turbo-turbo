@@ -66,10 +66,6 @@ internal static class TurboConsole
                             TurboConfig.CleanRate.Value = Mathf.Clamp(v, 0f, 300f);
                             _config.Save();
                             break;
-                        case "speed":
-                            TurboConfig.ExhaustSpeed.Value = Mathf.Clamp(v, 0.5f, 15f);
-                            _config.Save();
-                            break;
                         case "haze":
                             TurboConfig.CleanAlpha.Value = Mathf.Clamp(v, 0.05f, 1f);
                             _config.Save();
@@ -108,12 +104,12 @@ internal static class TurboConsole
                     }
                 }
                 Terminal.Log($"soot: rate={TurboConfig.SmokeMaxRate.Value:0} alpha={TurboConfig.SmokeParticleAlpha.Value:0.00} sizeMult={TurboConfig.SmokeSizeMult.Value:0.00} " +
-                             $"clean={TurboConfig.CleanRate.Value:0} haze={TurboConfig.CleanAlpha.Value:0.00} speed={TurboConfig.ExhaustSpeed.Value:0.00} enabled={TurboConfig.SmokeEnabled.Value} " +
+                             $"clean={TurboConfig.CleanRate.Value:0} haze={TurboConfig.CleanAlpha.Value:0.00} enabled={TurboConfig.SmokeEnabled.Value} " +
                              $"shimmer={TurboConfig.HeatShimmerEnabled.Value} shimmermode={TurboConfig.HeatShimmerMode.Value} " +
                              $"shimmerstrength={TurboConfig.HeatShimmerStrength.Value:0.00} shimmerspeed={TurboConfig.HeatShimmerSpeed.Value:0.0} " +
                              $"shimmerfreq={TurboConfig.HeatShimmerFreq.Value:0.0} shimmerdebug={TurboConfig.HeatShimmerDebug.Value} shimmeroutline={TurboConfig.HeatShimmerOutline.Value}");
             },
-            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|speed|haze|shimmer|shimmermode|shimmerstrength|shimmerspeed|shimmerfreq|shimmerdebug|shimmeroutline] [value]");
+            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|haze|shimmer|shimmermode|shimmerstrength|shimmerspeed|shimmerfreq|shimmerdebug|shimmeroutline] [value]");
         Terminal.Autocomplete.Register(smokeCmd);
 
         CommandInfo dumpCmd = Terminal.Shell.AddCommand(

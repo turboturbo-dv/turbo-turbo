@@ -66,7 +66,6 @@ internal static class TurboConfig
     internal static ConfigEntry<bool> HeatShimmerFullscreenTriangle;
     internal static ConfigEntry<float> CleanRate;
     internal static ConfigEntry<float> CleanAlpha;
-    internal static ConfigEntry<float> ExhaustSpeed;
     internal static ConfigEntry<float> SmokeMaxRate;
     internal static ConfigEntry<float> SmokeParticleAlpha;
     internal static ConfigEntry<float> SmokeSizeMult;
@@ -178,8 +177,6 @@ internal static class TurboConfig
             "Clean exhaust particle rate [particles/s] at full engine rpm (TakeOverExhaust only).");
         CleanAlpha = config.Bind("TurboSmoke", "CleanAlpha", 0.1f,
             "Opacity of the clean haze particles (the vanilla tint ships near-opaque for its additive shader - alpha-blend needs less).");
-        ExhaustSpeed = config.Bind("TurboSmoke", "ExhaustSpeed", 10f,
-            "Exhaust particle exit speed at full engine rpm (TakeOverExhaust only).");
         SmokeMaxRate = config.Bind("TurboSmoke", "MaxRate", 120f,
             "Soot particle emission rate [particles/s] at full smoke density.");
         SmokeParticleAlpha = config.Bind("TurboSmoke", "ParticleAlpha", 0.45f,

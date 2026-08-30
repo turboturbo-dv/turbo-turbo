@@ -4,18 +4,19 @@ namespace TurboTurbo
 {
     /// <summary>
     /// Shared exhaust exit-velocity calculation for all exhaust emitters
-    /// (shimmer particles + smoke): the exit speed lerps from an idle speed
-    /// (fullLoad / IdleDivisor) to the full-load speed as a function of the
-    /// engine heat signal.
+    /// (shimmer particles + smoke): the exit speed lerps from the idle speed
+    /// (1.5 m/s) to the full-load speed (10 m/s) as a function of the engine
+    /// heat signal.
     /// </summary>
     public static class ExhaustVelocity
     {
-        /// <summary>Idle speed = fullLoad / this.</summary>
-        public const float IdleDivisor = 3f;
+        /// <summary>Shared exhaust exit speeds [m/s].</summary>
+        public const float Idle = 1.5f;
+        public const float FullLoad = 10f;
 
-        public static float Calculate(float fullLoadSpeed, float heat)
+        public static float Calculate(float heat)
         {
-            return Mathf.Lerp(fullLoadSpeed / IdleDivisor, fullLoadSpeed, Mathf.Clamp01(heat));
+            return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
         }
     }
 
@@ -42,7 +43,7 @@ namespace TurboTurbo
         public float startSizeMin = 0.8f;
         public float startSizeMax = 0.8f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 1.5f;
+        public float sizeOverLifetimeEnd = 2.5f;
         public float startSpeed = 1.5f;
         public float velocityHeatScale = 3f;
         public float gravity = -0.05f;
@@ -231,7 +232,7 @@ namespace TurboTurbo
                 _emitAccumulator -= n;
                 n = Mathf.Min(n, 30); // burst cap after long frames
 
-                float upSpeed = ExhaustVelocity.Calculate(startSpeed * velocityHeatScale, heat);
+                float upSpeed = ExhaustVelocity.Calculate(heat);
                 Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
                 Vector3 inherited = locoVelocity * inheritFactor;
 
