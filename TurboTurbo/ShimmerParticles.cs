@@ -43,9 +43,10 @@ namespace TurboTurbo
         [Header("Shimmer (matches HeatQuad.UpdateFade semantics)")]
         public bool useShimmerShader = true;
         public bool outline = false;
+        public int debug;
         public float strength = 0.01f;
         public float freq = 6f;
-        public float idleRadius = 0.3f;
+        public float idleRadius = 0.8f;
         public float fullRadius = 1f;
         public float idleAnimSpeed = 0.5f;
         public float fullAnimSpeed = 2f;
@@ -62,6 +63,9 @@ namespace TurboTurbo
         private ParticleSystem _ps;
         private Material _material;
         private float _animTime;
+
+        /// <summary>Live particle count, for console dumps.</summary>
+        public int ParticleCount => _ps != null ? _ps.particleCount : 0;
         private AnimationCurve _sizeCurve;
         private float _sizeCurveStart = -1f;
         private float _sizeCurveEnd = -1f;
@@ -187,6 +191,7 @@ namespace TurboTurbo
                 _material.SetFloat("_AnimTime", _animTime);
                 _material.SetFloat("_Freq", freq);
                 _material.SetFloat("_Outline", outline ? 1f : 0f);
+                _material.SetFloat("_Debug", debug);
             }
         }
     }

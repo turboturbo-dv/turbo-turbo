@@ -61,6 +61,7 @@ internal static class TurboConfig
     internal static ConfigEntry<float> HeatShimmerSpeed;
     internal static ConfigEntry<float> HeatShimmerFreq;
     internal static ConfigEntry<int> HeatShimmerDebug;
+    internal static ConfigEntry<bool> HeatShimmerOutline;
     internal static ConfigEntry<bool> HeatShimmerUsePostStack;
     internal static ConfigEntry<bool> HeatShimmerFullscreenTriangle;
     internal static ConfigEntry<float> CleanRate;
@@ -165,6 +166,8 @@ internal static class TurboConfig
             "Heat shimmer noise frequency multiplier - higher = finer wobble.");
         HeatShimmerDebug = config.Bind("TurboSmoke", "HeatShimmerDebug", 0,
             "Heat shimmer shader debug view: 0=off, 1=mask coverage, 2=raw grab, 3=computed offset+mask, 4=solid magenta (geometry test).");
+        HeatShimmerOutline = config.Bind("TurboSmoke", "HeatShimmerOutline", false,
+            "Draw a magenta outline around each shimmer particle billboard (debug).");
         HeatShimmerUsePostStack = config.Bind("TurboSmoke", "HeatShimmerUsePostStack", false,
             "Use the SCPE post-stack route (broken: zooms in DV's setup). When false, per-object GrabPass heat quads on the window glass shader are used instead.");
         HeatShimmerFullscreenTriangle = config.Bind("TurboSmoke", "HeatShimmerFullscreenTriangle", true,

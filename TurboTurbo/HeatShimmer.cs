@@ -72,6 +72,19 @@ internal static class HeatShimmer
         Log.LogInfo($"shimmer: unregistered heat source ({Sources.Count} remain)");
     }
 
+    /// <summary>Console dump: per-source particle state.</summary>
+    internal static string[] Dump()
+    {
+        var lines = new List<string>();
+        foreach (Source s in Sources)
+        {
+            int count = s.Particles != null ? s.Particles.ParticleCount : -1;
+            lines.Add($"[shimmer] {s.Emitter.Car.ID}: heat={s.Intensity:0.000} particles={count} " +
+                      $"emitterActive={(s.ParticlesGo != null && s.ParticlesGo.activeSelf)}");
+        }
+        return lines.ToArray();
+    }
+
     internal static void HandleUpdate()
     {
         if (!TurboConfig.HeatShimmerEnabled.Value) return;
@@ -273,6 +286,8 @@ internal static class HeatShimmer
                 s.Particles.strength = TurboConfig.HeatShimmerStrength.Value;
                 s.Particles.freq = TurboConfig.HeatShimmerFreq.Value;
                 s.Particles.speedMultiplier = TurboConfig.HeatShimmerSpeed.Value;
+                s.Particles.debug = TurboConfig.HeatShimmerDebug.Value;
+                s.Particles.outline = TurboConfig.HeatShimmerOutline.Value;
             }
         }
     }

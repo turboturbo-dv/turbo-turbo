@@ -98,6 +98,10 @@ internal static class TurboConsole
                             TurboConfig.HeatShimmerDebug.Value = (int)Mathf.Clamp(v, 0f, 4f);
                             _config.Save();
                             break;
+                        case "shimmeroutline":
+                            TurboConfig.HeatShimmerOutline.Value = v > 0.5f;
+                            _config.Save();
+                            break;
                         default:
                             Terminal.Log("unknown key - use rate, alpha, size, clean, speed or haze");
                             return;
@@ -107,10 +111,28 @@ internal static class TurboConsole
                              $"clean={TurboConfig.CleanRate.Value:0} haze={TurboConfig.CleanAlpha.Value:0.00} speed={TurboConfig.ExhaustSpeed.Value:0.00} enabled={TurboConfig.SmokeEnabled.Value} " +
                              $"shimmer={TurboConfig.HeatShimmerEnabled.Value} shimmermode={TurboConfig.HeatShimmerMode.Value} " +
                              $"shimmerstrength={TurboConfig.HeatShimmerStrength.Value:0.00} shimmerspeed={TurboConfig.HeatShimmerSpeed.Value:0.0} " +
-                             $"shimmerfreq={TurboConfig.HeatShimmerFreq.Value:0.0} shimmerdebug={TurboConfig.HeatShimmerDebug.Value}");
+                             $"shimmerfreq={TurboConfig.HeatShimmerFreq.Value:0.0} shimmerdebug={TurboConfig.HeatShimmerDebug.Value} shimmeroutline={TurboConfig.HeatShimmerOutline.Value}");
             },
-            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|speed|haze|shimmer|shimmermode|shimmerstrength|shimmerspeed|shimmerfreq|shimmerdebug] [value]");
+            0, 2, "Get/set exhaust emitter parameters (rate/alpha/size = soot, clean/speed/haze = base haze, shimmer* = heat shimmer).", "[rate|alpha|size|clean|speed|haze|shimmer|shimmermode|shimmerstrength|shimmerspeed|shimmerfreq|shimmerdebug|shimmeroutline] [value]");
         Terminal.Autocomplete.Register(smokeCmd);
+
+        CommandInfo dumpCmd = Terminal.Shell.AddCommand(
+            "turbodump",
+            args =>
+            {
+                foreach (EngineTurbo turbo in TurboModel.AllTurbos)
+                {
+                    string line = turbo.DumpState();
+                    Terminal.Log(line);
+                    TurboModel.Log.LogInfo(line);
+                }
+                foreach (string line in HeatShimmer.Dump())
+                {
+                    Terminal.Log(line);
+                }
+            },
+            0, 0, "Dump turbo sim + shimmer particle state for every loco to the terminal.");
+        Terminal.Autocomplete.Register(dumpCmd);
 
         CommandInfo cfgCmd = Terminal.Shell.AddCommand(
             "turbocfg",

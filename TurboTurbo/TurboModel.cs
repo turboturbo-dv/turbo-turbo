@@ -26,6 +26,9 @@ internal static class TurboModel
 
     private static readonly Dictionary<SimulationFlow, EngineTurbo> Turbos = new();
 
+    /// <summary>Console access for state dumps.</summary>
+    internal static System.Collections.Generic.IEnumerable<EngineTurbo> AllTurbos => Turbos.Values;
+
     internal static void HandleUpdate()
     {
         if (TurboConfig.SimToggleKey.Value.IsDown())
@@ -252,6 +255,14 @@ internal sealed class EngineTurbo
         _whine = null;
     }
 
+    internal string DumpState()
+    {
+        var smokeText = string.Join(", ", _smoke.Select(e => $"heat={e.HeatIntensity:0.000}"));
+        return $"[{Car.ID}] engineOn={EngineRunning} fuelNorm={_fuelNorm:0.000} demand={_demand:0.000} " +
+               $"rpmNorm={_rpmNorm:0.000} boost={_boost:0.000} lambda={Lambda:0.000} overfuel={Overfuel:0.000} " +
+               $"smoke={SmokeDensity:0.000} {smokeText}";
+    }
+
     internal void Tick(float delta)
     {
         float demand = _throttlePort.Value;
@@ -312,10 +323,10 @@ internal sealed class EngineTurbo
         }
         _prevDemand = demand;
 
-        if (TurboConfig.DebugLog.Value && SmokeDensity > 0.05f && Time.time - _lastDebugLog > 0.5f)
+        if (TurboConfig.DebugLog.Value && Time.time - _lastDebugLog > 0.5f)
         {
             _lastDebugLog = Time.time;
-            TurboModel.Log.LogInfo($"smoke={SmokeDensity:0.00} lambda={lambda:0.00} overfuel={Overfuel:0.00} " +
+            TurboModel.Log.LogInfo($"fuelNorm={_fuelNorm:0.00} smoke={SmokeDensity:0.00} lambda={lambda:0.00} overfuel={Overfuel:0.00} " +
                                    $"boost={_boost:0.00} charge={charge:0.00} demand={demand:0.00} rpmNorm={rpmNorm:0.00} [{Car.ID}]");
         }
 
