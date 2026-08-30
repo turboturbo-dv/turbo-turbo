@@ -36,6 +36,7 @@ namespace TurboTurbo
 
         [Header("Shimmer (matches HeatQuad.UpdateFade semantics)")]
         public bool useShimmerShader = true;
+        public bool outline = false;
         public float strength = 0.01f;
         public float freq = 6f;
         public float idleRadius = 0.3f;
@@ -82,8 +83,11 @@ namespace TurboTurbo
                 var shimmer = Shader.Find("TurboTurbo/HeatShimmer");
                 if (shimmer != null)
                 {
-                    _material = new Material(shimmer) { name = "TurboTurbo.ShimmerParticleMat" };
-                    rend.material = _material;
+                    if (_material == null || _material.shader != shimmer)
+                    {
+                        _material = new Material(shimmer) { name = "TurboTurbo.ShimmerParticleMat" };
+                        rend.material = _material;
+                    }
                 }
             }
             if (_material == null)
@@ -101,6 +105,10 @@ namespace TurboTurbo
 
         private void Update()
         {
+            // re-apply layout every frame so inspector edits apply live
+            // (cheap module writes; the material is created only once)
+            Configure();
+
             var em = _ps.emission;
             em.rateOverTime = Mathf.Lerp(idleRate, fullRate, heat);
 
@@ -120,6 +128,7 @@ namespace TurboTurbo
                 _material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, heat));
                 _material.SetFloat("_AnimTime", _animTime);
                 _material.SetFloat("_Freq", freq);
+                _material.SetFloat("_Outline", outline ? 1f : 0f);
             }
         }
     }

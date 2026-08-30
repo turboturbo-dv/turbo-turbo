@@ -7,6 +7,7 @@ Shader "TurboTurbo/HeatShimmer"
         _AnimTime ("Animation Time", Float) = 0.0
         _Freq ("Noise Frequency", Float) = 1.0
         _Debug ("Debug View", Float) = 0
+        _Outline ("Outline Billboard (0/1)", Float) = 0
     }
     SubShader
     {
@@ -34,6 +35,7 @@ Shader "TurboTurbo/HeatShimmer"
             float _AnimTime;
             float _Freq;
             float _Debug;
+            float _Outline;
             sampler2D _TurboHeatGrab;
             sampler2D_float _CameraDepthTexture;
 
@@ -98,6 +100,16 @@ Shader "TurboTurbo/HeatShimmer"
 
             half4 frag (v2f i) : SV_Target
             {
+                // debug outline: bright border at the billboard's uv edges
+                if (_Outline > 0.5)
+                {
+                    float2 e = min(i.uv, 1.0 - i.uv);
+                    if (e.x < 0.02 || e.y < 0.02)
+                    {
+                        return half4(1.0, 0.0, 1.0, 1.0);
+                    }
+                }
+
                 float2 suvBase = i.grabUV.xy / i.grabUV.w;
 
                 // foreground bleed fix: opaque geometry nearer than the quad
