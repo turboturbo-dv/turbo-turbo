@@ -67,3 +67,33 @@
     rails, emit shimmer particles (world-sim, billboard mode), custom vertex
     streams into the shimmer shader (alpha = mask), verify single vs. two
     emitters, overlap behaviour and perf with 100+ particles.
+
+- [ ] **Spike (phase 2 of shimmer particles): serve engine smoke from the
+  same particle shader.**
+  Extend the shimmer particle shader with smoke quantity parameters so each
+  particle draws smoke *directly on top of its displaced background*, then
+  retire the original smoke particle emitter entirely.
+  - *Why it's elegant:*
+    - Smoke becomes a shader term, not a blend state:
+      `final = occluded ? grab : lerp(displacedGrab, smokeColor, smokeAlpha)`
+      — one pass, `Blend Off`, zero sorting or queue games; shimmer and
+      smoke literally cannot interfere because they are one draw.
+    - The same fBm field drives displacement *and* smoke shape (puff edges =
+      noise threshold animated by the turbulence) — the air that wobbles is
+      the air that's smoky, a look two independent systems can't produce.
+    - Occlusion improves: the per-pixel depth test gates the smoke term too,
+      so foreground objects hide plume pixels behind them per-pixel (finer
+      than the vanilla particle ZTest).
+    - One emitter replaces three (clean haze + soot + shimmer quad); all
+      drivers already exist (`HeatIntensity`, `SmokeDensity` → particle
+      vertex channels). Cold engine = faint haze; hot = haze + soot +
+      shimmer, mixed per particle.
+  - *Costs / risks:*
+    - Smoke look fidelity is the real work: DV's current soot has tuned
+      growth curves, fade, flipbook textures, rate-over-distance — procedural
+      shader smoke (noise puff density × life fade) needs WorkBench iteration
+      to match, but ends up more tweakable than any particle-sheet setup.
+    - Lighting: shader smoke is unlit constant color; fine for dark soot,
+      needs care for the faint clean haze.
+    - Refactor of `TurboSmokeEmitter`: emission rate/size/color move into
+      per-particle vertex channels driven by the existing signals.
