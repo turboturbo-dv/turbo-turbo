@@ -13,17 +13,16 @@ Shader "TurboTurbo/HeatShimmer"
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
-        // UNNAMED grab: captured fresh per object per camera. A named grab is
-        // captured once per frame at the first object that uses it - if a
-        // reflection probe or secondary camera renders the quad first, the
-        // view camera reuses a stale/wrong-viewpoint grab (invisible shimmer).
+        // NAMED grab: captured once per frame at the first user - every
+        // shimmer effect (quad or particle renderer) samples that one
+        // capture, so N effects cost a single framebuffer copy.
         GrabPass { "_TurboHeatGrab" }
 
         Pass
         {
             ZWrite Off
             Cull Off
-            Blend Off
+            Blend SrcAlpha OneMinusSrcAlpha
 
             CGPROGRAM
             #pragma vertex vert
@@ -124,31 +123,26 @@ Shader "TurboTurbo/HeatShimmer"
                 float sceneZ = LinearEyeDepth(rawZ);
                 float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - 0.05) ? 1.0 : 0.0;
 
-                // quad-uv mask: blob anchored at the bottom-center (the stack
-                // mouth). The radius grows with engine flow; the taper always
-                // reaches zero at dn = 1, which at full flow (radius 1) is
-                // exactly the quad edge - rescaling the quad rescales the
-                // whole effect. Vertical extent is weighted so the column
-                // stretches upward.
-                float2 d = float2(abs(i.uv.x - 0.5) * 2.0, i.uv.y * 1.35);
+                // centered on the billboard (not bottom-anchored): smoke puffs
+                // sit in the middle of each particle. Vertical factor keeps a
+                // slight flattening.
+                float2 d = float2(abs(i.uv.x - 0.5) * 2.0, abs(i.uv.y - 0.5) * 2.0 * 1.35);
                 float dn = length(d) / max(_EffectRadius, 0.05);
-                // vertex color alpha carries the per-particle shimmer
-                // envelope (decays with particle age, independent of the
-                // particle lifetime - smoke will use its own channel later)
-                float mask = (1.0 - smoothstep(0.55, 1.0, dn)) * i.color.a * (1.0 - occluded);
+                float edgeFade = (1.0 - smoothstep(0.55, 1.0, dn)) * (1.0 - occluded);
 
                 // rising turbulent field: vertically stretched cells, moving
-                // up at the flow-dependent speed, slow lateral evolution
+                // up at the flow-dependent speed, slow lateral evolution.
+                // Full amplitude - the alpha blend applies the edge fade.
                 float2 np = i.uv * float2(4.0 * _Freq, 1.8 * _Freq)
                           - float2(_AnimTime * 0.13, _AnimTime);
                 float n1 = fbm(np);
                 float n2 = fbm(np + float2(37.2, 17.9));
-                float2 offset = (float2(n1, n2) - 0.5) * _Strength * mask;
+                float2 offset = (float2(n1, n2) - 0.5) * _Strength;
 
                 // debug 1: mask coverage
                 if (_Debug > 0.5 && _Debug < 1.5)
                 {
-                    return half4(mask.xxx, 1.0);
+                    return half4(edgeFade.xxx, 1.0);
                 }
                 // debug 2: raw grab, no offset - validates the grab path
                 if (_Debug > 1.5 && _Debug < 2.5)
@@ -158,7 +152,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // debug 3: computed offset (RG, +-0.05 = full swing) + mask (B)
                 if (_Debug > 2.5 && _Debug < 3.5)
                 {
-                    return half4(offset * 20.0 + 0.5, mask, 1.0);
+                    return half4(offset * 20.0 + 0.5, edgeFade, 1.0);
                 }
                 // debug 4: solid magenta - proves geometry + material render
                 if (_Debug > 3.5)
@@ -166,9 +160,13 @@ Shader "TurboTurbo/HeatShimmer"
                     return half4(1.0, 0.0, 1.0, 1.0);
                 }
 
-                // offset applied AFTER projection: _Strength is in true
-                // screen-UV units, independent of view distance
-                return tex2D(_TurboHeatGrab, suvBase + offset);
+                // coverage: edge fade x per-particle shimmer envelope
+                // (colorOverLifetime decay, via the color alpha stream),
+                // transparent where occluded by foreground geometry - so
+                // overlapping particles composite instead of overwriting
+                half4 scene = tex2D(_TurboHeatGrab, suvBase + offset);
+                float a = edgeFade * i.color.a;
+                return half4(scene.rgb, a);
             }
             ENDCG
         }

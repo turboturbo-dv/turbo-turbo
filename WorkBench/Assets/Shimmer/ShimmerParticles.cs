@@ -6,17 +6,12 @@ namespace TurboTurbo
     /// Self-contained exhaust shimmer particle emitter. Designed to be
     /// reusable: zero external dependencies, configures its own
     /// ParticleSystem, and exposes a flow-coupling entry point (SetFlow)
-    /// that the mod will drive from the engine's heat/smoke signals.
+    /// that the mod will drive from the engine's heat signal.
     ///
     /// Each particle is a billboard running the shimmer grab shader: it
-    /// displaces the scene behind it with the same noise field the quad
-    /// uses, with the flow-scaled radius/speed/strength semantics of the
-    /// mod's per-quad materials.
-    ///
-    /// Planned evolution (shimmer-particles spike):
-    ///  - custom vertex streams feed per-particle random phase
-    ///  - particle color/alpha replaces the analytic edge mask
-    ///  - smoke rendering joins the same shader (phase 2)
+    /// displaces the scene behind it with a value-noise field, inherits the
+    /// vehicle's velocity at emission (decayed by drag), and fades via the
+    /// color alpha envelope (colorOverLifetime).
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour
@@ -34,11 +29,17 @@ namespace TurboTurbo
         public float startSpeed = 1.5f;
         public float velocityHeatScale = 2.5f;
         public float gravity = -0.05f;
-        public Color color = new Color(1f, 0.9f, 0.3f, 0.8f);
+        public Color color = new Color(1f, 1f, 1f, 1f); // rgb unused by the shader; alpha scales the decay envelope
 
-        [Header("Shimmer decay (seconds, independent of lifetime)")]
-        public float shimmerHoldTime = 0.2f;
-        public float shimmerDecayTime = 0.5f;
+        [Header("Inherited motion (train velocity + air resistance)")]
+        [Range(0f, 1f)] public float inheritFactor = 1f;
+        public float drag = 0.8f;
+        public float buoyancy = 0.3f;
+
+        /// <summary>World velocity of the vehicle carrying this emitter -
+        /// set by the caller every frame (mod: Car velocity, bench: frame
+        /// speed). Particles inherit this at emission, then drag decays it.</summary>
+        public Vector3 locoVelocity;
 
         [Header("Shimmer (matches HeatQuad.UpdateFade semantics)")]
         public bool useShimmerShader = true;
@@ -52,31 +53,22 @@ namespace TurboTurbo
         public float fullAnimSpeed = 2f;
         public float speedMultiplier = 1f;
 
-        [Header("Inherited motion (train velocity + air resistance)")]
-        [Range(0f, 1f)] public float inheritFactor = 1f;
-        public float drag = 0.8f;
-        public float buoyancy = 0.3f;
+        [Header("Shimmer decay (seconds, independent of lifetime)")]
+        public float shimmerHoldTime = 0.2f;
+        public float shimmerDecayTime = 0.5f;
 
-        /// <summary>World velocity of the vehicle carrying this emitter -
-        /// set by the caller every frame (mod: Car velocity, bench: frame
-        /// speed). Particles inherit this at emission, then drag decays it.</summary>
-        public Vector3 locoVelocity;
+        [Header("Engine signal (0..1) - driven by the mod per frame")]
+        [Range(0f, 1f)] public float heat;
 
         /// <summary>Shader override for contexts where Shader.Find cannot see
         /// the shader (e.g. it lives in an asset bundle) - set before the
         /// first Configure call, or call Configure again after setting.</summary>
         public Shader shaderOverride;
 
-        [Header("Engine signal (0..1) - driven by the mod per frame")]
-        [Range(0f, 1f)] public float heat;
-
         private ParticleSystem _ps;
         private Material _material;
         private float _animTime;
         private float _emitAccumulator;
-
-        /// <summary>Live particle count, for console dumps.</summary>
-        public int ParticleCount => _ps != null ? _ps.particleCount : 0;
         private AnimationCurve _sizeCurve;
         private float _sizeCurveStart = -1f;
         private float _sizeCurveEnd = -1f;
@@ -84,6 +76,9 @@ namespace TurboTurbo
         private float _alphaLife = -1f;
         private float _alphaHold = -1f;
         private float _alphaDecay = -1f;
+
+        /// <summary>Live particle count, for console dumps.</summary>
+        public int ParticleCount => _ps != null ? _ps.particleCount : 0;
 
         private void Awake()
         {
@@ -106,7 +101,7 @@ namespace TurboTurbo
             main.maxParticles = 200;
             main.gravityModifier = gravity;
 
-            // growth: particles expand over their lifetime (smoke-like);
+            // growth: particles expand over their lifetime;
             // curve cached so per-frame re-apply doesn't allocate
             if (_sizeCurve == null || _sizeCurveStart != sizeOverLifetimeStart || _sizeCurveEnd != sizeOverLifetimeEnd)
             {
@@ -120,8 +115,7 @@ namespace TurboTurbo
 
             // per-particle shimmer envelope: full strength for holdTime,
             // then linear decay over shimmerDecayTime (seconds). Rides the
-            // Color alpha stream; smoke will later use its own channel so it
-            // can outlive the shimmer.
+            // Color alpha stream (the shader's shimmer coverage multiplier).
             if (_alphaGradient == null || _alphaLife != lifetime || _alphaHold != shimmerHoldTime || _alphaDecay != shimmerDecayTime)
             {
                 float life = Mathf.Max(lifetime, 0.01f);
@@ -177,6 +171,7 @@ namespace TurboTurbo
             em.rateOverTime = 0f;
 
             var rend = GetComponent<ParticleSystemRenderer>();
+            rend.sortMode = ParticleSystemSortMode.Distance; // correct shimmer-over-shimmer compositing
             if (useShimmerShader)
             {
                 var shimmer = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/HeatShimmer");

@@ -62,6 +62,9 @@
       <HintPath>$(ManagedDir)\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- shared with the WorkBench Unity project (WorkBench is the owner) -->
+    <Compile Include="..\WorkBench\Assets\Shimmer\ShimmerParticles.cs" Link="ShimmerParticles.cs" />
+    <Compile Include="..\WorkBench\Assets\Shimmer\ExhaustSmokeModel.cs" Link="ExhaustSmokeModel.cs" />
     <Reference Include="UnityEngine.AssetBundleModule">
       <HintPath>$(ManagedDir)\UnityEngine.AssetBundleModule.dll</HintPath>
       <Private>false</Private>

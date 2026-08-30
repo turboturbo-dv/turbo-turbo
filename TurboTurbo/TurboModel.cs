@@ -234,10 +234,11 @@ internal sealed class EngineTurbo
         }
         else
         {
-            float soot = TurboModel.SimActive ? SmokeDensity : 0f;
+            Color smokeColor = TurboModel.SimActive ? SmokeColor : Color.clear;
+            float smokeDensity = TurboModel.SimActive ? SmokeModelDensity : 0f;
             foreach (TurboSmokeEmitter emitter in _smoke)
             {
-                emitter.Update(soot, _rpmNorm, _fuelNorm, EngineRunning);
+                emitter.Update(smokeColor, smokeDensity, _rpmNorm, _fuelNorm, EngineRunning);
             }
         }
 
@@ -262,6 +263,14 @@ internal sealed class EngineTurbo
                $"rpmNorm={_rpmNorm:0.000} boost={_boost:0.000} lambda={Lambda:0.000} overfuel={Overfuel:0.000} " +
                $"smoke={SmokeDensity:0.000} {smokeText}";
     }
+
+    private readonly ExhaustSmokeModel _smokeModel = new();
+
+    /// <summary>Smoke appearance from the exhaust model (authoritative).</summary>
+    internal Color SmokeColor { get; private set; } = Color.clear;
+
+    /// <summary>Smoke density 0..1 from the exhaust model (authoritative).</summary>
+    internal float SmokeModelDensity { get; private set; }
 
     internal void Tick(float delta)
     {
@@ -290,6 +299,13 @@ internal sealed class EngineTurbo
             ? 0f
             : Mathf.Clamp01((TurboConfig.SmokeOnsetLambda.Value - lambda)
                 / (TurboConfig.SmokeOnsetLambda.Value - TurboConfig.SmokeOpaqueLambda.Value));
+
+        // exhaust smoke model: color + density for the particle system
+        _smokeModel.sootOnsetLambda = TurboConfig.SmokeOnsetLambda.Value;
+        _smokeModel.sootOpaqueLambda = TurboConfig.SmokeOpaqueLambda.Value;
+        _smokeModel.Update(lambda, fuelDemand, rpmNorm, engineOn, delta);
+        SmokeColor = _smokeModel.Color;
+        SmokeModelDensity = _smokeModel.Density;
 
         // torque cap: per-stroke charge sets usable work, blended with engine
         // speed via TurboConfig.RpmTorqueExponent (0 = pure per-stroke, 1 = strict airflow).

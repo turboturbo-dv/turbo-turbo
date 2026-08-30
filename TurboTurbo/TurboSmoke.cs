@@ -18,7 +18,6 @@ internal sealed class TurboSmokeEmitter
     private readonly Color _cleanColor;
     private readonly bool _ownsExhaust;
     private readonly Material _ownedMaterial;
-    private readonly bool _darkBlendUsed;
     private bool _loggedEmit;
 
     private const float StackOffset = 0.05f;
@@ -62,7 +61,6 @@ internal sealed class TurboSmokeEmitter
         if (darkBlend != null)
         {
             _ownedMaterial = darkBlend;
-            _darkBlendUsed = true;
             rend.material = darkBlend; // instance material, owned by us
         }
         else if (sourceMat != null)
@@ -115,11 +113,10 @@ internal sealed class TurboSmokeEmitter
     private const float HeatDecayTime = 3f;
     private float _heat;
 
-    internal void Update(float smokeDensity, float rpmNorm, float fuelNorm, bool engineOn)
+    internal void Update(Color smokeColor, float smokeDensity, float rpmNorm, float fuelNorm, bool engineOn)
     {
         var em = _soot.emission;
         var main = _soot.main;
-        float soot = TurboModel.SimActive ? smokeDensity : 0f;
 
         // the vanilla tint ships near-opaque (tuned for their additive shader);
         // scale its alpha down for honest alpha-blended haze
@@ -133,20 +130,16 @@ internal sealed class TurboSmokeEmitter
         }
         else if (_ownsExhaust)
         {
-            // clean haze scales with rpm; soot darkens and thickens on top
+            // the exhaust smoke model is authoritative on color (rgb+alpha)
+            // and density; haze rate scales with rpm, soot rate with density
             em.rateOverTime = rpmNorm * TurboConfig.CleanRate.Value
-                              + soot * TurboConfig.SmokeMaxRate.Value;
-            Color sootCol = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, TurboConfig.SmokeParticleAlpha.Value)
-                : new Color(0.14f, 0.14f, 0.14f, Mathf.Clamp01(TurboConfig.SmokeParticleAlpha.Value + 0.5f));
-            main.startColor = Color.Lerp(clean, sootCol, soot);
+                              + smokeDensity * TurboConfig.SmokeMaxRate.Value;
+            main.startColor = smokeColor;
         }
         else
         {
-            em.rateOverTime = soot * TurboConfig.SmokeMaxRate.Value;
-            main.startColor = _darkBlendUsed
-                ? new Color(0.05f, 0.05f, 0.05f, TurboConfig.SmokeParticleAlpha.Value)
-                : new Color(0.14f, 0.14f, 0.14f, 0.95f);
+            em.rateOverTime = smokeDensity * TurboConfig.SmokeMaxRate.Value;
+            main.startColor = smokeColor;
         }
 
         main.startSpeed = _ownsExhaust
