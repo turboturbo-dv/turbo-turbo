@@ -16,7 +16,7 @@ Shader "TurboTurbo/HeatShimmer"
         // captured once per frame at the first object that uses it - if a
         // reflection probe or secondary camera renders the quad first, the
         // view camera reuses a stale/wrong-viewpoint grab (invisible shimmer).
-        GrabPass { }
+        GrabPass { "_TurboHeatGrab" }
 
         Pass
         {
@@ -34,7 +34,7 @@ Shader "TurboTurbo/HeatShimmer"
             float _AnimTime;
             float _Freq;
             float _Debug;
-            sampler2D _GrabTexture;
+            sampler2D _TurboHeatGrab;
             sampler2D_float _CameraDepthTexture;
 
             struct appdata
@@ -135,7 +135,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // debug 2: raw grab, no offset - validates the grab path
                 if (_Debug > 1.5 && _Debug < 2.5)
                 {
-                    return tex2D(_GrabTexture, suvBase);
+                    return tex2D(_TurboHeatGrab, suvBase);
                 }
                 // debug 3: computed offset (RG, +-0.05 = full swing) + mask (B)
                 if (_Debug > 2.5 && _Debug < 3.5)
@@ -150,9 +150,10 @@ Shader "TurboTurbo/HeatShimmer"
 
                 // offset applied AFTER projection: _Strength is in true
                 // screen-UV units, independent of view distance
-                return tex2D(_GrabTexture, suvBase + offset);
+                return tex2D(_TurboHeatGrab, suvBase + offset);
             }
             ENDCG
         }
     }
 }
+
