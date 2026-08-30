@@ -19,13 +19,18 @@ namespace TurboTurbo.WorkBench
         [Header("Particle emitter placement")]
         public Vector3 emitterPosition = new Vector3(2.1f, 0.1f, 8f);
 
-        [Header("Exhaust smoke emitter (game exhaust clone, TurboSmoke behaviour)")]
+        [Header("Exhaust smoke emitter (fresh system, TurboSmoke semantics)")]
         public bool smokeEnabled = true;
-        public float lambda = 1.2f;
+        public Vector3 smokePosition = new Vector3(2.1f, 0.1f, 8f);
+        [Range(0.3f, 2f)] public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
         public float cleanRate = 20f;
         public float maxRate = 120f;
+
+        [Header("Draw order experiment")]
+        [Tooltip("On = shimmer renders after the smoke (queue 3010) and displaces the plume; Off = shimmer before the smoke (2990)")]
+        public bool shimmerOverSmoke = false;
 
         [Header("Reference frame movement (world-sim trail test)")]
         [Range(0f, 8f)] public float moveSpeed = 1.5f;
@@ -75,15 +80,15 @@ namespace TurboTurbo.WorkBench
             _particleEmitter = go.AddComponent<ShimmerParticles>();
             go.transform.SetParent(_frame.transform, false);
 
-            // game-exhaust smoke emitter (TurboSmoke behaviour) side by side
-            // with the shimmer particles, for interaction/draw-order tuning
+            // fresh smoke emitter (no game clone) - same placement as the
+            // shimmer emitter, matching the game where both share HeatOrigin
             if (smokeEnabled)
             {
                 var smokeGo = new GameObject("SmokeEmitterBench");
+                smokeGo.transform.position = smokePosition;
+                smokeGo.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
                 _smokeBench = smokeGo.AddComponent<SmokeEmitterBench>();
-                _smokeBench.cleanRate = cleanRate;
-                _smokeBench.maxRate = maxRate;
-                _smokeBench.Build(_frame.transform);
+                smokeGo.transform.SetParent(_frame.transform, false);
             }
         }
 
@@ -102,7 +107,16 @@ namespace TurboTurbo.WorkBench
                 _smokeBench.lambda = lambda;
                 _smokeBench.demand = demand;
                 _smokeBench.rpmNorm = rpmNorm;
+                _smokeBench.cleanRate = cleanRate;
+                _smokeBench.maxRate = maxRate;
                 _smokeBench.heat = heat; // same signal that drives the shimmer
+            }
+
+            // draw-order experiment: shimmer queue 3010 (over the smoke) or
+            // 2990 (before it, the old order)
+            if (_particleEmitter != null)
+            {
+                _particleEmitter.renderQueue = shimmerOverSmoke ? 3010 : 2990;
             }
 
             Material bg = _background != null ? _background.sharedMaterial : null;

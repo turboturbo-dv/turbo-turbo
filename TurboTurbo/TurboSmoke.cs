@@ -56,7 +56,6 @@ internal sealed class TurboSmokeEmitter
             var vanillaRend = vanilla.GetComponent<ParticleSystemRenderer>();
             sourceMat = vanillaRend.sharedMaterial;
         }
-
         Material darkBlend = CreateDarkBlendMaterial(sourceMat);
         if (darkBlend != null)
         {
@@ -67,6 +66,11 @@ internal sealed class TurboSmokeEmitter
         {
             rend.sharedMaterial = sourceMat;
         }
+
+        // pin the smoke behind the shimmer particles (shimmer queue 2990);
+        // renderer.material instances if needed, so the shared asset is safe
+        var smokeRend = _soot.GetComponent<ParticleSystemRenderer>();
+        smokeRend.material.renderQueue = 3000;
 
         var main = _soot.main;
         main.startColor = _cleanColor;

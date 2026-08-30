@@ -1,119 +1,150 @@
-using System.Linq;
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
 {
     /// <summary>
-    /// Bench harness for the game's exhaust smoke emitter: clones the imported
-    /// DE6's ExhaustEngineSmoke (the same template TurboSmokeEmitter clones in
-    /// the mod, so shape/size/flipbook/renderer all match), strips the dead DV
-    /// scripts, and drives it from the ExhaustSmokeModel - the same wiring
-    /// TurboSmoke uses in the mod. Parented under the reference frame so the
-    /// two exhaust systems (smoke + shimmer particles) can be evaluated side
-    /// by side, including draw-order experiments.
+    /// Bench harness for a fully-owned exhaust smoke emitter: a fresh
+    /// ParticleSystem built from code (no cloning of the game's exhaust, so
+    /// no inherited DV modules can sabotage rendering), driven by the
+    /// ExhaustSmokeModel - color and density baked per particle at emission
+    /// time. Placement is owned by ShimmerBench; the component only
+    /// configures and simulates.
     /// </summary>
+    [RequireComponent(typeof(ParticleSystem))]
     public class SmokeEmitterBench : MonoBehaviour
     {
-        [Header("Emitter source (children of the imported LocoDE6)")]
-        public string exhaustName = "ExhaustEngineSmoke";
-        public string damagedSmokeName = "DamagedEngineSmoke";
-
         [Header("Smoke model inputs (engineOn = true)")]
         public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
 
-        /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
-        [Range(0f, 1f)] public float heat;
-
         [Header("Emission (match TurboSmoke semantics)")]
         public float cleanRate = 20f;
         public float maxRate = 120f;
 
-        private ParticleSystem _smoke;
+        [Header("Particle look")]
+        public float lifetime = 4f;
+        public float startSizeMin = 1f;
+        public float startSizeMax = 1.4f;
+        public float sizeOverLifetimeStart = 1f;
+        public float sizeOverLifetimeEnd = 2f;
+        public float buoyancy = 0.3f;
+        public float drag = 0.8f;
+
+        /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
+        [Range(0f, 1f)] public float heat;
+
+        private ParticleSystem _ps;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
+        private float _emitAccumulator;
+        private AnimationCurve _sizeCurve;
+        private float _sizeCurveStart = -1f;
+        private float _sizeCurveEnd = -1f;
 
-        /// <summary>Create the emitter as a child of the reference frame.</summary>
-        public void Build(Transform parent)
+        /// <summary>Live particle count, for console dumps.</summary>
+        public int ParticleCount => _ps != null ? _ps.particleCount : 0;
+
+        private void Awake()
         {
-            var loco = GameObject.Find("LocoDE6");
-            if (loco == null)
-            {
-                Debug.LogError("SmokeEmitterBench: no LocoDE6 in the scene (run TurboTurbo -> WorkBench Scene)");
-                return;
-            }
+            _ps = GetComponent<ParticleSystem>();
+            if (_ps == null) _ps = gameObject.AddComponent<ParticleSystem>();
+        }
 
-            var allPs = loco.GetComponentsInChildren<ParticleSystem>(true);
-            ParticleSystem vanilla = allPs.FirstOrDefault(ps => ps.name == exhaustName);
-            if (vanilla == null)
-            {
-                Debug.LogError($"SmokeEmitterBench: '{exhaustName}' not found on the imported loco");
-                return;
-            }
+        private void Start()
+        {
+            Configure();
+        }
 
-            // clone the vanilla exhaust, strip the dead DV behaviours (same
-            // recipe as TurboSmokeEmitter so the setup matches the mod)
-            var go = Object.Instantiate(vanilla.gameObject, parent);
-            go.name = "TurboTurbo.SmokeBench";
-            foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
-            {
-                Destroy(mb); // runtime destroy; missing-script cleanup handles the rest
-            }
-            go.transform.position = loco.transform.position;
-            go.transform.rotation = loco.transform.rotation;
-            go.SetActive(true);
-            _smoke = go.GetComponent<ParticleSystem>();
+        /// <summary>Builds the ParticleSystem layout. Idempotent; safe to
+        /// call again after changing structural settings.</summary>
+        public void Configure()
+        {
+            if (_ps == null) _ps = GetComponent<ParticleSystem>();
 
-            // borrow the damaged-engine material for proven-visible rendering,
-            // then mirror TurboSmokeEmitter: flipbook off + procedural puff
-            // texture (the vanilla 8x8 cloud atlas tiles read as grey squares)
-            var damaged = allPs.FirstOrDefault(ps => ps.name == damagedSmokeName);
-            var pr = _smoke.GetComponent<ParticleSystemRenderer>();
-            if (damaged != null)
-            {
-                var mat = damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial;
-                if (mat != null)
-                {
-                    pr.material = new Material(mat) { name = "TurboTurbo.SmokeBenchMat" };
-                }
-            }
-
-            var tsa = _smoke.textureSheetAnimation;
-            if (tsa.enabled)
-            {
-                tsa.enabled = false;
-            }
-            pr.material.mainTexture = CreatePuffTexture();
-
-            var main = _smoke.main;
+            var main = _ps.main;
+            main.startLifetime = lifetime;
+            main.startSpeed = 0f; // velocity is set per particle at emission
+            main.startSize = new ParticleSystem.MinMaxCurve(startSizeMin, startSizeMax);
             main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 400;
+            main.gravityModifier = 0f;
 
-            var em = _smoke.emission;
-            em.enabled = true;
-            em.rateOverTime = 0f;
-            em.rateOverDistance = 0f;
-            em.SetBursts(new ParticleSystem.Burst[0]);
-            _smoke.Play();
+            // growth: smoke expands as it disperses
+            if (_sizeCurve == null || _sizeCurveStart != sizeOverLifetimeStart || _sizeCurveEnd != sizeOverLifetimeEnd)
+            {
+                _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
+                _sizeCurveStart = sizeOverLifetimeStart;
+                _sizeCurveEnd = sizeOverLifetimeEnd;
+            }
+            var sol = _ps.sizeOverLifetime;
+            sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            Debug.Log($"SmokeEmitterBench: cloned '{exhaustName}', material=" +
-                      $"{_smoke.GetComponent<ParticleSystemRenderer>().sharedMaterial?.shader?.name}");
+            // no colorOverLifetime: the model's color (baked per particle at
+            // emission) fully owns the appearance
+
+            // air resistance decays the inherited train velocity
+            var lvol = _ps.limitVelocityOverLifetime;
+            lvol.enabled = true;
+            lvol.space = ParticleSystemSimulationSpace.World;
+            lvol.limit = 25f;
+            lvol.dampen = 0f;
+            lvol.drag = drag;
+            lvol.multiplyDragByParticleSize = false;
+            lvol.multiplyDragByParticleVelocity = true;
+
+            // buoyancy: hot flue gas keeps drifting up
+            var vol = _ps.velocityOverLifetime;
+            vol.enabled = true;
+            vol.space = ParticleSystemSimulationSpace.World;
+            vol.y = buoyancy;
+            vol.x = 0f;
+            vol.z = 0f;
+
+            var em = _ps.emission;
+            em.enabled = false; // manual emission via EmitParams
+
+            var rend = GetComponent<ParticleSystemRenderer>();
+            rend.sortMode = ParticleSystemSortMode.Distance;
+            rend.material.shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+            rend.material.mainTexture = CreatePuffTexture();
+            rend.material.SetColor("_TintColor", Color.white);
         }
 
         private void Update()
         {
-            if (_smoke == null) return;
+            // re-apply layout every frame so inspector edits apply live
+            Configure();
 
-            // drive the emitter exactly like TurboSmoke.Update does in the mod
+            // per-frame model evaluation (engineOn = true)
             _model.Update(lambda, demand, rpmNorm, engineOn: true, Time.deltaTime);
 
-            var em = _smoke.emission;
-            em.rateOverTime = rpmNorm * cleanRate + _model.Density * maxRate;
+            // manual emission: exit velocity = shared ExhaustVelocity curve
+            float rate = rpmNorm * cleanRate + _model.Density * maxRate;
+            _emitAccumulator += rate * Time.deltaTime;
+            int n = (int)_emitAccumulator;
+            if (n > 0)
+            {
+                _emitAccumulator -= n;
+                n = Mathf.Min(n, 30);
 
-            var main = _smoke.main;
-            main.startColor = _model.Color;
-            // aligned exhaust velocity: shimmer formula (base x lerp(1, 3, heat)),
-            // with exhaustSpeed kept as the full-load exit speed
-            main.startSpeed = ExhaustVelocity.Calculate(heat);
+                float upSpeed = ExhaustVelocity.Calculate(heat);
+                Vector3 coneDir = transform.forward;
+
+                for (int i = 0; i < n; i++)
+                {
+                    var ep = new ParticleSystem.EmitParams
+                    {
+                        position = transform.position,
+                        velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
+                                 + Random.insideUnitSphere * 0.15f,
+                        startSize = Random.Range(startSizeMin, startSizeMax),
+                        startColor = _model.Color,
+                        startLifetime = lifetime * Random.Range(0.9f, 1.1f),
+                    };
+                    _ps.Emit(ep, 1);
+                }
+            }
         }
 
         /// <summary>Procedural soft radial puff (mirrors TurboSmokeEmitter).</summary>

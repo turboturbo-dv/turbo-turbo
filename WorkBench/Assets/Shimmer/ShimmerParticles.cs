@@ -78,6 +78,11 @@ namespace TurboTurbo
         [Header("Engine signal (0..1) - driven by the mod per frame")]
         [Range(0f, 1f)] public float heat;
 
+        /// <summary>Render queue for the shimmer material. Default 3010 =
+        /// after the smoke (3000), so the shimmer displaces the plume;
+        /// 2990 = before it.</summary>
+        public int renderQueue = 3010;
+
         /// <summary>Shader override for contexts where Shader.Find cannot see
         /// the shader (e.g. it lives in an asset bundle) - set before the
         /// first Configure call, or call Configure again after setting.</summary>
@@ -200,6 +205,7 @@ namespace TurboTurbo
                         _material = new Material(shimmer) { name = "TurboTurbo.ShimmerParticleMat" };
                         rend.material = _material;
                     }
+                    _material.renderQueue = renderQueue;
                 }
             }
             if (_material == null)
