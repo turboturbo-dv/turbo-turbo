@@ -52,7 +52,7 @@
   - *Feedback:* lands on the quad-space mask; radius = lerp(idleRadius, 1.0,
     flow) with a smoothstep taper. Do together with 2+3 (same shader).
 
-- [ ] **6. Camera support (F2/F3).**
+- [x] **6. Camera support (F2/F3).**
   The billboard only faces the first-person camera; the orbiting and free
   roam cameras see the effect edge-on/disappearing. Make it face the active
   camera (or otherwise work in external views).
