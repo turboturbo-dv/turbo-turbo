@@ -5,8 +5,7 @@ namespace TurboTurbo.WorkBench
     /// <summary>
     /// Standalone harness for the heat shimmer shader: mirrors the mod's
     /// runtime uniform semantics (amplitude/radius/speed all derived from a
-    /// 0..1 heat signal) against a high-contrast scrolling background, with
-    /// an opaque occluder to verify the depth-based foreground fix.
+    /// 0..1 heat signal) against a high-contrast scrolling background.
     /// </summary>
     public class ShimmerBench : MonoBehaviour
     {
@@ -26,6 +25,9 @@ namespace TurboTurbo.WorkBench
 
         [Header("Background scroll speed (uv/s)")]
         public float backgroundScroll = 0.03f;
+
+        [Header("Where the heat quad spawns (manual, tuned to the DE6 stack)")]
+        public Vector3 heatQuadPosition = new Vector3(-2.54f, 1.5f, 8f);
 
         private Material _shimmer;
         private float _animTime;
@@ -55,20 +57,10 @@ namespace TurboTurbo.WorkBench
             bg.GetComponent<Renderer>().sharedMaterial = bgMat;
             _background = bg.GetComponent<Renderer>();
 
-            // opaque occluder in front of the shimmer quad: its edges must
-            // stay crisp (depth-based foreground fix)
-            GameObject occluder = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            occluder.name = "Occluder";
-            occluder.transform.position = new Vector3(0.35f, 0.1f, 1.6f);
-            occluder.transform.localScale = new Vector3(0.22f, 0.5f, 0.22f);
-            Material occMat = new Material(Shader.Find("Unlit/Color"));
-            occMat.color = new Color(0.85f, 0.3f, 0.1f);
-            occluder.GetComponent<Renderer>().sharedMaterial = occMat;
-
             // shimmer quad
             GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = "HeatQuad";
-            quad.transform.position = new Vector3(0f, 0f, 4f);
+            quad.transform.position = heatQuadPosition;
             quad.transform.localScale = new Vector3(2f, 3f, 1f);
             _shimmer = new Material(shader) { name = "TurboTurbo.HeatShimmerMat" };
             quad.GetComponent<Renderer>().sharedMaterial = _shimmer;

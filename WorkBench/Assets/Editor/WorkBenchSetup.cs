@@ -14,8 +14,10 @@ namespace TurboTurbo.WorkBench
             var go = new GameObject("ShimmerBench");
             go.AddComponent<ShimmerBench>();
 
+            GameAssetsImport.AddDe6ToScene();
+
             EditorSceneManager.SaveScene(scene, "Assets/Shimmer/Bench.unity");
-            EditorUtility.DisplayDialog("WorkBench", "Bench scene created at Assets/Shimmer/Bench.unity\n\nPress Play and tweak the ShimmerBench sliders.", "OK");
+            Debug.Log("WorkBench: bench scene created at Assets/Shimmer/Bench.unity");
         }
     }
 }
