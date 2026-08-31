@@ -88,6 +88,8 @@ namespace TurboTurbo.WorkBench
                 smokeGo.transform.position = smokePosition;
                 smokeGo.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
                 _smokeBench = smokeGo.AddComponent<SmokeEmitterBench>();
+                _smokeBench.cleanRate = cleanRate;
+                _smokeBench.maxRate = maxRate;
                 smokeGo.transform.SetParent(_frame.transform, false);
             }
         }
@@ -101,14 +103,13 @@ namespace TurboTurbo.WorkBench
                 _particleEmitter.SetFlow(heat);
             }
 
-            // smoke model inputs
+            // smoke model inputs (live signals only; cleanRate/maxRate are
+            // pushed once at creation and tunable on the component)
             if (_smokeBench != null)
             {
                 _smokeBench.lambda = lambda;
                 _smokeBench.demand = demand;
                 _smokeBench.rpmNorm = rpmNorm;
-                _smokeBench.cleanRate = cleanRate;
-                _smokeBench.maxRate = maxRate;
                 _smokeBench.heat = heat; // same signal that drives the shimmer
             }
 

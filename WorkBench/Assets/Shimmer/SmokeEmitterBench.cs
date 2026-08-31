@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
@@ -18,16 +19,20 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
 
+        [Header("Atlas source (children of the imported LocoDE6)")]
+        public string exhaustName = "ExhaustEngineSmoke";
+        public string damagedSmokeName = "DamagedEngineSmoke";
+
         [Header("Emission (match TurboSmoke semantics)")]
         public float cleanRate = 20f;
         public float maxRate = 120f;
 
         [Header("Particle look")]
-        public float lifetime = 4f;
+        public float lifetime = 2f;
         public float startSizeMin = 1f;
         public float startSizeMax = 1.4f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 2f;
+        public float sizeOverLifetimeEnd = 4f;
         public float buoyancy = 0.3f;
         public float drag = 0.8f;
 
@@ -35,6 +40,7 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 1f)] public float heat;
 
         private ParticleSystem _ps;
+        private Texture _cloudAtlas;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
@@ -52,6 +58,36 @@ namespace TurboTurbo.WorkBench
 
         private void Start()
         {
+            // grab the cloud atlas from the imported loco's damaged-smoke
+            // material (same texture TurboSmokeEmitter's borrowed material uses)
+            var loco = GameObject.Find("LocoDE6");
+            var damaged = loco != null
+                ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == damagedSmokeName)
+                : null;
+            if (damaged != null && damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial != null)
+            {
+                _cloudAtlas = damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial.mainTexture;
+            }
+
+            if (_cloudAtlas == null)
+            {
+                Debug.LogWarning($"[SmokeEmitterBench] Could not find atlas texture from '{damagedSmokeName}' on LocoDE6!");
+            }
+
+            // dump the shader + texture the ORIGINAL vanilla exhaust uses
+            // (its own renderer material, before any of our changes)
+            var vanilla = loco != null
+                ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == exhaustName)
+                : null;
+            if (vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial != null)
+            {
+                var mat = vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial;
+                var texName = mat.mainTexture != null ? mat.mainTexture.name : "NULL";
+                var texSize = mat.mainTexture != null ? $"{mat.mainTexture.width}x{mat.mainTexture.height}" : "0x0";
+                Debug.Log($"[SmokeEmitterBench] vanilla '{vanilla.name}' uses shader '{mat.shader?.name}' " +
+                          $"texture '{texName}' ({texSize})");
+            }
+
             Configure();
         }
 
@@ -80,8 +116,21 @@ namespace TurboTurbo.WorkBench
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            // no colorOverLifetime: the model's color (baked per particle at
-            // emission) fully owns the appearance
+            // smooth fade-out: alpha-only gradient (rgb untouched, so the
+            // model color survives) - fades from opaque to transparent over
+            // the last 60% of the lifetime
+            var fade = new Gradient();
+            fade.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[]
+                {
+                    new GradientAlphaKey(1f, 0f),
+                    new GradientAlphaKey(1f, 0.4f),
+                    new GradientAlphaKey(0f, 1f),
+                });
+            var col = _ps.colorOverLifetime;
+            col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(fade);
 
             // air resistance decays the inherited train velocity
             var lvol = _ps.limitVelocityOverLifetime;
@@ -104,18 +153,25 @@ namespace TurboTurbo.WorkBench
             var em = _ps.emission;
             em.enabled = false; // manual emission via EmitParams
 
+            // 1. texture sheet animation OFF: TSA feeds tile offsets through
+            // the UV stream (constant per particle) expecting the shader to
+            // implement the flipbook - custom shaders sampling the raw UV
+            // stream render one solid tile color per particle instead
+            var tsa = _ps.textureSheetAnimation;
+            tsa.enabled = false;
+
+            // 2. renderer material: single smoke texture (DieselSmoke.png from
+            // GameAssets), standard alpha-blended particle shader - no TSA, no
+            // flipbook logic: the whole texture maps across each billboard
             var rend = GetComponent<ParticleSystemRenderer>();
             rend.sortMode = ParticleSystemSortMode.Distance;
             rend.material.shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
-            rend.material.mainTexture = CreatePuffTexture();
             rend.material.SetColor("_TintColor", Color.white);
+            rend.material.mainTexture = _cloudAtlas;
         }
 
         private void Update()
         {
-            // re-apply layout every frame so inspector edits apply live
-            Configure();
-
             // per-frame model evaluation (engineOn = true)
             _model.Update(lambda, demand, rpmNorm, engineOn: true, Time.deltaTime);
 
@@ -141,35 +197,11 @@ namespace TurboTurbo.WorkBench
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = _model.Color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
+                        rotation = Random.Range(0f, 360f),
                     };
                     _ps.Emit(ep, 1);
                 }
             }
-        }
-
-        /// <summary>Procedural soft radial puff (mirrors TurboSmokeEmitter).</summary>
-        private static Texture2D CreatePuffTexture()
-        {
-            const int size = 128;
-            var tex = new Texture2D(size, size, TextureFormat.ARGB32, false) { name = "TurboTurbo.SmokeBenchTex" };
-            var colors = new Color[size * size];
-            var rng = new System.Random(7);
-            var center = new Vector2(size / 2f - 0.5f, size / 2f - 0.5f);
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dx = (x - center.x) / (size / 2f);
-                    float dy = (y - center.y) / (size / 2f);
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float falloff = Mathf.Pow(Mathf.Clamp01(1f - d), 1.6f);
-                    float grain = 0.85f + 0.15f * (float)rng.NextDouble();
-                    colors[y * size + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(falloff * grain));
-                }
-            }
-            tex.SetPixels(colors);
-            tex.Apply();
-            return tex;
         }
     }
 }
