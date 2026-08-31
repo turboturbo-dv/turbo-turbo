@@ -1,26 +1,23 @@
 using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace TurboTurbo;
 
 /// <summary>
-/// The exhaust smoke emitter. When TakeOverExhaust is on, this is the sole
-/// exhaust system: a clone of the vanilla exhaust, driven per frame by engine
-/// rpm (clean haze) plus the turbo model's smoke density (soot), with color
-/// lerping between the two. Otherwise it supplements the vanilla system with
-/// soot only, following the game's own DamagedEngineSmoke pattern.
+/// Diagnostic pass: the vanilla ExhaustEngineSmoke is left ENTIRELY untouched
+/// (its own ParticlesPortReaders drive it), and everything about it is dumped
+/// to the log at attach. Heat intensity still feeds the shimmer.
 /// </summary>
 internal sealed class TurboSmokeEmitter
 {
     private readonly ParticleSystem _vanilla;
-    private readonly ParticleSystem _soot;
-    private readonly float _vanillaSize;
-    private readonly Color _cleanColor;
-    private readonly bool _ownsExhaust;
-    private readonly Material _ownedMaterial;
-    private bool _loggedEmit;
 
     private const float StackOffset = 0.05f;
+    private const float HeatDecayTime = 3f;
+    private float _heat;
+    private float _nextLiveLog;
+    private bool _loggedRunning;
 
     internal TrainCar Car { get; set; }
 
@@ -33,128 +30,12 @@ internal sealed class TurboSmokeEmitter
     internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial, bool ownsExhaust)
     {
         _vanilla = vanilla;
-        _ownsExhaust = ownsExhaust;
-        _cleanColor = vanilla.main.startColor.color;
-
-        var go = Object.Instantiate(vanilla.gameObject, vanilla.transform.parent);
-        go.name = ownsExhaust ? "TurboTurbo.Exhaust" : "TurboTurbo.Soot";
-        foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
-        {
-            Object.Destroy(mb);
-        }
-
-        // the vanilla exhaust GO is parked inactive while the engine is off
-        // (TurnOffPS) - a clone made at spawn would stay invisible forever
-        go.SetActive(true);
-
-        _soot = go.GetComponent<ParticleSystem>();
-
-        var rend = _soot.GetComponent<ParticleSystemRenderer>();
-        Material sourceMat = blackMaterial;
-        if (sourceMat == null)
-        {
-            var vanillaRend = vanilla.GetComponent<ParticleSystemRenderer>();
-            sourceMat = vanillaRend.sharedMaterial;
-        }
-        Material darkBlend = CreateDarkBlendMaterial(sourceMat);
-        if (darkBlend != null)
-        {
-            _ownedMaterial = darkBlend;
-            rend.material = darkBlend; // instance material, owned by us
-        }
-        else if (sourceMat != null)
-        {
-            rend.sharedMaterial = sourceMat;
-        }
-
-        // pin the smoke behind the shimmer particles (shimmer queue 2990);
-        // renderer.material instances if needed, so the shared asset is safe
-        var smokeRend = _soot.GetComponent<ParticleSystemRenderer>();
-        smokeRend.material.renderQueue = 3000;
-
-        var main = _soot.main;
-        main.startColor = _cleanColor;
-        _vanillaSize = main.startSize.constant;
-        main.startSize = CurrentSize();
-
-        // soft edges: fast fade-in, long plateau, smooth fade-out. The plateau
-        // alpha lives in startColor (written per frame) so ParticleAlpha can be
-        // tuned live from the console.
-        var col = _soot.colorOverLifetime;
-        var gradient = new Gradient();
-        gradient.SetKeys(
-            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[]
-            {
-                new GradientAlphaKey(0.4f, 0f),
-                new GradientAlphaKey(1f, 0.12f),
-                new GradientAlphaKey(1f, 0.6f),
-                new GradientAlphaKey(0f, 1f),
-            });
-        col.enabled = true;
-        col.color = new ParticleSystem.MinMaxGradient(gradient);
-
-        // the vanilla exhaust flipbooks through a sprite atlas - our single
-        // puff texture would get sampled per-tile, producing hard squares
-        var tsa = _soot.textureSheetAnimation;
-        if (tsa.enabled)
-        {
-            tsa.enabled = false;
-            TurboModel.Log.LogInfo($"soot: disabled flipbook animation (was {tsa.numTilesX}x{tsa.numTilesY} tiles)");
-        }
-        _soot.Play();
-
-        // the vanilla emission module also emits per meter travelled and may
-        // carry bursts - the emitter must respond to its inputs only
-        var sootEm = _soot.emission;
-        float distRateWas = sootEm.rateOverDistance.constant;
-        int burstsWas = sootEm.burstCount;
-        sootEm.rateOverDistance = 0f;
-        sootEm.SetBursts(new ParticleSystem.Burst[0]);
-        TurboModel.Log.LogInfo($"soot: cleared distance rate (was {distRateWas:0.##}) and {burstsWas} burst(s)");
+        DumpVanilla(vanilla);
     }
-
-    private const float HeatDecayTime = 3f;
-    private float _heat;
 
     internal void Update(Color smokeColor, float smokeDensity, float rpmNorm, float fuelNorm, bool engineOn)
     {
-        var em = _soot.emission;
-        var main = _soot.main;
-
-        // the vanilla tint ships near-opaque (tuned for their additive shader);
-        // scale its alpha down for honest alpha-blended haze
-        Color clean = new Color(_cleanColor.r, _cleanColor.g, _cleanColor.b,
-            _cleanColor.a * TurboConfig.CleanAlpha.Value);
-
-        if (!engineOn)
-        {
-            em.rateOverTime = 0f;
-            main.startColor = clean;
-        }
-        else if (_ownsExhaust)
-        {
-            // the exhaust smoke model is authoritative on color (rgb+alpha)
-            // and density; haze rate scales with rpm, soot rate with density
-            em.rateOverTime = rpmNorm * TurboConfig.CleanRate.Value
-                              + smokeDensity * TurboConfig.SmokeMaxRate.Value;
-            main.startColor = smokeColor;
-        }
-        else
-        {
-            em.rateOverTime = smokeDensity * TurboConfig.SmokeMaxRate.Value;
-            main.startColor = smokeColor;
-        }
-
-        // aligned exhaust velocity: shared curve (idle 1.5 m/s, full load 10 m/s)
-        main.startSpeed = _ownsExhaust
-            ? ExhaustVelocity.Calculate(HeatIntensity)
-            : _vanilla.main.startSpeed;
-
-        // heat shimmer tracks engine mass flow directly (normalized fuel
-        // consumption): fuel 0 -> heat 0.15 (idle), fuel 1 -> heat 1.
-        // Asymmetric thermal inertia: the stack heats instantly on a throttle
-        // kick but cools down slowly.
+        // heat: raw fuel-based with asymmetric inertia (keeps the shimmer alive)
         float heatTarget = engineOn ? Mathf.Clamp01(0.15f + 0.85f * fuelNorm) : 0f;
         if (heatTarget > _heat)
         {
@@ -168,99 +49,162 @@ internal sealed class TurboSmokeEmitter
         }
         HeatIntensity = _heat;
 
-        if (!_loggedEmit && smokeDensity > 0.3f)
+        // periodic live state of the untouched vanilla emitter
+        if (Time.time >= _nextLiveLog && engineOn)
         {
-            _loggedEmit = true;
-            TurboModel.Log.LogInfo($"soot emitting: S={smokeDensity:0.00} playing={_soot.isPlaying} " +
-                                   $"count={_soot.particleCount} goActive={_soot.gameObject.activeSelf}");
+            _nextLiveLog = Time.time + 2f;
+            TurboModel.Log.LogInfo(
+                $"[exhaust-dump] {_vanilla.name}: playing={_vanilla.isPlaying} emitting={_vanilla.isEmitting} " +
+                $"particles={_vanilla.particleCount} rate={_vanilla.emission.rateOverTime.constant:0.##} " +
+                $"fuelNorm={fuelNorm:0.000}");
+        }
+
+        if (!_loggedRunning && _vanilla.isEmitting)
+        {
+            _loggedRunning = true;
+            TurboModel.Log.LogInfo($"[exhaust-dump] {_vanilla.name} is EMITTING (vanilla port readers driving it)");
         }
     }
 
     internal void Destroy()
     {
         HeatShimmer.Unregister(this);
-        if (_ownedMaterial != null) Object.Destroy(_ownedMaterial);
-        if (_soot != null) Object.Destroy(_soot.gameObject);
     }
 
-    private ParticleSystem.MinMaxCurve CurrentSize(float mult = 1f)
+    // ------------------------------------------------------------------
+    // dump
+    // ------------------------------------------------------------------
+
+    private static void DumpVanilla(ParticleSystem ps)
     {
-        float size = _vanillaSize * TurboConfig.SmokeSizeMult.Value * mult;
-        return new ParticleSystem.MinMaxCurve(0.75f * size, 1.35f * size);
+        var sb = new StringBuilder();
+        sb.AppendLine("[exhaust-dump] ==================================================");
+        sb.AppendLine($"[exhaust-dump] full dump of '{ps.name}' (and particle children)");
+        Describe(ps, sb, 0);
+        TurboModel.Log.LogInfo(sb.ToString());
     }
 
-    /// <summary>
-    /// The DieselSmoke texture is DV/SmokeShader-internal (noise-like, near
-    /// uniform alpha) - useless as a sprite mask on standard shaders. Build a
-    /// soft radial puff mask instead: dense core, feathered edge, slight grain.
-    /// </summary>
-    private static Texture2D CreatePuffTexture()
+    private static void Describe(ParticleSystem ps, StringBuilder sb, int depth)
     {
-        const int size = 128;
-        var tex = new Texture2D(size, size, TextureFormat.ARGB32, false) { name = "TurboTurbo.SootTex" };
-        var colors = new Color[size * size];
-        var rng = new System.Random(7);
-        var center = new Vector2(size / 2f - 0.5f, size / 2f - 0.5f);
-        for (int y = 0; y < size; y++)
+        var pad = new string(' ', depth * 2 + 2);
+
+        sb.AppendLine($"{pad}[PS] '{ps.name}' goActive={ps.gameObject.activeInHierarchy} " +
+                      $"emitting={ps.isEmitting} particles={ps.particleCount}");
+
+        var main = ps.main;
+        sb.AppendLine($"{pad}  main: duration={main.duration} prewarm={main.prewarm} " +
+                      $"playOnAwake={main.playOnAwake} simSpace={main.simulationSpace} maxParticles={main.maxParticles} " +
+                      $"randomSeed set via GO");
+        sb.AppendLine($"{pad}  main.startLifetime: {DescribeCurve(main.startLifetime)}");
+        sb.AppendLine($"{pad}  main.startSpeed:    {DescribeCurve(main.startSpeed)}");
+        sb.AppendLine($"{pad}  main.startSize:     {DescribeCurve(main.startSize)}");
+        sb.AppendLine($"{pad}  main.startColor:    {DescribeGradient(main.startColor)}");
+        sb.AppendLine($"{pad}  main.gravityModifier: {DescribeCurve(main.gravityModifier)}");
+
+        var em = ps.emission;
+        sb.AppendLine($"{pad}  emission: enabled={em.enabled} rateOverTime: {DescribeCurve(em.rateOverTime)} " +
+                      $"rateOverDistance: {DescribeCurve(em.rateOverDistance)} bursts={em.burstCount}");
+
+        var shape = ps.shape;
+        sb.AppendLine($"{pad}  shape: enabled={shape.enabled} type={shape.shapeType} angle={shape.angle} radius={shape.radius}");
+
+        var sol = ps.sizeOverLifetime;
+        sb.AppendLine($"{pad}  sizeOverLifetime: enabled={sol.enabled} mode={sol.size.mode} " +
+                      $"sepAxes={sol.separateAxes} curve@0={sol.size.curveMax.Evaluate(0f):0.###} " +
+                      $"@0.5={sol.size.curveMax.Evaluate(0.5f):0.###} @1={sol.size.curveMax.Evaluate(1f):0.###}");
+
+        var col = ps.colorOverLifetime;
+        sb.AppendLine($"{pad}  colorOverLifetime: enabled={col.enabled} mode={col.color.mode} " +
+                      $"alpha@0={SampleAlpha(col.color, 0f):0.###} @0.25={SampleAlpha(col.color, 0.25f):0.###} " +
+                      $"@0.5={SampleAlpha(col.color, 0.5f):0.###} @0.75={SampleAlpha(col.color, 0.75f):0.###} @1={SampleAlpha(col.color, 1f):0.###}");
+
+        var tsa = ps.textureSheetAnimation;
+        sb.AppendLine($"{pad}  TSA: enabled={tsa.enabled} mode={tsa.mode} tiles={tsa.numTilesX}x{tsa.numTilesY} " +
+                      $"cycleCount={tsa.cycleCount} frameOverTime mode={tsa.frameOverTime.mode} " +
+                      $"startFrame mode={tsa.startFrame.mode} min={tsa.startFrame.constantMin:0.###} max={tsa.startFrame.constantMax:0.###}");
+
+        var vol = ps.velocityOverLifetime;
+        sb.AppendLine($"{pad}  velocityOverLifetime: enabled={vol.enabled} space={vol.space} " +
+                      $"x={DescribeCurve(vol.x)} y={DescribeCurve(vol.y)} z={DescribeCurve(vol.z)}");
+
+        var lvol = ps.limitVelocityOverLifetime;
+        sb.AppendLine($"{pad}  limitVelocity: enabled={lvol.enabled} limit: {DescribeCurve(lvol.limit)} " +
+                      $"dampen={lvol.dampen:0.###} drag={lvol.drag:0.###}");
+
+        var inh = ps.inheritVelocity;
+        sb.AppendLine($"{pad}  inheritVelocity: enabled={inh.enabled} mode={inh.mode} curve: {DescribeCurve(inh.curve)}");
+
+        sb.AppendLine($"{pad}  noise: enabled={ps.noise.enabled} subEmitters={ps.subEmitters.subEmittersCount} " +
+                      $"trails: enabled={ps.trails.enabled} lights: enabled={ps.lights.enabled} trigger: enabled={ps.trigger.enabled}");
+
+        var rend = ps.GetComponent<ParticleSystemRenderer>();
+        if (rend != null)
         {
-            for (int x = 0; x < size; x++)
+            sb.AppendLine($"{pad}  renderer: renderMode={rend.renderMode} sortMode={rend.sortMode} " +
+                          $"fudge={rend.sortingFudge:0.###} lengthScale={rend.lengthScale:0.###} velocityScale={rend.velocityScale:0.###}");
+            var mat = rend.sharedMaterial;
+            if (mat != null)
             {
-                float dx = (x - center.x) / (size / 2f);
-                float dy = (y - center.y) / (size / 2f);
-                float d = Mathf.Sqrt(dx * dx + dy * dy);
-                float falloff = Mathf.Pow(Mathf.Clamp01(1f - d), 1.6f);
-                float grain = 0.85f + 0.15f * (float)rng.NextDouble();
-                colors[y * size + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(falloff * grain));
+                var tex = mat.mainTexture;
+                sb.AppendLine($"{pad}  renderer.material: '{mat.name}' shader='{mat.shader?.name}' " +
+                              $"tex='{(tex != null ? tex.name : "NULL")}' " +
+                              $"({(tex != null ? $"{tex.width}x{tex.height}" : "0x0")}) queue={mat.renderQueue}");
+                sb.AppendLine($"{pad}  renderer._Color={mat.color}");
+            }
+            else
+            {
+                sb.AppendLine($"{pad}  renderer.material: NULL");
+            }
+            var streams = new System.Collections.Generic.List<ParticleSystemVertexStream>();
+            rend.GetActiveVertexStreams(streams);
+            sb.AppendLine($"{pad}  renderer.vertexStreams=[{string.Join(", ", streams)}]");
+        }
+
+        foreach (Transform child in ps.transform)
+        {
+            var cps = child.GetComponent<ParticleSystem>();
+            if (cps != null)
+            {
+                Describe(cps, sb, depth + 1);
             }
         }
-        tex.SetPixels(colors);
-        tex.Apply();
-        return tex;
     }
 
-    /// <summary>
-    /// DV/SmokeShader is additive: dark tints are invisible. For true black
-    /// soot we need an alpha-blended or multiplicative shader - hunt for one
-    /// shipped in the build, copying the smoke texture onto it.
-    /// </summary>
-    private static Material CreateDarkBlendMaterial(Material source)
+    private static string DescribeCurve(ParticleSystem.MinMaxCurve curve)
     {
-        if (!_shaderListLogged)
+        return curve.mode switch
         {
-            _shaderListLogged = true;
-            var names = Resources.FindObjectsOfTypeAll<Shader>()
-                .Select(s => s.name)
-                .Where(n => !string.IsNullOrEmpty(n))
-                .Where(n => System.Text.RegularExpressions.Regex.IsMatch(n,
-                    @"parti|alpha|multiply|blend|smoke|soft", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                .Distinct()
-                .OrderBy(n => n)
-                .ToList();
-            TurboModel.Log.LogInfo($"shader candidates: {string.Join(", ", names)}");
-        }
-
-        foreach (string shaderName in new[]
-        {
-            "Particles/Alpha Blended",
-            "Legacy Shaders/Particles/Alpha Blended",
-            "Mobile/Particles/Alpha Blended",
-            "Particles/Multiply (Double)",
-            "Legacy Shaders/Particles/Multiply",
-            "Particles/Standard Unlit",
-        })
-        {
-            Shader shader = Shader.Find(shaderName);
-            if (shader == null) continue;
-
-            var material = new Material(shader) { name = $"TurboTurbo.SootMat({shaderName})" };
-            material.mainTexture = CreatePuffTexture();
-            TurboModel.Log.LogInfo($"soot material: using shader '{shaderName}' with procedural puff texture");
-            return material;
-        }
-
-        TurboModel.Log.LogWarning("soot material: no alpha-blended particle shader found in build");
-        return null;
+            ParticleSystemCurveMode.Constant => $"constant {curve.constant:0.###}",
+            ParticleSystemCurveMode.Curve => $"curve keys={curve.curve.keys.Length} " +
+                $"[@0={curve.curve.Evaluate(0f):0.###} @0.5={curve.curve.Evaluate(0.5f):0.###} @1={curve.curve.Evaluate(1f):0.###}]",
+            ParticleSystemCurveMode.TwoConstants => $"twoConstants min={curve.constantMin:0.###} max={curve.constantMax:0.###}",
+            ParticleSystemCurveMode.TwoCurves => $"twoCurves keys={curve.curveMin.keys.Length}/{curve.curveMax.keys.Length} " +
+                $"min[@1={curve.curveMin.Evaluate(1f):0.###}] max[@1={curve.curveMax.Evaluate(1f):0.###}]",
+            _ => curve.mode.ToString(),
+        };
     }
 
-    private static bool _shaderListLogged;
+    private static string DescribeGradient(ParticleSystem.MinMaxGradient gradient)
+    {
+        return gradient.mode switch
+        {
+            ParticleSystemGradientMode.Color => $"color {gradient.color}",
+            ParticleSystemGradientMode.Gradient => $"gradient a[@0={gradient.gradient.Evaluate(0f).a:0.###} @0.5={gradient.gradient.Evaluate(0.5f).a:0.###} @1={gradient.gradient.Evaluate(1f).a:0.###}]",
+            ParticleSystemGradientMode.TwoColors => $"twoColors min={gradient.colorMin} max={gradient.colorMax}",
+            ParticleSystemGradientMode.TwoGradients => $"twoGradients",
+            _ => gradient.mode.ToString(),
+        };
+    }
+
+    private static float SampleAlpha(ParticleSystem.MinMaxGradient gradient, float t)
+    {
+        return gradient.mode switch
+        {
+            ParticleSystemGradientMode.Color => gradient.color.a,
+            ParticleSystemGradientMode.Gradient => gradient.gradient.Evaluate(t).a,
+            ParticleSystemGradientMode.TwoColors => Mathf.Lerp(gradient.colorMin.a, gradient.colorMax.a, t),
+            ParticleSystemGradientMode.TwoGradients => Mathf.Lerp(gradient.gradientMin.Evaluate(t).a, gradient.gradientMax.Evaluate(t).a, t),
+            _ => 0f,
+        };
+    }
 }

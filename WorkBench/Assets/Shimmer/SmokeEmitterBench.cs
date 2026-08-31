@@ -21,7 +21,6 @@ namespace TurboTurbo.WorkBench
 
         [Header("Atlas source (children of the imported LocoDE6)")]
         public string exhaustName = "ExhaustEngineSmoke";
-        public string damagedSmokeName = "DamagedEngineSmoke";
 
         [Header("Emission (match TurboSmoke semantics)")]
         public float cleanRate = 20f;
@@ -40,7 +39,8 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 1f)] public float heat;
 
         private ParticleSystem _ps;
-        private Texture _cloudAtlas;
+        private ParticleSystemRenderer _rend;
+        private Material _vanillaMaterial;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
@@ -58,34 +58,24 @@ namespace TurboTurbo.WorkBench
 
         private void Start()
         {
-            // grab the cloud atlas from the imported loco's damaged-smoke
-            // material (same texture TurboSmokeEmitter's borrowed material uses)
+            // locate the vanilla exhaust and its material: the game renders
+            // this smoke with the LIT Standard shader + Cloud01_8x8 atlas -
+            // scene lighting is what makes it look correct
             var loco = GameObject.Find("LocoDE6");
-            var damaged = loco != null
-                ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == damagedSmokeName)
-                : null;
-            if (damaged != null && damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial != null)
-            {
-                _cloudAtlas = damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial.mainTexture;
-            }
-
-            if (_cloudAtlas == null)
-            {
-                Debug.LogWarning($"[SmokeEmitterBench] Could not find atlas texture from '{damagedSmokeName}' on LocoDE6!");
-            }
-
-            // dump the shader + texture the ORIGINAL vanilla exhaust uses
-            // (its own renderer material, before any of our changes)
             var vanilla = loco != null
                 ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == exhaustName)
                 : null;
-            if (vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial != null)
+            Material vanillaMaterial = vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>() != null
+                ? vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial
+                : null;
+
+            if (vanillaMaterial != null)
             {
-                var mat = vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial;
-                var texName = mat.mainTexture != null ? mat.mainTexture.name : "NULL";
-                var texSize = mat.mainTexture != null ? $"{mat.mainTexture.width}x{mat.mainTexture.height}" : "0x0";
-                Debug.Log($"[SmokeEmitterBench] vanilla '{vanilla.name}' uses shader '{mat.shader?.name}' " +
-                          $"texture '{texName}' ({texSize})");
+                _vanillaMaterial = vanillaMaterial;
+            }
+            else
+            {
+                Debug.LogWarning("[SmokeEmitterBench] vanilla exhaust material not found");
             }
 
             Configure();
@@ -153,21 +143,42 @@ namespace TurboTurbo.WorkBench
             var em = _ps.emission;
             em.enabled = false; // manual emission via EmitParams
 
-            // 1. texture sheet animation OFF: TSA feeds tile offsets through
-            // the UV stream (constant per particle) expecting the shader to
-            // implement the flipbook - custom shaders sampling the raw UV
-            // stream render one solid tile color per particle instead
+            // texture sheet animation: 8x8 cloud atlas, random start tile,
+            // cycling through the set over the lifetime (vanilla behavior)
             var tsa = _ps.textureSheetAnimation;
-            tsa.enabled = false;
+            tsa.enabled = true;
+            tsa.numTilesX = 8;
+            tsa.numTilesY = 8;
+            tsa.mode = ParticleSystemAnimationMode.Grid;
+            tsa.cycleCount = 1;
+            // frameOverTime MUST be Curve mode: the two-constant constructor
+            // (MinMaxCurve(min, max)) picks ONE random frame per particle and
+            // freezes it - the classic no-animation trap
+            tsa.frameOverTime = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0f, 1f, 1f));
+            tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f); // random phase
 
-            // 2. renderer material: single smoke texture (DieselSmoke.png from
-            // GameAssets), standard alpha-blended particle shader - no TSA, no
-            // flipbook logic: the whole texture maps across each billboard
+            // 2. renderer material: inherit the vanilla exhaust material
+            // (lit Standard shader + Cloud01_8x8 + its blend state) - scene
+            // lighting is what makes the vanilla smoke look correct
             var rend = GetComponent<ParticleSystemRenderer>();
+            _rend = rend;
             rend.sortMode = ParticleSystemSortMode.Distance;
-            rend.material.shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
-            rend.material.SetColor("_TintColor", Color.white);
-            rend.material.mainTexture = _cloudAtlas;
+            if (_vanillaMaterial != null)
+            {
+                rend.material = new Material(_vanillaMaterial) { name = "TurboTurbo.SmokeBenchMat" };
+                rend.material.renderQueue = 3000;
+            }
+
+            // 3. vertex streams: match the vanilla renderer exactly
+            // (m_VertexStreams 00010304 = Position, Normal, UV, UV2/AnimFrame) -
+            // the frame stepper needs UV2 present to advance tiles
+            rend.SetActiveVertexStreams(new System.Collections.Generic.List<ParticleSystemVertexStream>
+            {
+                ParticleSystemVertexStream.Position,
+                ParticleSystemVertexStream.Normal,
+                ParticleSystemVertexStream.UV,
+                ParticleSystemVertexStream.UV2,
+            });
         }
 
         private void Update()
@@ -195,9 +206,9 @@ namespace TurboTurbo.WorkBench
                         velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
                                  + Random.insideUnitSphere * 0.15f,
                         startSize = Random.Range(startSizeMin, startSizeMax),
-                        startColor = _model.Color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
-                        rotation = Random.Range(0f, 360f),
+                        // rotation disabled: to verify TSA animation frames
+                        // rotation = Random.Range(0f, 360f),
                     };
                     _ps.Emit(ep, 1);
                 }

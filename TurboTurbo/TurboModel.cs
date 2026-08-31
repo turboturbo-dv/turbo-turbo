@@ -170,7 +170,9 @@ internal sealed class EngineTurbo
             .ToList();
         if (exhausts.Count == 0) return;
 
-        bool ownsExhaust = TurboConfig.TakeOverExhaust.Value;
+        // TEMP diagnostic: vanilla exhaust left fully untouched (own port
+        // readers drive it) - we are observing its behavior in-game
+        bool ownsExhaust = false;
 
         // the damaged-engine smoke system renders proven visible black -
         // borrow its material for the emitter
