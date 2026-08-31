@@ -158,15 +158,26 @@ namespace TurboTurbo.WorkBench
             tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f); // random phase
 
             // 2. renderer material: inherit the vanilla exhaust material
-            // (lit Standard shader + Cloud01_8x8 + its blend state) - scene
-            // lighting is what makes the vanilla smoke look correct
+            // (lit Standard shader + Cloud01_8x8), then switch it to Fade
+            // blending - the vanilla asset ships Opaque (_Mode 0), which
+            // ignores the atlas alpha and renders hard-edged squares. Note
+            // the Standard shader ignores particle vertex colors, so the
+            // model color is applied via the _Color tint in Update().
             var rend = GetComponent<ParticleSystemRenderer>();
             _rend = rend;
             rend.sortMode = ParticleSystemSortMode.Distance;
             if (_vanillaMaterial != null)
             {
-                rend.material = new Material(_vanillaMaterial) { name = "TurboTurbo.SmokeBenchMat" };
-                rend.material.renderQueue = 3000;
+                var mat = new Material(_vanillaMaterial) { name = "TurboTurbo.SmokeBenchMat" };
+                mat.SetFloat("_Mode", 2f); // fade
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+                rend.material = mat;
             }
 
             // 3. vertex streams: match the vanilla renderer exactly
