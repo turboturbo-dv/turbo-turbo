@@ -25,8 +25,8 @@ namespace TurboTurbo.WorkBench
         [Range(0.3f, 2f)] public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
-        public float cleanRate = 20f;
-        public float maxRate = 120f;
+        [Range(0f, 100f)] public float cleanRate = 20f;
+        [Range(0f, 300f)] public float maxRate = 120f;
 
         [Header("Draw order experiment")]
         [Tooltip("On = shimmer renders after the smoke (queue 3010) and displaces the plume; Off = shimmer before the smoke (2990)")]
@@ -103,13 +103,14 @@ namespace TurboTurbo.WorkBench
                 _particleEmitter.SetFlow(heat);
             }
 
-            // smoke model inputs (live signals only; cleanRate/maxRate are
-            // pushed once at creation and tunable on the component)
+            // smoke model inputs (live sliders; pushed per frame)
             if (_smokeBench != null)
             {
                 _smokeBench.lambda = lambda;
                 _smokeBench.demand = demand;
                 _smokeBench.rpmNorm = rpmNorm;
+                _smokeBench.cleanRate = cleanRate;
+                _smokeBench.maxRate = maxRate;
                 _smokeBench.heat = heat; // same signal that drives the shimmer
             }
 

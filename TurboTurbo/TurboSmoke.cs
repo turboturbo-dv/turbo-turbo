@@ -104,6 +104,11 @@ internal sealed class TurboSmokeEmitter
         var em = ps.emission;
         sb.AppendLine($"{pad}  emission: enabled={em.enabled} rateOverTime: {DescribeCurve(em.rateOverTime)} " +
                       $"rateOverDistance: {DescribeCurve(em.rateOverDistance)} bursts={em.burstCount}");
+        if (em.rateOverTime.mode == ParticleSystemCurveMode.Curve)
+        {
+            var keys = string.Join(" ", em.rateOverTime.curveMax.keys.Select(k => $"({k.time:0.###},{k.value:0.###})"));
+            sb.AppendLine($"{pad}  emission.rateOverTime keys: {keys}");
+        }
 
         var shape = ps.shape;
         sb.AppendLine($"{pad}  shape: enabled={shape.enabled} type={shape.shapeType} angle={shape.angle} radius={shape.radius}");
@@ -117,11 +122,25 @@ internal sealed class TurboSmokeEmitter
         sb.AppendLine($"{pad}  colorOverLifetime: enabled={col.enabled} mode={col.color.mode} " +
                       $"alpha@0={SampleAlpha(col.color, 0f):0.###} @0.25={SampleAlpha(col.color, 0.25f):0.###} " +
                       $"@0.5={SampleAlpha(col.color, 0.5f):0.###} @0.75={SampleAlpha(col.color, 0.75f):0.###} @1={SampleAlpha(col.color, 1f):0.###}");
+        if (col.enabled && (col.color.mode == ParticleSystemGradientMode.Gradient || col.color.mode == ParticleSystemGradientMode.TwoGradients))
+        {
+            var g = col.color.mode == ParticleSystemGradientMode.Gradient ? col.color.gradient : col.color.gradientMax;
+            var alphaKeys = string.Join(" ", g.alphaKeys.Select(k => $"({k.time:0.###},{k.alpha:0.###})"));
+            var colorKeys = string.Join(" ", g.colorKeys.Select(k => $"({k.time:0.###},{k.color.r:0.##},{k.color.g:0.##},{k.color.b:0.##})"));
+            sb.AppendLine($"{pad}  CoL.alphaKeys: {alphaKeys}");
+            sb.AppendLine($"{pad}  CoL.colorKeys: {colorKeys}");
+        }
 
         var tsa = ps.textureSheetAnimation;
         sb.AppendLine($"{pad}  TSA: enabled={tsa.enabled} mode={tsa.mode} tiles={tsa.numTilesX}x{tsa.numTilesY} " +
                       $"cycleCount={tsa.cycleCount} frameOverTime mode={tsa.frameOverTime.mode} " +
                       $"startFrame mode={tsa.startFrame.mode} min={tsa.startFrame.constantMin:0.###} max={tsa.startFrame.constantMax:0.###}");
+        if (tsa.enabled && tsa.frameOverTime.mode == ParticleSystemCurveMode.Curve)
+        {
+            var keys = tsa.frameOverTime.curveMax.keys;
+            var keyText = string.Join(" ", keys.Select(k => $"({k.time:0.###},{k.value:0.###})"));
+            sb.AppendLine($"{pad}  TSA.frameOverTime keys: {keyText}");
+        }
 
         var vol = ps.velocityOverLifetime;
         sb.AppendLine($"{pad}  velocityOverLifetime: enabled={vol.enabled} space={vol.space} " +

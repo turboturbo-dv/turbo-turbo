@@ -41,6 +41,7 @@ namespace TurboTurbo.WorkBench
         private ParticleSystem _ps;
         private ParticleSystemRenderer _rend;
         private Material _vanillaMaterial;
+        private Texture _cloudAtlas;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
@@ -72,10 +73,13 @@ namespace TurboTurbo.WorkBench
             if (vanillaMaterial != null)
             {
                 _vanillaMaterial = vanillaMaterial;
+                // the smoke texture: the vanilla exhaust's own Cloud01_8x8 atlas
+                _cloudAtlas = vanillaMaterial.mainTexture;
             }
-            else
+
+            if (_cloudAtlas == null)
             {
-                Debug.LogWarning("[SmokeEmitterBench] vanilla exhaust material not found");
+                Debug.LogWarning($"[SmokeEmitterBench] Could not find atlas texture on '{exhaustName}' (vanilla material)!");
             }
 
             Configure();
@@ -122,6 +126,11 @@ namespace TurboTurbo.WorkBench
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(fade);
 
+            // smooth fade-out: alpha-only gradient (rgb untouched, so the
+            // model color survives) - fades from opaque to transparent over
+            // the last 60% of the lifetime; multiplies the per-particle
+            // model color in the vertex color stream
+
             // air resistance decays the inherited train velocity
             var lvol = _ps.limitVelocityOverLifetime;
             lvol.enabled = true;
@@ -157,39 +166,14 @@ namespace TurboTurbo.WorkBench
             tsa.frameOverTime = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0f, 1f, 1f));
             tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f); // random phase
 
-            // 2. renderer material: inherit the vanilla exhaust material
-            // (lit Standard shader + Cloud01_8x8), then switch it to Fade
-            // blending - the vanilla asset ships Opaque (_Mode 0), which
-            // ignores the atlas alpha and renders hard-edged squares. Note
-            // the Standard shader ignores particle vertex colors, so the
-            // model color is applied via the _Color tint in Update().
+            // 2. renderer material: our own unlit smoke shader - texture x
+            // vertex color (model color per particle) x envelope alpha.
+            // TSA tile UVs are baked into the UV stream by the renderer.
             var rend = GetComponent<ParticleSystemRenderer>();
             _rend = rend;
             rend.sortMode = ParticleSystemSortMode.Distance;
-            if (_vanillaMaterial != null)
-            {
-                var mat = new Material(_vanillaMaterial) { name = "TurboTurbo.SmokeBenchMat" };
-                mat.SetFloat("_Mode", 2f); // fade
-                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                mat.SetInt("_ZWrite", 0);
-                mat.DisableKeyword("_ALPHATEST_ON");
-                mat.EnableKeyword("_ALPHABLEND_ON");
-                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                mat.renderQueue = 3000;
-                rend.material = mat;
-            }
-
-            // 3. vertex streams: match the vanilla renderer exactly
-            // (m_VertexStreams 00010304 = Position, Normal, UV, UV2/AnimFrame) -
-            // the frame stepper needs UV2 present to advance tiles
-            rend.SetActiveVertexStreams(new System.Collections.Generic.List<ParticleSystemVertexStream>
-            {
-                ParticleSystemVertexStream.Position,
-                ParticleSystemVertexStream.Normal,
-                ParticleSystemVertexStream.UV,
-                ParticleSystemVertexStream.UV2,
-            });
+            rend.material.shader = Shader.Find("TurboTurbo/Smoke");
+            rend.material.mainTexture = _cloudAtlas;
         }
 
         private void Update()
@@ -217,6 +201,7 @@ namespace TurboTurbo.WorkBench
                         velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
                                  + Random.insideUnitSphere * 0.15f,
                         startSize = Random.Range(startSizeMin, startSizeMax),
+                        startColor = _model.Color, // rgb+alpha baked per particle at emission
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
                         // rotation disabled: to verify TSA animation frames
                         // rotation = Random.Range(0f, 360f),
