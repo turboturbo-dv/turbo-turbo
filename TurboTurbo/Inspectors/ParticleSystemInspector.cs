@@ -2,14 +2,14 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace TurboTurbo;
+namespace TurboTurbo.Inspectors;
 
 /// <summary>
-/// Diagnostic pass: the vanilla ExhaustEngineSmoke is left ENTIRELY untouched
-/// (its own ParticlesPortReaders drive it), and everything about it is dumped
-/// to the log at attach. Heat intensity still feeds the shimmer.
+/// Diagnostic component: the vanilla ExhaustEngineSmoke is left ENTIRELY
+/// untouched (its own ParticlesPortReaders drive it), and everything about it
+/// is dumped to the log at attach. Heat intensity still feeds the shimmer.
 /// </summary>
-internal sealed class TurboSmokeEmitter
+internal sealed class ParticleSystemInspector
 {
     private readonly ParticleSystem _vanilla;
 
@@ -27,13 +27,13 @@ internal sealed class TurboSmokeEmitter
     /// <summary>World position the shimmer hovers above (exhaust stack exit).</summary>
     internal Vector3 HeatOrigin => _vanilla.transform.position + Vector3.up * StackOffset;
 
-    internal TurboSmokeEmitter(ParticleSystem vanilla, Material blackMaterial, bool ownsExhaust)
+    internal ParticleSystemInspector(ParticleSystem vanilla)
     {
         _vanilla = vanilla;
         DumpVanilla(vanilla);
     }
 
-    internal void Update(Color smokeColor, float smokeDensity, float rpmNorm, float fuelNorm, bool engineOn)
+    internal void Update(float fuelNorm, bool engineOn)
     {
         // heat: raw fuel-based with asymmetric inertia (keeps the shimmer alive)
         float heatTarget = engineOn ? Mathf.Clamp01(0.15f + 0.85f * fuelNorm) : 0f;

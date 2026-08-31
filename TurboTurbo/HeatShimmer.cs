@@ -5,6 +5,7 @@ using BepInEx.Logging;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.PostProcessing;
+using TurboTurbo.Inspectors;
 
 namespace TurboTurbo;
 
@@ -23,7 +24,7 @@ internal static class HeatShimmer
 {
     private sealed class Source
     {
-        internal TurboSmokeEmitter Emitter;
+        internal ParticleSystemInspector Emitter;
         internal GameObject ParticlesGo;
         internal ShimmerParticles Particles;
         internal Vector3 Viewport;
@@ -54,14 +55,14 @@ internal static class HeatShimmer
         Log.LogInfo($"heatHaze render: using {(fullscreen ? "BlitFullscreenTriangle" : "plain Blit")}");
     }
 
-    internal static void Register(TurboSmokeEmitter emitter)
+    internal static void Register(ParticleSystemInspector emitter)
     {
         Sources.RemoveAll(s => s.Emitter == emitter);
         Sources.Add(new Source { Emitter = emitter });
         Log.LogInfo($"shimmer: registered heat source from {emitter.Car.ID} (total {Sources.Count})");
     }
 
-    internal static void Unregister(TurboSmokeEmitter emitter)
+    internal static void Unregister(ParticleSystemInspector emitter)
     {
         Source s = Sources.FirstOrDefault(x => x.Emitter == emitter);
         if (s != null)

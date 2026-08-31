@@ -121,7 +121,7 @@ internal sealed class EngineTurbo
     private readonly Port _fuelPort;
     private readonly SimulationFlow _flow;
     private TurboWhineAudio _whine;
-    private readonly List<TurboSmokeEmitter> _smoke = new();
+    private readonly List<Inspectors.ParticleSystemInspector> _smoke = new();
     private bool _smokeAttached;
     private float _smokeRetryTimer;
     private float _boost;
@@ -156,10 +156,9 @@ internal sealed class EngineTurbo
     internal void AttachAudio(TurboWhineAudio whine) => _whine = whine;
 
     /// <summary>
-    /// Clones the vanilla exhaust system into our emitter, and (when
-    /// TurboConfig.TakeOverExhaust is on) unhooks the vanilla port readers and parks the
-    /// vanilla system so our emitter is the sole exhaust. The car model may
-    /// not be loaded at attach time - retried from UpdateFrame.
+    /// Attaches the ParticleSystemInspector to the vanilla exhaust system.
+    /// The vanilla exhaust is left fully untouched (its own port readers
+    /// drive it) - we are observing its behavior in-game.
     /// </summary>
     internal void TryAttachSmoke(SimulationFlow flow)
     {
@@ -170,54 +169,15 @@ internal sealed class EngineTurbo
             .ToList();
         if (exhausts.Count == 0) return;
 
-        // TEMP diagnostic: vanilla exhaust left fully untouched (own port
-        // readers drive it) - we are observing its behavior in-game
-        bool ownsExhaust = false;
-
-        // the damaged-engine smoke system renders proven visible black -
-        // borrow its material for the emitter
-        var damaged = allPs.FirstOrDefault(ps => ps.name == "DamagedEngineSmoke");
-        Material blackMaterial = damaged != null
-            ? damaged.GetComponent<ParticleSystemRenderer>().sharedMaterial
-            : null;
-
         foreach (ParticleSystem ps in exhausts)
         {
-            var emitter = new TurboSmokeEmitter(ps, blackMaterial, ownsExhaust) { Car = Car };
-            _smoke.Add(emitter);
-            HeatShimmer.Register(emitter);
-        }
-
-        if (ownsExhaust)
-        {
-            // unsubscribe the vanilla exhaust readers from their sim ports,
-            // then stop and park the vanilla system - it stays out of the way
-            foreach (ParticlesPortReadersController ctrl in Car.GetComponentsInChildren<ParticlesPortReadersController>(true))
-            {
-                if (ctrl.particlePortReaders == null) continue;
-                foreach (var reader in ctrl.particlePortReaders
-                    .Where(r => r.particlesParent != null && r.particlesParent.name == "ExhaustEngineSmoke")
-                    .ToList())
-                {
-                    if (reader.particleUpdaters != null)
-                    {
-                        foreach (var updater in reader.particleUpdaters)
-                        {
-                            updater.Deinit(flow);
-                        }
-                    }
-                }
-            }
-            foreach (ParticleSystem ps in exhausts)
-            {
-                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                ps.gameObject.SetActive(false);
-            }
-            TurboModel.Log.LogInfo($"vanilla exhaust taken over on [{Car.ID}] (readers deinit'd, system parked)");
+            var inspector = new Inspectors.ParticleSystemInspector(ps) { Car = Car };
+            _smoke.Add(inspector);
+            HeatShimmer.Register(inspector);
         }
 
         _smokeAttached = true;
-        TurboModel.Log.LogInfo($"soot emitter attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s), ownsExhaust={ownsExhaust})");
+        TurboModel.Log.LogInfo($"particle inspector attached on [{Car.ID}] ({_smoke.Count} exhaust stack(s))");
     }
 
     internal void UpdateFrame(float frameDt)
@@ -238,9 +198,9 @@ internal sealed class EngineTurbo
         {
             Color smokeColor = TurboModel.SimActive ? SmokeColor : Color.clear;
             float smokeDensity = TurboModel.SimActive ? SmokeModelDensity : 0f;
-            foreach (TurboSmokeEmitter emitter in _smoke)
+            foreach (Inspectors.ParticleSystemInspector emitter in _smoke)
             {
-                emitter.Update(smokeColor, smokeDensity, _rpmNorm, _fuelNorm, EngineRunning);
+                emitter.Update(_fuelNorm, EngineRunning);
             }
         }
 
@@ -249,7 +209,7 @@ internal sealed class EngineTurbo
 
     internal void Destroy()
     {
-        foreach (TurboSmokeEmitter emitter in _smoke)
+        foreach (Inspectors.ParticleSystemInspector emitter in _smoke)
         {
             emitter.Destroy();
         }

@@ -37,7 +37,7 @@ namespace TurboTurbo.WorkBench
 
         private Renderer _background;
         private ShimmerParticles _particleEmitter;
-        private SmokeEmitterBench _smokeBench;
+        private SmokeParticles _smokeBench;
         private GameObject _frame;
 
         private void Start()
@@ -84,10 +84,10 @@ namespace TurboTurbo.WorkBench
             // shimmer emitter, matching the game where both share HeatOrigin
             if (smokeEnabled)
             {
-                var smokeGo = new GameObject("SmokeEmitterBench");
+                var smokeGo = new GameObject("SmokeParticles");
                 smokeGo.transform.position = smokePosition;
                 smokeGo.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
-                _smokeBench = smokeGo.AddComponent<SmokeEmitterBench>();
+                _smokeBench = smokeGo.AddComponent<SmokeParticles>();
                 _smokeBench.cleanRate = cleanRate;
                 _smokeBench.maxRate = maxRate;
                 smokeGo.transform.SetParent(_frame.transform, false);

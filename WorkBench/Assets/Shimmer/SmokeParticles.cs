@@ -12,7 +12,7 @@ namespace TurboTurbo.WorkBench
     /// configures and simulates.
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
-    public class SmokeEmitterBench : MonoBehaviour
+    public class SmokeParticles : MonoBehaviour
     {
         [Header("Smoke model inputs (engineOn = true)")]
         public float lambda = 1.2f;
@@ -79,7 +79,7 @@ namespace TurboTurbo.WorkBench
 
             if (_cloudAtlas == null)
             {
-                Debug.LogWarning($"[SmokeEmitterBench] Could not find atlas texture on '{exhaustName}' (vanilla material)!");
+                Debug.LogWarning($"[SmokeParticles] Could not find atlas texture on '{exhaustName}' (vanilla material)!");
             }
 
             Configure();
