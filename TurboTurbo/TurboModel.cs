@@ -45,7 +45,7 @@ internal static class TurboModel
         }
     }
 
-    private static bool IsTurboLoco(TrainCarType carType)
+    internal static bool IsTurboLoco(TrainCarType carType)
     {
         foreach (string name in TurboConfig.TurboLocos.Value.Split(','))
         {
@@ -309,15 +309,6 @@ internal sealed class EngineTurbo
         }
 
         _throttlePort.Value = effective;
-    }
-}
-
-[HarmonyPatch(typeof(SimController), nameof(SimController.Initialize))]
-internal static class TurboAttachPatch
-{
-    private static void Postfix(SimController __instance, TrainCar trainCar)
-    {
-        TurboModel.Attach(trainCar, __instance.simFlow);
     }
 }
 

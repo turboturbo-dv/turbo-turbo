@@ -24,6 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
         TurboConsole.Bind(Config);
         ModAssets.Load();
         _harmony.PatchAll();
+        TurboOrchestrator.Create();
 
         Log.LogInfo($"{Name} {Version} loaded");
     }
