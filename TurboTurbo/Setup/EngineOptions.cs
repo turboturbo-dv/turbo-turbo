@@ -5,9 +5,10 @@ using UnityEngine;
 
 namespace TurboTurbo.Setup;
 
-public class EngineOptions()
+public class EngineOptions
 {
     private bool _hasTurbo = false;
+    private float _exhaustSpawnOffset = 0f;
     private readonly List<Func<TrainCar, Transform>> _exhaustTransforms = new();
     private readonly List<Func<TrainCar, Transform>> _tractionVentTransforms = new();
     private readonly List<Func<TrainCar, Transform>> _dynamicBrakeVentTransforms = new();
@@ -15,6 +16,16 @@ public class EngineOptions()
     public EngineOptions AddTurbo()
     {
         _hasTurbo = true;
+        return this;
+    }
+
+    /// <summary>Vertical offset [m] applied along each exhaust's own up
+    /// axis when placing the mod's emitters: the vanilla exhaust PS
+    /// transforms sit below the visible stack mouth. Locomotive-dependent
+    /// tuning value.</summary>
+    public EngineOptions WithExhaustSpawnOffset(float meters)
+    {
+        _exhaustSpawnOffset = meters;
         return this;
     }
 
@@ -38,6 +49,6 @@ public class EngineOptions()
 
     internal EngineConfiguration Build()
     {
-        return new EngineConfiguration(_hasTurbo, _exhaustTransforms);
+        return new EngineConfiguration(_hasTurbo, _exhaustSpawnOffset, _exhaustTransforms);
     }
 }

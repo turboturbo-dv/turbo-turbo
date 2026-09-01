@@ -34,4 +34,4 @@ public static class Controller
     }
 }
 
-internal record struct EngineConfiguration(bool HasTurbo, List<Func<TrainCar, Transform>> ExhaustPositionSelectors);
+internal record struct EngineConfiguration(bool HasTurbo, float ExhaustSpawnOffset, List<Func<TrainCar, Transform>> ExhaustPositionSelectors);

@@ -39,10 +39,26 @@ namespace TurboTurbo.WorkBench
         /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
         [Range(0f, 1f)] public float heat;
 
+        /// <summary>Engine running state - fed by the mod per frame. The
+        /// bench default (true) keeps the harness behaviour unchanged.</summary>
+        public bool engineOn = true;
+
         /// <summary>World velocity of the vehicle carrying this emitter -
         /// set by the caller every frame (mod: Car velocity, bench: frame
         /// speed). Particles inherit this at emission, then drag decays it.</summary>
         public Vector3 locoVelocity;
+
+        /// <summary>Shader override for contexts where Shader.Find cannot
+        /// see the shader (the game mod injects it from the asset bundle) -
+        /// set after AddComponent, before Start.</summary>
+        public Shader shaderOverride;
+
+        /// <summary>Atlas override for contexts where the vanilla exhaust
+        /// cannot be located by name (the game mod injects the vanilla
+        /// exhaust's Cloud01_8x8 at creation) - set after AddComponent,
+        /// before Start. Bench leaves it null and resolves the atlas from
+        /// the scene in Start().</summary>
+        public Texture atlasOverride;
 
         private ParticleSystem _ps;
         private Texture _cloudAtlas;
@@ -63,21 +79,29 @@ namespace TurboTurbo.WorkBench
 
         private void Start()
         {
-            // locate the vanilla exhaust and its material: the game renders
-            // this smoke with the LIT Standard shader + Cloud01_8x8 atlas -
-            // scene lighting is what makes it look correct
-            var loco = GameObject.Find("LocoDE6");
-            var vanilla = loco != null
-                ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == exhaustName)
-                : null;
-            Material vanillaMaterial = vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>() != null
-                ? vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial
-                : null;
-
-            if (vanillaMaterial != null)
+            if (atlasOverride != null)
             {
-                // the smoke texture: the vanilla exhaust's own Cloud01_8x8 atlas
-                _cloudAtlas = vanillaMaterial.mainTexture;
+                _cloudAtlas = atlasOverride;
+            }
+            else
+            {
+                // bench path: locate the vanilla exhaust and its material:
+                // the game renders this smoke with the LIT Standard shader +
+                // Cloud01_8x8 atlas - scene lighting is what makes it look
+                // correct
+                var loco = GameObject.Find("LocoDE6");
+                var vanilla = loco != null
+                    ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == exhaustName)
+                    : null;
+                Material vanillaMaterial = vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>() != null
+                    ? vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial
+                    : null;
+
+                if (vanillaMaterial != null)
+                {
+                    // the smoke texture: the vanilla exhaust's own Cloud01_8x8 atlas
+                    _cloudAtlas = vanillaMaterial.mainTexture;
+                }
             }
 
             if (_cloudAtlas == null)
@@ -175,14 +199,18 @@ namespace TurboTurbo.WorkBench
             // TSA tile UVs are baked into the UV stream by the renderer.
             var rend = GetComponent<ParticleSystemRenderer>();
             rend.sortMode = ParticleSystemSortMode.Distance;
-            rend.material.shader = Shader.Find("TurboTurbo/Smoke");
-            rend.material.mainTexture = _cloudAtlas;
+            var smokeShader = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/Smoke");
+            if (smokeShader != null)
+            {
+                rend.material.shader = smokeShader;
+                rend.material.mainTexture = _cloudAtlas;
+            }
         }
 
         private void Update()
         {
-            // per-frame model evaluation (engineOn = true)
-            _model.Update(lambda, demand, rpmNorm, engineOn: true, Time.deltaTime);
+            // per-frame model evaluation
+            _model.Update(lambda, demand, rpmNorm, engineOn, Time.deltaTime);
 
             // manual emission: exit velocity = shared ExhaustVelocity curve;
             // particles inherit the vehicle's world velocity at emission,

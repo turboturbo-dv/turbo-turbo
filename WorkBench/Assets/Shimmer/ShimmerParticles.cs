@@ -87,6 +87,12 @@ namespace TurboTurbo
         {
             _ps = GetComponent<ParticleSystem>();
             _renderer = GetComponent<ParticleSystemRenderer>();
+        }
+
+        private void Start()
+        {
+            // deferred to Start so callers can inject shaderOverride between
+            // AddComponent and the first (and only) automatic Configure
             Configure();
         }
 

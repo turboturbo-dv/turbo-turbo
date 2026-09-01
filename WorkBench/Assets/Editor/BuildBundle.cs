@@ -5,7 +5,8 @@ using UnityEngine;
 
 public static class BuildBundle
 {
-    private const string ShaderAsset = "Assets/Shimmer/HeatShimmer.shader";
+    private const string HeatShimmerAsset = "Assets/Shimmer/HeatShimmer.shader";
+    private const string SmokeAsset = "Assets/Shimmer/SmokeShader.shader";
     private const string OutputPath = "AssetBundles";
     private const string BundleFile = OutputPath + "/turboturbo_assets";
     private const string BundleName = "turboturbo_assets";
@@ -32,7 +33,7 @@ public static class BuildBundle
             return;
         }
 
-        if (!VerifyInternal(out Shader shader))
+        if (!VerifyInternal(out int okShaders))
         {
             Debug.LogError("<b>DEPLOY ABORTED</b> - verification failed");
             return;
@@ -45,11 +46,11 @@ public static class BuildBundle
             return;
         }
 
-        string dest = Path.Combine(gamePath, "BepInEx", "plugins", BundleName);
+        string dest = Path.Combine(gamePath, "Mods", "TurboTurbo", BundleName);
         try
         {
             File.Copy(BundleFile, dest, overwrite: true);
-            Debug.Log($"<b>DEPLOY OK</b>: {dest} ({new FileInfo(dest).Length} bytes, shader '{shader.name}' supported={shader.isSupported})");
+            Debug.Log($"<b>DEPLOY OK</b>: {dest} ({new FileInfo(dest).Length} bytes, {okShaders}/2 shaders supported)");
         }
         catch (System.Exception e)
         {
@@ -64,7 +65,7 @@ public static class BuildBundle
             new AssetBundleBuild
             {
                 assetBundleName = BundleName,
-                assetNames = new[] { ShaderAsset },
+                assetNames = new[] { HeatShimmerAsset, SmokeAsset },
             },
         };
 
@@ -100,9 +101,9 @@ public static class BuildBundle
         return true;
     }
 
-    private static bool VerifyInternal(out Shader shader)
+    private static bool VerifyInternal(out int supportedShaders)
     {
-        shader = null;
+        supportedShaders = 0;
 
         if (!File.Exists(BundleFile))
         {
@@ -117,11 +118,17 @@ public static class BuildBundle
             return false;
         }
 
-        shader = bundle.LoadAsset<Shader>(ShaderAsset);
-        bool ok = shader != null && shader.isSupported;
-        Debug.Log(ok
-            ? $"<b>VERIFY OK</b>: shader='{shader.name}', supported={shader.isSupported}"
-            : "verification failed: shader missing or unsupported");
+        bool ok = true;
+        foreach (string asset in new[] { HeatShimmerAsset, SmokeAsset })
+        {
+            Shader shader = bundle.LoadAsset<Shader>(asset);
+            bool supported = shader != null && shader.isSupported;
+            Debug.Log(supported
+                ? $"<b>VERIFY OK</b>: shader='{shader.name}', supported={shader.isSupported}"
+                : $"verification failed: '{asset}' missing or unsupported");
+            ok &= supported;
+            if (supported) supportedShaders++;
+        }
         bundle.Unload(false);
         return ok;
     }
@@ -179,6 +186,6 @@ public static class BuildBundle
     {
         return !string.IsNullOrEmpty(path)
                && File.Exists(Path.Combine(path, "DerailValley.exe"))
-               && Directory.Exists(Path.Combine(path, "BepInEx", "plugins"));
+               && Directory.Exists(Path.Combine(path, "Mods"));
     }
 }

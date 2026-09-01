@@ -75,6 +75,20 @@ public sealed class TurboModel
     /// <summary>Current turbo boost pressure ratio [0..1].</summary>
     public float Boost { get; private set; }
 
+    /// <summary>Raw clamped throttle demand read this tick, before the
+    /// torque cap. Downstream exhaust behaviour (wet stacking) keys off
+    /// this, not EffectiveDemand.</summary>
+    public float Demand { get; private set; }
+
+    /// <summary>Clamped normalized engine speed read this tick.</summary>
+    public float RpmNorm { get; private set; }
+
+    /// <summary>Instantaneous exhaust-gas energy proxy [0..1]: the
+    /// equilibrium target the boost lag chases (fuel demand x rpm mass
+    /// flow). Exhaust temperature follows combustion immediately - only
+    /// the turbo lags - so plume effects key off this, not Boost.</summary>
+    public float ExhaustHeat { get; private set; }
+
     /// <summary>Per-stroke cylinder charge index (1.0 = naturally aspirated).</summary>
     public float Charge { get; private set; }
 
@@ -112,6 +126,8 @@ public sealed class TurboModel
     {
         float demand = Clamp(_throttle(), 0f, 1f);
         float rpmNorm = Clamp(_rpmNorm(), 0f, 1f);
+        Demand = demand;
+        RpmNorm = rpmNorm;
 
         // gate all combustion on the engine's own running state: the layshaft
         // port reads ~1.0 with the engine shut down
@@ -150,6 +166,7 @@ public sealed class TurboModel
         //    feedback: overfueling shortens spool-up time.
         float rpmMassFlow = (float)Math.Pow(Clamp(rpmNorm, 0f, 1f), s.RpmBoostExponent);
         float target = Clamp(fuelDemand, 0f, 1f) * rpmMassFlow;
+        ExhaustHeat = target;
         float tau = fuelDemand > _boost
             ? Math.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * Overfuel))
             : s.TauDown;
