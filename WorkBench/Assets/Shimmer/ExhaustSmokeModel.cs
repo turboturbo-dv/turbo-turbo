@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace TurboTurbo
+namespace TurboTurbo.Modeling
 {
     /// <summary>
     /// Standalone exhaust smoke appearance model: fully determines smoke color
@@ -22,8 +22,8 @@ namespace TurboTurbo
 
         /// <summary>Lambda thresholds (injectable so the model works outside the
         /// mod project; the mod wires these from TurboConfig).</summary>
-        public float sootOnsetLambda = 0.85f;
-        public float sootOpaqueLambda = 0.45f;
+        public float SootOnsetLambda = 0.85f;
+        public float SootOpaqueLambda = 0.45f;
 
         /// <summary>Smoke particle color, rgb + opacity. Authoritative.</summary>
         public Color Color { get; private set; } = Color.clear;
@@ -60,7 +60,7 @@ namespace TurboTurbo
 
             // 4. soot layer: onset at sootOnsetLambda, opaque at sootOpaqueLambda
             float sootFactor = Mathf.Clamp01(
-                (sootOnsetLambda - lambda) / (sootOnsetLambda - sootOpaqueLambda));
+                (SootOnsetLambda - lambda) / (SootOnsetLambda - SootOpaqueLambda));
             sootFactor = Mathf.Pow(sootFactor, 1.1f);
             current = Color.Lerp(current, ColorHeavySoot, sootFactor);
 

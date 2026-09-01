@@ -1,0 +1,8 @@
+{
+  "Id": "TurboTurbo",
+  "DisplayName": "TurboTurbo",
+  "Author": "geluk",
+  "Version": "0.1.0",
+  "AssemblyName": "TurboTurbo.dll",
+  "EntryMethod": "TurboTurbo.Main.Load"
+}

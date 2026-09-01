@@ -1,6 +1,6 @@
 using System;
 
-namespace TurboTurbo;
+namespace TurboTurbo.Modeling;
 
 public sealed class GeminiParams
 {
