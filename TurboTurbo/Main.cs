@@ -21,11 +21,9 @@ public static class Main
             .AddEngineExhaust(c =>
                 c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke")?.transform)
             .AddTractionMotorVent(c =>
-                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "HighTempEngineSmoke")
-                    ?.transform)
+                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "HighTempEngineSmoke")?.transform)
             .AddTractionMotorVent(c =>
-                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "DamagedEngineSmoke")
-                    ?.transform));
+                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "DamagedEngineSmoke")?.transform));
 
         Orchestrator.Create(Log);
         

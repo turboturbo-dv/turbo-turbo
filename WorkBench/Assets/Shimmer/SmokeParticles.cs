@@ -1,4 +1,5 @@
 using System.Linq;
+using TurboTurbo.Modeling;
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
@@ -38,9 +39,12 @@ namespace TurboTurbo.WorkBench
         /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
         [Range(0f, 1f)] public float heat;
 
+        /// <summary>World velocity of the vehicle carrying this emitter -
+        /// set by the caller every frame (mod: Car velocity, bench: frame
+        /// speed). Particles inherit this at emission, then drag decays it.</summary>
+        public Vector3 locoVelocity;
+
         private ParticleSystem _ps;
-        private ParticleSystemRenderer _rend;
-        private Material _vanillaMaterial;
         private Texture _cloudAtlas;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
@@ -72,7 +76,6 @@ namespace TurboTurbo.WorkBench
 
             if (vanillaMaterial != null)
             {
-                _vanillaMaterial = vanillaMaterial;
                 // the smoke texture: the vanilla exhaust's own Cloud01_8x8 atlas
                 _cloudAtlas = vanillaMaterial.mainTexture;
             }
@@ -92,12 +95,14 @@ namespace TurboTurbo.WorkBench
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
 
             var main = _ps.main;
-            main.startLifetime = lifetime;
-            main.startSpeed = 0f; // velocity is set per particle at emission
-            main.startSize = new ParticleSystem.MinMaxCurve(startSizeMin, startSizeMax);
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 400;
             main.gravityModifier = 0f;
+            // per-particle properties (startLifetime/startSize/startColor/
+            // startSpeed) are deliberately not set on the main module: manual
+            // emission provides them per particle via EmitParams, which
+            // overrides the main module. If an emission path ever stops
+            // setting one, revisit this block.
 
             // growth: smoke expands as it disperses
             if (_sizeCurve == null || _sizeCurveStart != sizeOverLifetimeStart || _sizeCurveEnd != sizeOverLifetimeEnd)
@@ -110,26 +115,25 @@ namespace TurboTurbo.WorkBench
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            // smooth fade-out: alpha-only gradient (rgb untouched, so the
-            // model color survives) - fades from opaque to transparent over
-            // the last 60% of the lifetime
+            // fade envelope: alpha-only gradient (rgb untouched, so the
+            // per-particle model color in the vertex color stream survives).
+            // Quick fade-in over the first 10% of the lifetime (~0.2s) so
+            // particles don't pop in at full opacity, hold, then fade out
+            // over the last 60%; multiplies the color baked per particle at
+            // emission
             var fade = new Gradient();
             fade.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                 new[]
                 {
-                    new GradientAlphaKey(1f, 0f),
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(1f, 0.1f),
                     new GradientAlphaKey(1f, 0.4f),
                     new GradientAlphaKey(0f, 1f),
                 });
             var col = _ps.colorOverLifetime;
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(fade);
-
-            // smooth fade-out: alpha-only gradient (rgb untouched, so the
-            // model color survives) - fades from opaque to transparent over
-            // the last 60% of the lifetime; multiplies the per-particle
-            // model color in the vertex color stream
 
             // air resistance decays the inherited train velocity
             var lvol = _ps.limitVelocityOverLifetime;
@@ -170,7 +174,6 @@ namespace TurboTurbo.WorkBench
             // vertex color (model color per particle) x envelope alpha.
             // TSA tile UVs are baked into the UV stream by the renderer.
             var rend = GetComponent<ParticleSystemRenderer>();
-            _rend = rend;
             rend.sortMode = ParticleSystemSortMode.Distance;
             rend.material.shader = Shader.Find("TurboTurbo/Smoke");
             rend.material.mainTexture = _cloudAtlas;
@@ -181,7 +184,9 @@ namespace TurboTurbo.WorkBench
             // per-frame model evaluation (engineOn = true)
             _model.Update(lambda, demand, rpmNorm, engineOn: true, Time.deltaTime);
 
-            // manual emission: exit velocity = shared ExhaustVelocity curve
+            // manual emission: exit velocity = shared ExhaustVelocity curve;
+            // particles inherit the vehicle's world velocity at emission,
+            // then drag (limitVelocityOverLifetime) decays it in sim
             float rate = rpmNorm * cleanRate + _model.Density * maxRate;
             _emitAccumulator += rate * Time.deltaTime;
             int n = (int)_emitAccumulator;
@@ -199,7 +204,8 @@ namespace TurboTurbo.WorkBench
                     {
                         position = transform.position,
                         velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                 + Random.insideUnitSphere * 0.15f,
+                                 + Random.insideUnitSphere * 0.15f
+                                 + locoVelocity,
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = _model.Color, // rgb+alpha baked per particle at emission
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),

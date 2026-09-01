@@ -3,24 +3,6 @@ using UnityEngine;
 namespace TurboTurbo
 {
     /// <summary>
-    /// Shared exhaust exit-velocity calculation for all exhaust emitters
-    /// (shimmer particles + smoke): the exit speed lerps from the idle speed
-    /// (1.5 m/s) to the full-load speed (10 m/s) as a function of the engine
-    /// heat signal.
-    /// </summary>
-    public static class ExhaustVelocity
-    {
-        /// <summary>Shared exhaust exit speeds [m/s].</summary>
-        public const float Idle = 1.5f;
-        public const float FullLoad = 10f;
-
-        public static float Calculate(float heat)
-        {
-            return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
-        }
-    }
-
-    /// <summary>
     /// Self-contained exhaust shimmer particle emitter. Designed to be
     /// reusable: zero external dependencies, configures its own
     /// ParticleSystem, and exposes a flow-coupling entry point (SetFlow)
@@ -44,13 +26,10 @@ namespace TurboTurbo
         public float startSizeMax = 0.8f;
         public float sizeOverLifetimeStart = 1f;
         public float sizeOverLifetimeEnd = 2.5f;
-        public float startSpeed = 1.5f;
-        public float velocityHeatScale = 3f;
         public float gravity = -0.05f;
         public Color color = new Color(1f, 1f, 1f, 1f); // rgb unused by the shader; alpha scales the decay envelope
 
         [Header("Inherited motion (train velocity + air resistance)")]
-        [Range(0f, 1f)] public float inheritFactor = 1f;
         public float drag = 0.8f;
         public float buoyancy = 0.3f;
 
@@ -89,6 +68,7 @@ namespace TurboTurbo
         public Shader shaderOverride;
 
         private ParticleSystem _ps;
+        private ParticleSystemRenderer _renderer;
         private Material _material;
         private float _animTime;
         private float _emitAccumulator;
@@ -106,23 +86,40 @@ namespace TurboTurbo
         private void Awake()
         {
             _ps = GetComponent<ParticleSystem>();
+            _renderer = GetComponent<ParticleSystemRenderer>();
             Configure();
         }
 
-        /// <summary>Builds the ParticleSystem layout. Idempotent; safe to
-        /// call again after changing structural settings.</summary>
+        /// <summary>Live-tuning path for the WorkBench: inspector edits
+        /// re-apply the structural layout in play mode. Editor-only message -
+        /// never invoked in builds; script-driven structural changes must
+        /// call Configure() explicitly. The play-mode guard keeps edit-mode
+        /// invocations (script reload, edit-time inspector edits) from
+        /// creating materials.</summary>
+        private void OnValidate()
+        {
+            if (Application.isPlaying) Configure();
+        }
+
+        /// <summary>Applies the structural ParticleSystem layout (modules,
+        /// curves, material). Called once from Awake; call again after
+        /// changing structural settings (lifetime, drag, renderQueue, ...).
+        /// Not idempotent-cheap: rewrites all modules into native state, so
+        /// the per-frame path must only touch uniforms (Update).</summary>
         public void Configure()
         {
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
+            if (_renderer == null) _renderer = GetComponent<ParticleSystemRenderer>();
 
             var main = _ps.main;
-            main.startLifetime = lifetime;
-            main.startSpeed = startSpeed;
-            main.startSize = new ParticleSystem.MinMaxCurve(startSizeMin, startSizeMax);
-            main.startColor = color;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 200;
             main.gravityModifier = gravity;
+            // per-particle properties (startLifetime/startSize/startColor/
+            // startSpeed) are deliberately not set on the main module: manual
+            // emission provides them per particle via EmitParams, which
+            // overrides the main module. If an emission path ever stops
+            // setting one, revisit this block.
 
             // growth: particles expand over their lifetime;
             // curve cached so per-frame re-apply doesn't allocate
@@ -162,10 +159,9 @@ namespace TurboTurbo
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(_alphaGradient);
 
-            var shape = _ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 8f;
-            shape.radius = 0.1f;
+            // no shape module: EmitParams.position places every particle at
+            // the emitter origin, bypassing the shape; spread comes from the
+            // per-particle velocity jitter in Update()
 
             // air resistance: drag decays the inherited train velocity
             // exponentially once the particle is expelled
@@ -193,7 +189,7 @@ namespace TurboTurbo
             em.enabled = false;
             em.rateOverTime = 0f;
 
-            var rend = GetComponent<ParticleSystemRenderer>();
+            var rend = _renderer;
             rend.sortMode = ParticleSystemSortMode.Distance; // correct shimmer-over-shimmer compositing
             if (useShimmerShader)
             {
@@ -223,12 +219,8 @@ namespace TurboTurbo
 
         private void Update()
         {
-            // re-apply layout every frame so inspector edits apply live
-            // (cheap module writes; the material is created only once)
-            Configure();
-
             // manual emission with inherited vehicle velocity:
-            //   v = up * upSpeed(heat) + locoVel * inheritFactor + spread
+            //   v = up * upSpeed(heat) + locoVel + spread
             // drag (limitVelocityOverLifetime) then decays it in sim.
             float rate = Mathf.Lerp(idleRate, fullRate, heat);
             _emitAccumulator += rate * Time.deltaTime;
@@ -240,7 +232,6 @@ namespace TurboTurbo
 
                 float upSpeed = ExhaustVelocity.Calculate(heat);
                 Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
-                Vector3 inherited = locoVelocity * inheritFactor;
 
                 for (int i = 0; i < n; i++)
                 {
@@ -249,7 +240,7 @@ namespace TurboTurbo
                         position = transform.position,
                         velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
                                  + Random.insideUnitSphere * 0.15f
-                                 + inherited,
+                                 + locoVelocity,
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
@@ -272,6 +263,24 @@ namespace TurboTurbo
                 _material.SetFloat("_Outline", outline ? 1f : 0f);
                 _material.SetFloat("_Debug", debug);
             }
+        }
+    }
+
+    /// <summary>
+    /// Shared exhaust exit-velocity calculation for all exhaust emitters
+    /// (shimmer particles + smoke): the exit speed lerps from the idle speed
+    /// (1.5 m/s) to the full-load speed (10 m/s) as a function of the engine
+    /// heat signal.
+    /// </summary>
+    public static class ExhaustVelocity
+    {
+        /// <summary>Shared exhaust exit speeds [m/s].</summary>
+        public const float Idle = 1.5f;
+        public const float FullLoad = 10f;
+
+        public static float Calculate(float heat)
+        {
+            return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
         }
     }
 }

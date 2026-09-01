@@ -15,9 +15,12 @@ public static class Controller
     {
         var configurator = new EngineOptions();
         configure(configurator);
-        Configurations.Add(trainCarType, configurator.Build());
+
+        var configuration = configurator.Build();
+
+        Configurations.Add(trainCarType, configuration);
         
-        Main.Log.LogInfo($"[controller] configured {trainCarType} with turbo={configurator.Build().HasTurbo} and {configurator.Build().ExhaustPositionSelectors.Count} exhausts");
+        Main.Log.LogInfo($"[controller] configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)

@@ -39,6 +39,7 @@ namespace TurboTurbo.WorkBench
         private ShimmerParticles _particleEmitter;
         private SmokeParticles _smokeBench;
         private GameObject _frame;
+        private bool _lastShimmerOverSmoke;
 
         private void Start()
         {
@@ -115,10 +116,13 @@ namespace TurboTurbo.WorkBench
             }
 
             // draw-order experiment: shimmer queue 3010 (over the smoke) or
-            // 2990 (before it, the old order)
-            if (_particleEmitter != null)
+            // 2990 (before it, the old order). renderQueue is structural -
+            // re-apply Configure only when the toggle flips
+            if (_particleEmitter != null && shimmerOverSmoke != _lastShimmerOverSmoke)
             {
+                _lastShimmerOverSmoke = shimmerOverSmoke;
                 _particleEmitter.renderQueue = shimmerOverSmoke ? 3010 : 2990;
+                _particleEmitter.Configure();
             }
 
             Material bg = _background != null ? _background.sharedMaterial : null;
@@ -134,12 +138,16 @@ namespace TurboTurbo.WorkBench
                 _frame.transform.position += Vector3.right * (moveSpeed * Time.deltaTime);
             }
 
-            // the emitter rides the frame, so the vehicle's world velocity is
+            // the emitters ride the frame, so the vehicle's world velocity is
             // the frame velocity: particles inherit it at emission, then drag
-            // bleeds it off (the plume bends backward)
+            // bleeds it off (the plumes bend backward)
             if (_particleEmitter != null)
             {
                 _particleEmitter.locoVelocity = Vector3.right * moveSpeed;
+            }
+            if (_smokeBench != null)
+            {
+                _smokeBench.locoVelocity = Vector3.right * moveSpeed;
             }
         }
 
