@@ -1,7 +1,7 @@
 ﻿namespace TurboTurbo.Modeling;
 
 /// <summary>
-/// Deterministic, allocation-free xorshift32 PRNG for the audio thread.
+/// Deterministic xorshift32 PRNG for the audio thread.
 /// </summary>
 internal struct Xorshift32
 {

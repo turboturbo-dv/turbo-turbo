@@ -8,7 +8,7 @@ public static class TurboSynth
     /// Bench-style sweep: the same cosine command trajectory as
     /// WhineSynth.RenderSweep, driving engine rpm and load through the DSP.
     /// </summary>
-    public static float[] RenderSweep(TurboDspParams p, double sweepSeconds)
+    public static float[] RenderSweep(TurboDsp.Settings p, double sweepSeconds)
     {
         int total = (int)(p.SampleRate * sweepSeconds);
         var output = new float[total];
@@ -33,7 +33,7 @@ public static class TurboSynth
     /// Holds a steady operating point (spooling up from rest first).
     /// Not a seamless loop - the real-time paradigm has no loop; audition only.
     /// </summary>
-    public static float[] RenderSteady(TurboDspParams p, double seconds, double load)
+    public static float[] RenderSteady(TurboDsp.Settings p, double seconds, double load)
     {
         int total = (int)(p.SampleRate * seconds);
         var output = new float[total];
@@ -59,7 +59,7 @@ public static class TurboSynth
     /// tonal component stays as periodic as possible - organic wobble belongs
     /// to the realtime playback layer, where it cannot break the seam.
     /// </summary>
-    public static float[] RenderLoop(TurboDspParams p, double steadySeconds, double load)
+    public static float[] RenderLoop(TurboDsp.Settings p, double steadySeconds, double load)
     {
         var pj = CloneForLoop(p);
         double spoolSeconds = 4.0 * pj.TauSpool + 1.0;
@@ -104,9 +104,9 @@ public static class TurboSynth
         return output;
     }
 
-    private static TurboDspParams CloneForLoop(TurboDspParams p)
+    private static TurboDsp.Settings CloneForLoop(TurboDsp.Settings p)
     {
-        return new TurboDspParams
+        return new TurboDsp.Settings
         {
             SampleRate = p.SampleRate,
             BladeCount = p.BladeCount,
@@ -135,40 +135,4 @@ public static class TurboSynth
         float gain = (float)(0.9 / peak);
         for (int i = 0; i < samples.Length; i++) samples[i] *= gain;
     }
-}
-
-public sealed class TurboDspParams
-{
-    public int SampleRate = 44100;
-    public double BladeCount = 12.0;
-    /// <summary>
-    /// Supposedly a realistic peak shaft speed for large-frame turbos.
-    /// At 36000 RPM with 12 blades the physical BPF tops out at 7.2 kHz,
-    /// which sounds nice without needing any pitch scaling.
-    /// </summary>
-    public double MaxTurboRpm = 36000.0;
-    /// <summary>1:1 physical blade-passing frequency scaling.</summary>
-    public double BpfScale = 1.0;
-    public double IdleEngineRpmNorm = 0.332; // TODO: measured idle? verify
-    public double TauSpool = 1.8;
-    public double TauDump = 1.2;
-    public double WhineGain = 0.4;
-    /// <summary>Exponent of the whine gain curve (gain = (w/max)^exponent).
-    /// Models dipole aeroacoustic scaling (U^4-U^6) so the whistle stays
-    /// submerged at low shaft speed and emerges sharply at high power.</summary>
-    public double WhineGainExponent = 3.5;
-    public double FlowGain = 0.6;
-    /// <summary>Gain of the resonant intake-duct band-pass (Branch B).</summary>
-    public double DuctResGain = 0.5;
-    /// <summary>Resonance (Q) of the intake-duct band-pass.</summary>
-    public double DuctQ = 2.0;
-    public double JitterHz = 10.0;
-    public double JitterAmount = 0.008;
-    /// <summary>Load rejection rate (per second) that triggers surge flutter.</summary>
-    public double SurgeRateThreshold = -0.35;
-    /// <summary>Listener-position filter: 2-pole (12 dB/oct) low-pass modeling
-    /// the muffled engine-bay/cab sound when the listener is inside the cab.</summary>
-    public bool CabFilter = false;
-    public double CabFilterCutoffHz = 2000.0;
-    public int Seed = 1234;
 }

@@ -24,7 +24,7 @@ IWavePlayer output = new WaveOutEvent { DesiredLatency = 200, NumberOfBuffers = 
 output.Init(provider.ToWaveProvider());
 output.Play();
 
-TurboDspParams MakeParams(bool filtered) => new TurboDspParams
+TurboDsp.Settings MakeParams(bool filtered) => new()
 {
     SampleRate = 48000,
     BladeCount = blades,

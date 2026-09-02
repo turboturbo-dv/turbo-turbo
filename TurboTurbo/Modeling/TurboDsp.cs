@@ -19,7 +19,7 @@ namespace TurboTurbo.Modeling;
 /// </summary>
 public sealed class TurboDsp
 {
-    private readonly TurboDspParams _p;
+    private readonly Settings _p;
     private Xorshift32 _rng;
 
     private double _turboRpm;
@@ -63,10 +63,10 @@ public sealed class TurboDsp
     /// </summary>
     public bool UseExternalState;
 
-    public TurboDsp(TurboDspParams p)
+    public TurboDsp(Settings p)
     {
         _p = p;
-        _rng = new Xorshift32((uint)p.Seed);
+        _rng = new Xorshift32((uint) p.Seed);
         _kJitter = 1.0 - Math.Exp(-2.0 * Math.PI * p.JitterHz / p.SampleRate);
         _svfQInv = 1.0 / Math.Max(0.5, p.DuctQ);
     }
@@ -96,7 +96,7 @@ public sealed class TurboDsp
 
     public double ProcessSample(double engineRpmNorm, double load, double dt)
     {
-        TurboDspParams p = _p;
+        Settings p = _p;
         double sr = p.SampleRate;
 
         if (dt != _lastDt)
@@ -117,7 +117,7 @@ public sealed class TurboDsp
         else
         {
             _rampPos = Math.Min(_rampPos + 1, _rampSamples);
-            double t = (double)_rampPos / _rampSamples;
+            double t = (double) _rampPos / _rampSamples;
             _turboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
             _boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
         }
@@ -127,6 +127,7 @@ public sealed class TurboDsp
             _surgeEnvelope = 1.0;
             _surgePhase = 0.0;
         }
+
         _prevLoad = load;
         _hasPrevLoad = true;
 
@@ -180,6 +181,7 @@ public sealed class TurboDsp
             _svfF = 2.0 * Math.Sin(Math.PI * fc / sr);
             _svfLastFc = fc;
         }
+
         _svfLow += _svfF * _svfBand;
         double svfHigh = white2 - _svfLow - _svfQInv * _svfBand;
         _svfBand += _svfF * svfHigh;
@@ -208,6 +210,7 @@ public sealed class TurboDsp
                 _kCab = 1.0 - Math.Exp(-2.0 * Math.PI * p.CabFilterCutoffHz / sr);
                 _lastCabCutoff = p.CabFilterCutoffHz;
             }
+
             _cabLp1 += _kCab * (output - _cabLp1);
             _cabLp2 += _kCab * (_cabLp1 - _cabLp2);
             output = _cabLp2;
@@ -223,4 +226,52 @@ public sealed class TurboDsp
     }
 
     private static double Clamp01(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
+
+
+    public sealed class Settings
+    {
+        public int SampleRate = 44100;
+        public double BladeCount = 12.0;
+
+        /// <summary>
+        /// Supposedly a realistic peak shaft speed for large-frame turbos.
+        /// At 36000 RPM with 12 blades the physical BPF tops out at 7.2 kHz,
+        /// which sounds nice without needing any pitch scaling.
+        /// </summary>
+        public double MaxTurboRpm = 36000.0;
+
+        /// <summary>1:1 physical blade-passing frequency scaling.</summary>
+        public double BpfScale = 1.0;
+
+        public double IdleEngineRpmNorm = 0.332; // TODO: measured idle? verify
+        public double TauSpool = 1.8;
+        public double TauDump = 1.2;
+        public double WhineGain = 0.4;
+
+        /// <summary>Exponent of the whine gain curve (gain = (w/max)^exponent).
+        /// Models dipole aeroacoustic scaling (U^4-U^6) so the whistle stays
+        /// submerged at low shaft speed and emerges sharply at high power.</summary>
+        public double WhineGainExponent = 3.5;
+
+        public double FlowGain = 0.6;
+
+        /// <summary>Gain of the resonant intake-duct band-pass (Branch B).</summary>
+        public double DuctResGain = 0.5;
+
+        /// <summary>Resonance (Q) of the intake-duct band-pass.</summary>
+        public double DuctQ = 2.0;
+
+        public double JitterHz = 10.0;
+        public double JitterAmount = 0.008;
+
+        /// <summary>Load rejection rate (per second) that triggers surge flutter.</summary>
+        public double SurgeRateThreshold = -0.35;
+
+        /// <summary>Listener-position filter: 2-pole (12 dB/oct) low-pass modeling
+        /// the muffled engine-bay/cab sound when the listener is inside the cab.</summary>
+        public bool CabFilter = false;
+
+        public double CabFilterCutoffHz = 2000.0;
+        public int Seed = 1234;
+    }
 }
