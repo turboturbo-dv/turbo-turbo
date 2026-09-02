@@ -1,24 +1,6 @@
-# TurboTurbo — Heat Shimmer TODO
+# TurboTurbo TODO
 
 ## Spikes (investigate, don't commit yet)
-
-- [ ] **Cuboid volume instead of billboard.**
-  Draw a rectangular cuboid above the chimney whose faces are the working
-  area (like today's quad), so the effect is naturally constrained to a
-  squarish region above the exhaust from all angles.
-  - *Feedback: cheap after item 3* — once the mask is UV-based and the noise
-    is in-shader, the "working area" shader works on any mesh; a box is just
-    per-face 0–1 UVs. Expect subtle seams at box edges; the soft taper
-    should mostly hide them.
-
-- [ ] **Smoke behind the shimmer.**
-  Investigate rendering the smoke *behind* the shimmer effect so the plume
-  gets displaced along with the background.
-  - *Feedback: the early "yellow cylinder" failure was likely not this
-    idea's fault* — it was the broken rim/offset math amplifying the bright
-    additive plume. With small true-screen-UV offsets and queue-after-smoke,
-    the plume should gently wobble. Composes with item 4 (smoke doesn't
-    write depth → stays displaceable).
 
 - [ ] **Spike: slight gaussian blur in the shimmer.**
   Add a small gaussian blur to the shimmer to model smaller-scale shimmering
@@ -36,64 +18,44 @@
   edge-extend the foreground depth so protected regions are wider than the
   geometry itself.
 
-- [ ] **Spike: shimmer particles instead of a fixed quad.**
-  Emit *shimmer particles* from the exhaust like smoke: each particle is a
-  billboard that displaces the grab locally, rising from the stack and left
-  hanging in the air as the loco moves — faithfully modelling the hot-air
-  trail behind a driving locomotive, which the fixed quad cannot do.
-  - *Why the cost is favourable:*
-    - The GrabPass capture is the expensive op, and a particle system renders
-      all its billboards as **one draw call / one renderer** = one unnamed
-      grab per frame, regardless of particle count.
-    - Fragment work scales with *covered pixels*, not particle count — the
-      plume covers roughly the same screen area as today's quad, plus 2–3×
-      overdraw where particles overlap.
-  - *Particle interaction:* none, by design — each particle independently
-    displaces the same captured grab; overlaps saturate (last draw wins)
-    instead of compounding. Physically close enough (turbulence adds
-    sub-linearly anyway).
-  - *Bonus wins:* particle alpha-over-lifetime replaces the analytic mask
-    (flow-scaled taper for free); particle billboarding solves the
-    edge-on-view problem; the noise field rides with each particle (slower
-    internal scroll, more physical advection).
-  - *Risks:*
-    - DV grab semantics with multiple users are treacherous (two-loco
-      incident). A single particle renderer is one grab user (likely fine);
-      two locos = two renderers = must re-verify in game.
-    - 2019.4 plumbing: custom vertex streams (per-particle random phase for
-      the noise) + GrabPass in a particle shader is an unusual combination.
-    - Overlap tuning so dense plumes read coherent, not crawly.
-  - *Prototype plan:* WorkBench first — animate a dummy loco transform on
-    rails, emit shimmer particles (world-sim, billboard mode), custom vertex
-    streams into the shimmer shader (alpha = mask), verify single vs. two
-    emitters, overlap behaviour and perf with 100+ particles.
+- [ ] **Spike: integrate the turbo whine synth into the mod.**
+  Port the whine from WhineBench (`shared/WhineSynthGemini.cs`) into the
+  runtime, driven by `TurboModel` (Boost, Demand, RpmNorm) and gated on
+  ENGINE_ON like the effects. The old mod's `TurboTurboOld/TurboAudio.cs`
+  documents a working reference path — start from it, then evaluate the
+  upgrades below.
+  - *Known-working baseline ("GameStyle" path):* pre-render two seamless
+    8 s loops with `RenderLoop` (identical seed, one cab-filtered, so they
+    stay sample-aligned), play both on per-loco AudioSources, and drive
+    pitch + volume per frame — Unity ramps AudioSource parameters
+    internally, so it is always smooth. Crossfade exterior/cab by
+    `PlayerManager.Car` with an eased tau. Pitch lerp (~0.11..1.0) over an
+    eased boost state (tau ~0.8 s, matching the bench sweep); dipole-shaped
+    volume (steep boost exponent, weighted by a boost x load pressure
+    factor) so the whistle only pierces the mix under load.
+  - *Candidate upgrades to evaluate:*
+    - **Borrow the vanilla mixer group** (the old mod copied it off the
+      car's LayeredAudio layers, with a retry because car audio loads
+      late) so cab snapshot ducking applies to the whine equally.
+    - **Drive the whine through DV's own LayeredAudio** (a code-built
+      instance or an injected layer) instead of raw AudioSources, to
+      inherit the game's volume/pitch curves, doppler and mixing
+      conventions. Study how vanilla layers are driven per frame
+      (`SetVolume`/`SetPitch`) before committing.
+    - **Share clips across all DE6s:** loop parameters are identical per
+      car type, so render one clip pair once and reuse it for every pooled
+      car (the old mod rendered per loco — a few MB of PCM each).
+  - *Drop candidate:* the old DSP mode (live per-sample streaming clip).
+    Finicky (needed PCM-callback diagnostics) and the loop path is
+    indistinguishable at 8 s loop length; only revisit if per-sample state
+    coupling (e.g. true surge response) proves audible.
+  - *Risks:* cab/exterior crossfade quality (the sample-aligned single-seed
+    trick keeps the mix coherent — keep it); mixer group resolution timing;
+    long-session loop wrap audibility (the equal-power crossfade should
+    smear it); pitch shifting a looped clip changes its perceived length
+    (fine for a whine, verify no clicks at minimum pitch).
+  - *Prototype plan:* port the GameStyle path into `EngineSimulationHost`
+    behind a small per-car whine component (same lifecycle as the effects
+    emitters), verify in game against the WhineBench reference render,
+    then A/B a LayeredAudio-based variant.
 
-- [ ] **Spike (phase 2 of shimmer particles): serve engine smoke from the
-  same particle shader.**
-  Extend the shimmer particle shader with smoke quantity parameters so each
-  particle draws smoke *directly on top of its displaced background*, then
-  retire the original smoke particle emitter entirely.
-  - *Why it's elegant:*
-    - Smoke becomes a shader term, not a blend state:
-      `final = occluded ? grab : lerp(displacedGrab, smokeColor, smokeAlpha)`
-      — one pass, `Blend Off`, zero sorting or queue games; shimmer and
-      smoke literally cannot interfere because they are one draw.
-    - The same fBm field drives displacement *and* smoke shape (puff edges =
-      noise threshold animated by the turbulence) — the air that wobbles is
-      the air that's smoky, a look two independent systems can't produce.
-    - Occlusion improves: the per-pixel depth test gates the smoke term too,
-      so foreground objects hide plume pixels behind them per-pixel (finer
-      than the vanilla particle ZTest).
-    - One emitter replaces three (clean haze + soot + shimmer quad); all
-      drivers already exist (`HeatIntensity`, `SmokeDensity` → particle
-      vertex channels). Cold engine = faint haze; hot = haze + soot +
-      shimmer, mixed per particle.
-  - *Costs / risks:*
-    - Smoke look fidelity is the real work: DV's current soot has tuned
-      growth curves, fade, flipbook textures, rate-over-distance — procedural
-      shader smoke (noise puff density × life fade) needs WorkBench iteration
-      to match, but ends up more tweakable than any particle-sheet setup.
-    - Lighting: shader smoke is unlit constant color; fine for dark soot,
-      needs care for the faint clean haze.
-    - Refactor of `TurboSmokeEmitter`: emission rate/size/color move into
-      per-particle vertex channels driven by the existing signals.
