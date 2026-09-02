@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>WhineBench</AssemblyName>
     <RootNamespace>WhineBench</RootNamespace>
     <LangVersion>latest</LangVersion>
@@ -11,7 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\shared\WhineSynthGemini.cs" Link="WhineSynthGemini.cs" />
+    <Compile Include="..\TurboTurbo\Modeling\TurboSynth.cs" Link="TurboSynth.cs" />
+    <Compile Include="..\TurboTurbo\Modeling\TurboDsp.cs" Link="TurboDsp.cs" />
+    <Compile Include="..\TurboTurbo\Modeling\Xorshift32.cs" Link="Xorshift32.cs" />
   </ItemGroup>
 
   <ItemGroup>

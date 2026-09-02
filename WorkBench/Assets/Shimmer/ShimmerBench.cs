@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
@@ -16,17 +17,17 @@ namespace TurboTurbo.WorkBench
         [Header("Background scroll speed (uv/s)")]
         public float backgroundScroll = 0.03f;
 
-        [Header("Particle emitter placement")]
-        public Vector3 emitterPosition = new Vector3(2.1f, 0.1f, 8f);
+        [Header("Emitter placement (anchored to vanilla ExhaustEngineSmoke)")]
+        [Tooltip("World-up offset from the vanilla exhaust transform - same tuning value as the mod's DE6 configuration")]
+        public float exhaustSpawnOffset = 0.25f;
 
         [Header("Exhaust smoke emitter (fresh system, TurboSmoke semantics)")]
         public bool smokeEnabled = true;
-        public Vector3 smokePosition = new Vector3(2.1f, 0.1f, 8f);
         [Range(0.3f, 2f)] public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
         [Range(0f, 100f)] public float cleanRate = 20f;
-        [Range(0f, 300f)] public float maxRate = 120f;
+        [Range(0f, 300f)] public float maxRate = 40f;
 
         [Header("Draw order experiment")]
         [Tooltip("On = shimmer renders after the smoke (queue 3010) and displaces the plume; Off = shimmer before the smoke (2990)")]
@@ -74,24 +75,34 @@ namespace TurboTurbo.WorkBench
             var loco = GameObject.Find("LocoDE6");
             if (loco != null) loco.transform.SetParent(_frame.transform, true);
 
+            // both emitters anchor to the vanilla exhaust, exactly like the
+            // game does (EngineSimulationHost resolves the same transform on
+            // real cars)
+            var vanillaExhaust = loco != null
+                ? loco.GetComponentsInChildren<ParticleSystem>(true)
+                      .FirstOrDefault(ps => ps.name == "ExhaustEngineSmoke")
+                : null;
+            if (vanillaExhaust == null)
+            {
+                Debug.LogError("[ShimmerBench] no LocoDE6 with 'ExhaustEngineSmoke' in the scene - emitters not created");
+                return;
+            }
+
             // reusable emitter component (shimmer-particles spike phase 1)
             var go = new GameObject("ShimmerParticles");
-            go.transform.position = emitterPosition;
-            go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // aim the cone up
             _particleEmitter = go.AddComponent<ShimmerParticles>();
-            go.transform.SetParent(_frame.transform, false);
+            ExhaustPlacement.PlaceAt(go.transform, vanillaExhaust.transform.position,
+                _frame.transform, exhaustSpawnOffset);
 
-            // fresh smoke emitter (no game clone) - same placement as the
-            // shimmer emitter, matching the game where both share HeatOrigin
+            // fresh smoke emitter (no game clone) - same anchor as the shimmer
             if (smokeEnabled)
             {
                 var smokeGo = new GameObject("SmokeParticles");
-                smokeGo.transform.position = smokePosition;
-                smokeGo.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // cone up
                 _smokeBench = smokeGo.AddComponent<SmokeParticles>();
                 _smokeBench.cleanRate = cleanRate;
                 _smokeBench.maxRate = maxRate;
-                smokeGo.transform.SetParent(_frame.transform, false);
+                ExhaustPlacement.PlaceAt(smokeGo.transform, vanillaExhaust.transform.position,
+                    _frame.transform, exhaustSpawnOffset);
             }
         }
 

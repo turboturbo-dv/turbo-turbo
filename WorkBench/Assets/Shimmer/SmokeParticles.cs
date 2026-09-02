@@ -29,10 +29,10 @@ namespace TurboTurbo.WorkBench
 
         [Header("Particle look")]
         public float lifetime = 2f;
-        public float startSizeMin = 0.6f;
-        public float startSizeMax = 0.9f;
+        public float startSizeMin = 0.4f;
+        public float startSizeMax = 0.6f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 6f;
+        public float sizeOverLifetimeEnd = 9f;
         public float buoyancy = 0.3f;
         public float drag = 0.8f;
         /// <summary>Max spin speed [deg/s]; each particle gets a random

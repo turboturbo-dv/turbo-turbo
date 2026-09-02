@@ -3,12 +3,7 @@ using System;
 namespace TurboTurbo.Modeling;
 
 /// <summary>
-/// Model of a turbocharged diesel engine and its turbocharger.
-///
-/// Completely independent of the game: throttle and engine speed enter as
-/// supplier functions (wired to the game's ports by the adapter), configuration
-/// is fed in via <see cref="Settings"/>, and <see cref="Tick"/> advances the
-/// simulation one step.
+/// Self-contained model of a turbocharged diesel engine and its turbocharger.
 ///
 /// Physics summary (per tick):
 /// 1. charge      - per-stroke cylinder air index; 1.0 = naturally aspirated,
@@ -24,7 +19,7 @@ namespace TurboTurbo.Modeling;
 /// </summary>
 public sealed class TurboModel
 {
-    /// <summary>Configuration constants. Defaults match the shipped tuning.</summary>
+    /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
     public sealed class Settings
     {
         /// <summary>Per-stroke charge index of naturally-aspirated operation (zero boost).</summary>

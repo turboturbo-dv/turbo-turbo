@@ -23,7 +23,7 @@ public static class Main
             // DE6: vanilla ExhaustEngineSmoke transform sits below the visible
             // stack mouth; offset verified in TurboTurboOld (0.05 HeatOrigin
             // + 0.20 emitter placement)
-            .WithExhaustSpawnOffset(0.25f)
+            .WithExhaustSpawnOffset(0.3f)
             .AddEngineExhaust(c =>
                 c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke")?.transform)
             .AddTractionMotorVent(c =>

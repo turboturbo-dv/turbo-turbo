@@ -3,10 +3,9 @@ using UnityEngine;
 namespace TurboTurbo.Modeling
 {
     /// <summary>
-    /// Standalone exhaust smoke appearance model: fully determines smoke color
+    /// Exhaust smoke appearance model: determines smoke color
     /// and density from engine state (lambda, throttle demand, rpm). Layered:
     /// idle haze, oil blowby, lambda-driven soot, wet-stack burn-off.
-    /// One instance per engine (owns the wet-stack accumulator).
     ///
     /// Engine off -> clear color, zero density (guard).
     /// </summary>
@@ -19,7 +18,7 @@ namespace TurboTurbo.Modeling
         internal static readonly Color ColorWetStack = new Color(0.85f, 0.82f, 0.68f, 0.85f);  // straw vapor (unburned fuel droplets)
         internal static readonly Color ColorOilBurn = new Color(0.44f, 0.52f, 0.55f, 0.50f);   // dull blue-grey oil burn
 
-        // ---- tuning constants (single source of truth; tests reference them) ----
+        // ---- tuning constants ----
 
         /// <summary>Demand below which unburned fuel accumulates (wet stacking);
         /// also the demand where the burn-off ramp begins.</summary>

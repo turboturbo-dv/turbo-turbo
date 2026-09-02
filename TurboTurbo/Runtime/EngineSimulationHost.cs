@@ -15,8 +15,7 @@ namespace TurboTurbo.Runtime;
 /// Orchestrator when a matching EngineConfiguration exists, living alongside
 /// DV's own per-car runtime components (SimController, CarDamageModel, ...).
 /// Waits for the car's simulation to initialize, then binds the configured
-/// features to it: the turbo model first, then the exhaust effects
-/// (smoke + shimmer emitters on each configured exhaust transform).
+/// features to it.
 ///
 /// Survives car pool cycles deactivated and resumes on revival; the sim
 /// bindings stay valid because SimController/SimulationFlow are never
@@ -24,8 +23,7 @@ namespace TurboTurbo.Runtime;
 /// </summary>
 internal sealed class EngineSimulationHost : MonoBehaviour
 {
-    /// <summary>Pair of emitters sharing one exhaust position. Smoke renders
-    /// at queue 3000, shimmer at 3010, so the shimmer displaces the plume.</summary>
+    /// <summary>Pair of emitters sharing one exhaust position.</summary>
     private sealed class ExhaustEmitters
     {
         public SmokeParticles Smoke;
@@ -79,7 +77,43 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
     }
 
-    private void BindTurbo()
+    /// <summary>
+    /// The car's SimulationFlow only exists after SimController.Initialize has
+    /// run - retry until it does, then bind the configured features.
+    /// </summary>
+    private void TryBindSimulation()
+    {
+        // the host lives on the car root, so plain GetComponent finds the
+        // car's SimController (same lookup TrainCar.SimController does)
+        _simController = GetComponent<SimController>();
+        if (_simController == null || _simController.SimulationFlow == null)
+        {
+            if (!_loggedNoSim)
+            {
+                _loggedNoSim = true;
+                _log.LogInfo($"[host] no SimController (yet) on '{name}'");
+            }
+            return;
+        }
+
+        _simBound = true;
+        _log.LogInfo($"[host] sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
+                     $"{_configuration.ExhaustPositionSelectors.Count} exhaust selector(s))");
+
+        if (_configuration.HasTurbo)
+        {
+            TryBindTurbo();
+
+            // effects are driven from the turbo model's signals, so only bind
+            // them when binding the turbo model succeeds.
+            if (_turboModel != null)
+            {
+                TryBindEffects();
+            }
+        }
+    }
+
+    private void TryBindTurbo()
     {
         var flow = _simController.SimulationFlow;
         var engine = flow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
@@ -125,42 +159,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
-    /// <summary>
-    /// The car's SimulationFlow only exists after SimController.Initialize has
-    /// run - retry until it does, then bind the configured features.
-    /// </summary>
-    private void TryBindSimulation()
-    {
-        // the host lives on the car root, so plain GetComponent finds the
-        // car's SimController (same lookup TrainCar.SimController does)
-        _simController = GetComponent<SimController>();
-        if (_simController == null || _simController.SimulationFlow == null)
-        {
-            if (!_loggedNoSim)
-            {
-                _loggedNoSim = true;
-                _log.LogInfo($"[host] no SimController (yet) on '{name}'");
-            }
-            return;
-        }
-
-        _simBound = true;
-        _log.LogInfo($"[host] sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
-                     $"{_configuration.ExhaustPositionSelectors.Count} exhaust selector(s))");
-
-        if (_configuration.HasTurbo)
-        {
-            BindTurbo();
-
-            // effects are driven from the turbo model's signals, so they only
-            // exist when the turbo actually bound
-            if (_turboModel != null)
-            {
-                BindEffects();
-            }
-        }
-    }
-
     // ------------------------------------------------------------------
     // exhaust effects
     // ------------------------------------------------------------------
@@ -170,7 +168,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     /// transform and takes over the vanilla exhaust smoke. Runs once; the
     /// emitters live under the car root and survive pool cycles.
     /// </summary>
-    private void BindEffects()
+    private void TryBindEffects()
     {
         _trainCar = GetComponent<TrainCar>();
         _exhausts.Clear();
@@ -233,27 +231,10 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void PlaceAtExhaust(Transform t, Transform exhaust)
     {
-        // Car-local placement, mirroring the old mod's verified shimmer
-        // positioning (HeatShimmer.cs): parent to the car root first, then
-        // set local values. Two deliberate choices that differ from the
-        // vanilla transform's own axes:
-        //   1. offset along WORLD up (converted to car-local) - the vanilla
-        //      PS transform sits below the visible stack mouth, and world up
-        //      is safe under gradients/roll;
-        //   2. rotation = local -90 X, i.e. emission along the CAR's up
-        //      axis - the vanilla transform's own axes are not trusted (its
-        //      upward emission comes from the shape module, not the
-        //      transform).
-        // The offset magnitude is the car-type's ExhaustSpawnOffset (DE6:
-        // 0.25 m - see Main). Reparenting under the car root (vs. the
-        // vanilla PS transform) also means DV's active-state toggling on
-        // the vanilla PS can never freeze our world-simulated particles
-        // mid-air.
-        t.SetParent(_trainCar.transform, worldPositionStays: false);
-        Vector3 localMouth = _trainCar.transform.InverseTransformPoint(exhaust.position);
-        Vector3 localUp = _trainCar.transform.InverseTransformDirection(Vector3.up);
-        t.localPosition = localMouth + localUp * _configuration.ExhaustSpawnOffset;
-        t.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+        // shared car-local placement (see ExhaustPlacement for the
+        // rationale); offset is the car-type's ExhaustSpawnOffset
+        ExhaustPlacement.PlaceAt(t, exhaust.position, _trainCar.transform,
+            _configuration.ExhaustSpawnOffset);
     }
 
     private void UpdateEffects(bool engineOn)

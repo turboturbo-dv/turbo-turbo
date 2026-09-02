@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime;
 using System.Text;
 using NAudio.Wave;
-using TurboTurbo;
+using TurboTurbo.Modeling;
 using WhineBench;
 
 const double PitchMin = 0.11, PitchMax = 1.0;   // loop pitch range over boost
@@ -24,7 +24,7 @@ IWavePlayer output = new WaveOutEvent { DesiredLatency = 200, NumberOfBuffers = 
 output.Init(provider.ToWaveProvider());
 output.Play();
 
-GeminiParams MakeParams(bool filtered) => new GeminiParams
+TurboDspParams MakeParams(bool filtered) => new TurboDspParams
 {
     SampleRate = 48000,
     BladeCount = blades,
@@ -48,7 +48,7 @@ void RebuildLoop()
 {
     // renders the exact loop the mod's GameStyle path would play with the
     // current synthesis parameters (full load, seamless)
-    provider.SetLoop(WhineSynthGemini.RenderLoop(MakeParams(cabFilter), 8.0, 1.0));
+    provider.SetLoop(TurboSynth.RenderLoop(MakeParams(cabFilter), 8.0, 1.0));
 }
 
 RebuildLoop();
