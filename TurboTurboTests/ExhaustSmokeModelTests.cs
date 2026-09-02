@@ -8,11 +8,17 @@ namespace TurboTurboTests
     /// <summary>
     /// Behavioural tests for the ExhaustSmokeModel: engine-off guard,
     /// lambda-driven soot ladder, oil blowby tint, wet-stack accumulate and
-    /// burn-off, and density monotonicity.
+    /// burn-off, and density monotonicity. All expectations reference the
+    /// model's own tuning constants instead of hardcoded numbers, so retuning
+    /// the model cannot silently invalidate a test.
     /// </summary>
     public class ExhaustSmokeModelTests
     {
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
+
+        // enough 1s idle steps to fill the wet-stack accumulator (2x margin)
+        private static readonly int FillSteps =
+            Mathf.CeilToInt(2f / ExhaustSmokeModel.WetStackFillRate);
 
         // ------------------------------------------------------------
         // engine-off guard
@@ -38,30 +44,30 @@ namespace TurboTurboTests
             _model.Update(2f, 0.5f, 0f, engineOn: true, delta: 0.016f);
 
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
-            _model.Color.a.ShouldBe(0.22f, tolerance: 0.01f);
-            _model.Color.r.ShouldBe(0.62f, tolerance: 0.01f);
-            _model.Color.g.ShouldBe(0.59f, tolerance: 0.01f);
-            _model.Color.b.ShouldBe(0.51f, tolerance: 0.01f);
+            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaFloor, tolerance: 0.01f);
+            _model.Color.r.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.r, tolerance: 0.01f);
+            _model.Color.g.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.g, tolerance: 0.01f);
+            _model.Color.b.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.b, tolerance: 0.01f);
         }
 
         [Fact]
         public void LambdaAtOpaqueThreshold_FullySoots()
         {
-            // defaults: onset 0.85, opaque 0.45 -> lambda 0.45 = soot factor 1
-            _model.Update(0.45f, 0.8f, 0.5f, engineOn: true, 0.016f);
+            _model.Update(_model.SootOpaqueLambda, 0.8f, 0.5f, engineOn: true, 0.016f);
 
             _model.Density.ShouldBe(1f, tolerance: 0.01f);
-            _model.Color.a.ShouldBe(0.95f, tolerance: 0.01f);
+            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaCeiling, tolerance: 0.01f);
         }
 
         [Fact]
         public void LambdaBetweenThresholds_GivesIntermediateDensity()
         {
-            // defaults: onset 0.85, opaque 0.45 -> lambda 0.65 is midway
-            _model.Update(0.65f, 0.8f, 0.5f, engineOn: true, 0.016f);
+            // midway between the soot thresholds gives an intermediate ladder value
+            float midLambda = (_model.SootOnsetLambda + _model.SootOpaqueLambda) * 0.5f;
+            _model.Update(midLambda, 0.8f, 0.5f, engineOn: true, 0.016f);
 
             _model.Density.ShouldBeInRange(0.2f, 0.9f);
-            _model.Color.a.ShouldBeLessThan(0.95f);
+            _model.Color.a.ShouldBeLessThan(ExhaustSmokeModel.AlphaCeiling);
         }
 
         [Fact]
@@ -91,7 +97,10 @@ namespace TurboTurboTests
             var fullRpm = new ExhaustSmokeModel();
             fullRpm.Update(2f, 0.5f, 1f, engineOn: true, 0.016f);
 
-            var oilBurn = new Vector3(0.44f, 0.52f, 0.55f);
+            var oilBurn = new Vector3(
+                ExhaustSmokeModel.ColorOilBurn.r,
+                ExhaustSmokeModel.ColorOilBurn.g,
+                ExhaustSmokeModel.ColorOilBurn.b);
             fullRpm.Color.Rgb().DistanceTo(oilBurn).ShouldBeLessThan(
                 idleRpm.Color.Rgb().DistanceTo(oilBurn),
                 "high rpm should blend the tint toward the oil-burn color");
@@ -104,8 +113,8 @@ namespace TurboTurboTests
         [Fact]
         public void WetStack_AccumulatesAtIdle_BurnsOffUnderLoad()
         {
-            // idle: fill the accumulator (fill rate 0.08/s, 1s steps)
-            for (int i = 0; i < 300; i++)
+            // idle: fill the accumulator (1s steps)
+            for (int i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
             }
@@ -113,22 +122,43 @@ namespace TurboTurboTests
             // throttle up: burn-off must drive density and straw tint
             _model.Update(1.2f, 0.5f, 0.5f, engineOn: true, 0.1f);
 
-            _model.Color.r.ShouldBeGreaterThan(0.62f, "wet-stack burn should push red above the haze base");
-            _model.Color.a.ShouldBeGreaterThanOrEqualTo(0.6f);
+            _model.Color.r.ShouldBeGreaterThan(ExhaustSmokeModel.ColorIdleHaze.r,
+                "wet-stack burn should push red above the haze base");
+            _model.Color.a.ShouldBeGreaterThanOrEqualTo(
+                ExhaustSmokeModel.AlphaFloor + (ExhaustSmokeModel.AlphaCeiling - ExhaustSmokeModel.AlphaFloor) * 0.5f,
+                "the burn cloud should sit well above the haze floor");
             _model.Density.ShouldBeGreaterThan(0f);
+        }
+
+        [Fact]
+        public void WetStack_Idle_AlphaStaysAtHazeFloor()
+        {
+            // idle long enough to fully wet-stack
+            for (int i = 0; i < FillSteps; i++)
+            {
+                _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
+            }
+
+            // idling never densifies the exhaust: alpha stays at the haze
+            // floor even with a fully filled accumulator (regression: the
+            // opacity term used the raw accumulator instead of the
+            // demand-gated burn)
+            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaFloor, tolerance: 0.001f);
+            _model.Density.ShouldBe(0f, tolerance: 0.001f);
         }
 
         [Fact]
         public void WetStack_DoesNotBurnOff_BelowDemandGate()
         {
             // accumulate
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.5f, engineOn: true, 1f);
             }
 
-            // small demand increase but still under the 0.15 burn gate
-            _model.Update(1.2f, 0.12f, 0.5f, engineOn: true, 1f);
+            // demand increase but still under the burn gate
+            float gatedDemand = ExhaustSmokeModel.WetStackBurnDemand * 0.8f;
+            _model.Update(1.2f, gatedDemand, 0.5f, engineOn: true, 1f);
 
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
         }
@@ -137,14 +167,19 @@ namespace TurboTurboTests
         public void WetStack_BurnsOff_Completely_UnderSustainedLoad()
         {
             // idle a long time to fully accumulate
-            for (int i = 0; i < 300; i++)
+            for (int i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
             }
+
             // then hold load long enough to burn everything off
-            for (int i = 0; i < 200; i++)
+            // (0.1s steps, 2x the drain time at this demand)
+            const float burnDemand = 0.8f;
+            int burnSteps = 2 * Mathf.CeilToInt(
+                1f / (0.1f * burnDemand * ExhaustSmokeModel.WetStackBurnRate));
+            for (int i = 0; i < burnSteps; i++)
             {
-                _model.Update(1.2f, 0.8f, 0.6f, engineOn: true, 0.1f);
+                _model.Update(1.2f, burnDemand, 0.6f, engineOn: true, 0.1f);
             }
 
             // after burn-off, a throttle blip must not produce straw puffs
