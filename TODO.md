@@ -1,5 +1,11 @@
 # TurboTurbo TODO
 
+- [ ] **Distinguish between adding and replacing exhausts in public API**
+  The replace method should resolve a ParticleSystem, which represents the
+  exhaust to be replaced, as well as an optional offset in case we want to
+  adjust the new exhaust's position slightly. The add method should just
+  resolve a transform.
+
 ## Spikes (investigate, don't commit yet)
 
 - [ ] **Spike: slight gaussian blur in the shimmer.**
@@ -17,6 +23,18 @@
   reject/shrink offsets that cross a depth discontinuity; or dilate/
   edge-extend the foreground depth so protected regions are wider than the
   geometry itself.
+
+- [ ] **Spike: light the smoke shader so plumes aren't bright at night.**
+  Our smoke shader is unlit (constant per-particle color from the smoke
+  model), so the plume keeps its daytime brightness while the world
+  darkens. Investigate tying the shader to scene lighting — e.g. a simple
+  lambert against the dominant directional light + ambient probe, or
+  adopting vanilla-style lit particle rendering (the vanilla exhaust uses
+  the LIT Standard shader, which is why its smoke reads correctly at
+  night). Constraints: the per-particle model color (soot straw/haze
+  ladders) must survive the lighting term; soot should stay dark (lit
+  soot can't out-glow the scene). Verify at dusk/night against the
+  vanilla exhaust's brightness.
 
 - [ ] **Spike: integrate the turbo whine synth into the mod.**
   Port the whine from WhineBench (`shared/WhineSynthGemini.cs`) into the

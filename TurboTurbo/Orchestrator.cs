@@ -1,21 +1,28 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace TurboTurbo;
 
-/// <summary>
-/// Reacts to cars appearing in and leaving the world, and maintains the list
-/// of tracked cars. Feature attachment (turbo, smoke) reads this list.
-/// </summary>
 internal sealed class Orchestrator : MonoBehaviour
 {
     private bool _hooked;
+
+    private static readonly List<Runtime.EngineSimulationHost> _hosts = new();
+
+    internal static IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
+
+    internal static void Forget(Runtime.EngineSimulationHost host)
+    {
+        var car = host.TrainCar;
+        Main.Log.LogInfo($"[orchestrator] forgetting about '{car.name}' ({car.carType}, id={car.ID})");
+        _hosts.Remove(host);
+    }
 
     private CarSpawner Spawner { get; set; }
 
     public static Orchestrator Create(Logger log)
     {
+        // the game has SingletonBehaviour, which is probably what we want, but this works fine
         var go = new GameObject("TurboTurbo.Orchestrator");
         DontDestroyOnLoad(go);
         var orchestrator = go.AddComponent<Orchestrator>();
@@ -35,8 +42,7 @@ internal sealed class Orchestrator : MonoBehaviour
 
     private void Hook()
     {
-        // CarSpawner lives in the game scene - wait for it to exist (the mod
-        // loads before the game world does)
+        // CarSpawner lives in the game scene, wait for it to exist
         var spawner = CarSpawner.Instance;
         if (spawner == null) return;
         
@@ -46,7 +52,8 @@ internal sealed class Orchestrator : MonoBehaviour
         spawner.CarAboutToBeDeleted += OnCarAboutToBeDeleted;
         _hooked = true;
 
-        // snapshot cars that already exist (if scene was loaded before we hooked)
+        // this probably doesn't happen, but if the spawner already has cars before we discover it, we should track those too.
+        // slight race condition here, but track is idempotent so that's fine
         foreach (var car in spawner.AllCars)
         {
             Track(car);
@@ -60,13 +67,8 @@ internal sealed class Orchestrator : MonoBehaviour
 
     private void OnCarAboutToBeDeleted(TrainCar car)
     {
-        // No teardown: pooled cars are only deactivated (CarSpawner parks them
-        // under its transform), and the host's bindings (SimController /
-        // SimulationFlow) survive the pool cycle - on revival Track() skips
-        // re-attachment and the host simply resumes. Revisit if hosts ever
-        // hold resources that do not survive pooling (game event
-        // subscriptions, audio sources, ...). Fires before pooling, so this
-        // is the right hook if teardown becomes necessary.
+        // we really don't need to do anything on delete, if the car is revived from the pool
+        // the host should just come back to life with it. Still log a bit in case we run into weird issues here.
         var matchingConfiguration = Controller.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
@@ -86,7 +88,7 @@ internal sealed class Orchestrator : MonoBehaviour
             return;
         }
 
-        // pooled cars fire CarSpawned again on revival - never attach twice
+        // ensures revived cars don't receive another host
         if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
         {
             Log?.LogInfo($"[orchestrator] '{car.name}' ({car.carType}, id={car.ID}) already has a simulation host - skipping");
@@ -95,10 +97,9 @@ internal sealed class Orchestrator : MonoBehaviour
 
         Log?.LogInfo($"[orchestrator] attaching simulation host to '{car.name}' ({car.carType}, id={car.ID})");
 
-        // the host lives on the car root, alongside SimController and DV's own
-        // per-car runtime components (CarDamageModel, CarDebtController, ...);
-        // it dies with the car and deactivates/reactivates with pool cycles
-        car.gameObject.AddComponent<Runtime.EngineSimulationHost>()
-                      .Configure(matchingConfiguration.Value, Log);
+        // host is a component of the car so it dies along with it if the car is fully removed
+        var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
+        host.Configure(matchingConfiguration.Value, Log);
+        _hosts.Add(host);
     }
 }

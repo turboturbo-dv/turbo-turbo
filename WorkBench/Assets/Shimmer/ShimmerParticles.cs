@@ -5,10 +5,8 @@ namespace TurboTurbo
 {
     /// <summary>
     /// Self-contained exhaust shimmer particle emitter.
-    /// Each particle is a billboard running the shimmer grab shader: it
-    /// displaces the scene behind it with a value-noise field, inherits the
-    /// vehicle's velocity at emission (decayed by drag), and fades via the
-    /// color alpha envelope.
+    /// Each particle is a billboard running the shimmer grab shader,
+    /// it draws the scene behind it, displaced by a noise field.
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour
@@ -24,7 +22,7 @@ namespace TurboTurbo
         public float sizeOverLifetimeStart = 1f;
         public float sizeOverLifetimeEnd = 2.5f;
         public float gravity = -0.05f;
-        public Color color = new Color(1f, 1f, 1f, 1f); // not actually used by the shader, figure out if we can remove this
+        public Color color = new Color(1f, 1f, 1f, 1f); // TODO: not actually used by the shader, figure out if we can remove this
 
         [Header("Inherited motion (train velocity + air resistance)")]
         public float drag = 0.8f;
@@ -48,20 +46,17 @@ namespace TurboTurbo
 
         [Header("Shimmer decay (proportional to lifetime)")]
         public float shimmerHoldTime = 0.2f;
-        // ඞ sus ඞ - these two should really add up to 1
-        public float shimmerDecayTime = 0.5f;
+        // ඞ sus ඞ
+        private float ShimmerDecayTime => 1 - shimmerHoldTime;
 
         [Header("Engine signal (0..1) - driven by the mod per frame")]
         [Range(0f, 1f)] public float flow;
 
-        /// <summary>Render queue for the shimmer material. Default 3010 =
-        /// after the smoke (3000), so the shimmer displaces the plume;
-        /// 2990 = before it.</summary>
+        // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
         public int renderQueue = 3010;
 
-        /// <summary>Shader override for contexts where Shader.Find cannot see
-        /// the shader (e.g. it lives in an asset bundle). Set before the
-        /// first Configure call, or call Configure again after setting.</summary>
+        // pretty ugly hack, but we need to have a way to set the shader both from the WorkBench and the mod.
+        // call Configure() after setting this.
         public Shader shaderOverride;
 
         private ParticleSystem _ps;
@@ -77,7 +72,6 @@ namespace TurboTurbo
         private float _alphaHold = -1f;
         private float _alphaDecay = -1f;
 
-        /// <summary>Live particle count, for console dumps.</summary>
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
 
         private void Awake()
@@ -103,15 +97,11 @@ namespace TurboTurbo
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
             if (_renderer == null) _renderer = GetComponent<ParticleSystemRenderer>();
 
+            // some properties are deliberately not set here; we only emit particles manually
             var main = _ps.main;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 200;
             main.gravityModifier = gravity;
-            // per-particle properties (startLifetime/startSize/startColor/
-            // startSpeed) are deliberately not set on the main module: manual
-            // emission provides them per particle via EmitParams, which
-            // overrides the main module. If an emission path ever stops
-            // setting one, revisit this block.
 
             _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
             _sizeCurveStart = sizeOverLifetimeStart;
@@ -121,11 +111,8 @@ namespace TurboTurbo
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            // per-particle shimmer envelope: full strength for holdTime,
-            // then linear decay over shimmerDecayTime (seconds). Rides the
-            // Color alpha stream (the shader's shimmer coverage multiplier).
             float holdEnd = Mathf.Clamp01(shimmerHoldTime / lifetime);
-            float decayEnd = Mathf.Clamp01((shimmerHoldTime + shimmerDecayTime) / lifetime);
+            float decayEnd = Mathf.Clamp01((shimmerHoldTime + ShimmerDecayTime) / lifetime);
             _alphaGradient = new Gradient();
             _alphaGradient.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
@@ -138,18 +125,15 @@ namespace TurboTurbo
                 });
             _alphaLife = lifetime;
             _alphaHold = shimmerHoldTime;
-            _alphaDecay = shimmerDecayTime;
+            _alphaDecay = ShimmerDecayTime;
             
             var col = _ps.colorOverLifetime;
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(_alphaGradient);
 
-            // no shape module: EmitParams.position places every particle at
-            // the emitter origin, bypassing the shape; spread comes from the
-            // per-particle velocity jitter in Update()
+            // no shape module currently, could introduce a small distribution here but for now a point source is fine
 
-            // air resistance: drag decays the inherited train velocity
-            // exponentially once the particle is expelled
+            // air resistance: drag decays inherited velocity exponentially once the particle is emitted
             var lvol = _ps.limitVelocityOverLifetime;
             lvol.enabled = true;
             lvol.space = ParticleSystemSimulationSpace.World;
@@ -159,8 +143,7 @@ namespace TurboTurbo
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
 
-            // buoyancy: constant undamped upward drift so particles keep
-            // rising after drag has killed the initial kick
+            // buoyancy: constant upward drift so particles keep rising after drag has killed the initial kick
             var vol = _ps.velocityOverLifetime;
             vol.enabled = true;
             vol.space = ParticleSystemSimulationSpace.World;
@@ -197,8 +180,6 @@ namespace TurboTurbo
             }
         }
 
-        /// <summary>Coupling point: the mod feeds the engine's heat signal
-        /// here every frame; emission follows the flow.</summary>
         public void SetFlow(float newFlow)
         {
             flow = Mathf.Clamp01(newFlow);
@@ -249,12 +230,8 @@ namespace TurboTurbo
         }
     }
 
-    /// <summary>
-    /// Shared exhaust exit-velocity calculation for all exhaust emitters.
-    /// </summary>
     public static class ExhaustVelocity
     {
-        /// <summary>Shared exhaust exit speeds [m/s].</summary>
         public const float Idle = 1.5f;
         public const float FullLoad = 10f;
 
@@ -266,12 +243,11 @@ namespace TurboTurbo
 
     public static class ExhaustPlacement
     {
-        /// <summary>Places an emitter relative to <paramref name="parent"/>:
-        /// <paramref name="exhaustPosition"/> raised by
-        /// <paramref name="offsetMeters"/> along world up, cone pointing up
-        /// the parent's +Y.</summary>
         public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, float offsetMeters)
         {
+            // probably not the easiest way, but hey, it seems to work even under the heaviest of derailments.
+            // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
+            // boy have I got you covered
             emitter.SetParent(parent, worldPositionStays: false);
             Vector3 localMouth = parent.InverseTransformPoint(exhaustPosition);
             Vector3 localUp = parent.InverseTransformDirection(Vector3.up);

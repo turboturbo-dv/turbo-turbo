@@ -2,7 +2,6 @@ namespace TurboTurbo;
 
 using UnityModManagerNet;
 
-/// <summary>Log bridge: routes mod messages to the UMM console/log.</summary>
 public class Logger
 {
     private readonly UnityModManager.ModEntry.ModLogger _logger;

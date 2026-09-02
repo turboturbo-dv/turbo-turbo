@@ -20,9 +20,7 @@ public static class Main
 
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .AddTurbo()
-            // DE6: vanilla ExhaustEngineSmoke transform sits below the visible
-            // stack mouth; offset verified in TurboTurboOld (0.05 HeatOrigin
-            // + 0.20 emitter placement)
+            // TODO: Need to tune this
             .WithExhaustSpawnOffset(0.3f)
             .AddEngineExhaust(c =>
                 c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke")?.transform)
@@ -32,6 +30,8 @@ public static class Main
                 c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "DamagedEngineSmoke")?.transform));
 
         Orchestrator.Create(Log);
+
+        DevUI.TurboDevPanel.Create();
 
         Log.LogInfo("TurboTurbo ready!");
     }

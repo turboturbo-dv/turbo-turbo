@@ -46,8 +46,6 @@ TurboDsp.Settings MakeParams(bool filtered) => new()
 
 void RebuildLoop()
 {
-    // renders the exact loop the mod's GameStyle path would play with the
-    // current synthesis parameters (full load, seamless)
     provider.SetLoop(TurboSynth.RenderLoop(MakeParams(cabFilter), 8.0, 1.0));
 }
 
@@ -63,7 +61,6 @@ var panel = new StringBuilder(1024);
 
 while (!quit)
 {
-    // ---- keyboard ----------------------------------------------------
     while (Console.KeyAvailable)
     {
         switch (Console.ReadKey(true).Key)
@@ -100,7 +97,6 @@ while (!quit)
         rebuild = false;
     }
 
-    // ---- engine state --------------------------------------------------
     double now = clock.ElapsedTicks / (double)Stopwatch.Frequency;
     double dt = Math.Min(0.1, now - lastTick);
     lastTick = now;
@@ -108,7 +104,6 @@ while (!quit)
     double demand = engineOn ? throttleTarget : 0.0;
     boost += (demand - boost) * (1.0 - Math.Exp(-dt / SpoolTau));
 
-    // slow organic pitch wobble (replaces the loop-render jitter)
     wobblePhase += dt * 2.0 * Math.PI * 0.5;
     double wobble = 1.0 + 0.003 * Math.Sin(wobblePhase);
 
@@ -117,7 +112,6 @@ while (!quit)
     double volume = masterVolume * Math.Pow(boost, 1.5) * (0.10 + 0.90 * boostDelta);
     provider.SetOutput(pitch, volume);
 
-    // ---- status panel (5 Hz, pre-built to keep the audio thread GC-quiet) --
     if (now - lastDraw > 0.2)
     {
         lastDraw = now;

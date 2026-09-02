@@ -31,7 +31,7 @@ public static class TurboSynth
 
     /// <summary>
     /// Holds a steady operating point (spooling up from rest first).
-    /// Not a seamless loop - the real-time paradigm has no loop; audition only.
+    /// Not a seamless loop. The real-time paradigm has no loop; audition only.
     /// </summary>
     public static float[] RenderSteady(TurboDsp.Settings p, double seconds, double load)
     {
@@ -56,7 +56,7 @@ public static class TurboSynth
     /// Renders a seamless loop of the steady-state operating point at the
     /// given load: spools up, discards the transient, then wraps the buffer
     /// with an equal-power crossfade. Jitter is zeroed for the render so the
-    /// tonal component stays as periodic as possible - organic wobble belongs
+    /// tonal component stays as periodic as possible. Organic wobble belongs
     /// to the realtime playback layer, where it cannot break the seam.
     /// </summary>
     public static float[] RenderLoop(TurboDsp.Settings p, double steadySeconds, double load)

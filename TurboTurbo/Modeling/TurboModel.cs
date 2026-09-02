@@ -22,34 +22,15 @@ public sealed class TurboModel
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
     public sealed class Settings
     {
-        /// <summary>Per-stroke charge index of naturally-aspirated operation (zero boost).</summary>
         public float AirNAFraction { get; set; } = 0.55f;
-
-        /// <summary>Air-to-fuel calibration constant: full boost + full rack is exactly clean at 2.5.</summary>
         public float LambdaCalibration { get; set; } = 2.5f;
-
-        /// <summary>Boost multiplier on top of NA charge at full boost (charge = NA + (1-NA) x (1 + k x boost)).</summary>
         public float BoostChargeMultiplier { get; set; } = 2.5f;
-
-        /// <summary>0 = torque cap is pure per-stroke charge, 1 = strict airflow on top.</summary>
         public float RpmTorqueExponent { get; set; } = 0f;
-
-        /// <summary>Exponent bounding the boost equilibrium: exhaust mass flow scales with engine speed.</summary>
         public float RpmBoostExponent { get; set; } = 1.2f;
-
-        /// <summary>Seconds of spool-up time constant (clean combustion).</summary>
         public float TauUp { get; set; } = 3.0f;
-
-        /// <summary>Seconds of blow-down (boost release) time constant.</summary>
         public float TauDown { get; set; } = 1.0f;
-
-        /// <summary>Floor for the spool-up time constant (stability under heavy overfuel).</summary>
         public float MinSpoolTau { get; set; } = 0.5f;
-
-        /// <summary>Thermal enthalpy feedback strength: overfueling shortens spool-up time.</summary>
         public float ThermalK { get; set; } = 0.8f;
-
-        /// <summary>Lambda below which extra fuel contributes no torque.</summary>
         public float TorqueLambdaFloor { get; set; } = 0.7f;
     }
 
@@ -57,15 +38,15 @@ public sealed class TurboModel
     private readonly Func<float> _throttle;
     private readonly Func<float> _rpmNorm;
 
+    internal Settings Tuning => _settings;
+
     private float _boost;
     private float _prevDemand;
 
     /// <summary>Current turbo boost pressure ratio [0..1].</summary>
     public float Boost { get; private set; }
 
-    /// <summary>Raw clamped throttle demand read this tick, before the
-    /// torque cap. Downstream exhaust behaviour (wet stacking) keys off
-    /// this, not EffectiveDemand.</summary>
+    /// <summary>Raw clamped throttle demand read this tick, before the torque cap.</summary>
     public float Demand { get; private set; }
 
     /// <summary>Clamped normalized engine speed read this tick.</summary>
@@ -73,8 +54,8 @@ public sealed class TurboModel
 
     /// <summary>Instantaneous exhaust-gas energy proxy [0..1]: the
     /// equilibrium target the boost lag chases (fuel demand x rpm mass
-    /// flow). Exhaust temperature follows combustion immediately - only
-    /// the turbo lags - so plume effects key off this, not Boost.</summary>
+    /// flow). Exhaust temperature follows combustion immediately (only
+    /// the turbo lags) so plume effects follow this directly.</summary>
     public float ExhaustHeat { get; private set; }
 
     /// <summary>Per-stroke cylinder charge index (1.0 = naturally aspirated).</summary>
@@ -83,7 +64,7 @@ public sealed class TurboModel
     /// <summary>Air-fuel ratio proxy (calibrated: ~1.0 = edge of clean full load).</summary>
     public float Lambda { get; private set; }
 
-    /// <summary>Overfueling amount [0..1] - fuel beyond available air.</summary>
+    /// <summary>Overfueling amount [0..1]: fuel beyond available air.</summary>
     public float Overfuel { get; private set; }
 
     /// <summary>Throttle demand after the available-air torque cap is applied.
@@ -114,8 +95,7 @@ public sealed class TurboModel
         Demand = demand;
         RpmNorm = rpmNorm;
 
-        // gate all combustion on the engine's own running state: the layshaft
-        // port reads ~1.0 with the engine shut down
+        // gate all combustion on the engine's own running state, the port may not read 0
         float fuelDemand = engineOn ? demand : 0f;
 
         // 1. per-stroke cylinder charge index: 1.0 = naturally aspirated,

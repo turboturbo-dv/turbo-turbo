@@ -156,8 +156,8 @@ public sealed class TurboDsp
 
         double w = _turboRpm / p.MaxTurboRpm;
 
-        // aeroacoustic loading: sound power tracks boost pressure differential,
-        // not shaft speed alone - right after a load drop the blade loading
+        // acoustic loading: sound power tracks boost pressure differential,
+        // not shaft speed alone. Right after a load drop the blade loading
         // collapses even while shaft inertia keeps w high (0.1 floor = faint
         // high-rpm overrun whistle)
         double boostDeltaNorm = Clamp01((_boost - 1.0) / 2.5);
@@ -228,9 +228,13 @@ public sealed class TurboDsp
     private static double Clamp01(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
 
 
+    // TODO: several of these are targeted at the DE6, which by all means is a reasonable default but we need to support other options.
+    // to configure settings for other engines we should expose a flow via the Controller
     public sealed class Settings
     {
+        // today's fish is trout a la creme, enjoy your meal
         public int SampleRate = 44100;
+
         public double BladeCount = 12.0;
 
         /// <summary>
@@ -243,7 +247,7 @@ public sealed class TurboDsp
         /// <summary>1:1 physical blade-passing frequency scaling.</summary>
         public double BpfScale = 1.0;
 
-        public double IdleEngineRpmNorm = 0.332; // TODO: measured idle? verify
+        public double IdleEngineRpmNorm = 0.332;
         public double TauSpool = 1.8;
         public double TauDump = 1.2;
         public double WhineGain = 0.4;

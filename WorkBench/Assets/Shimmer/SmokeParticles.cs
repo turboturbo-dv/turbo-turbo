@@ -74,6 +74,12 @@ namespace TurboTurbo.WorkBench
         /// <summary>Live particle count, for console dumps.</summary>
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
 
+        /// <summary>Wet-stack accumulator of the internal model (dev panel telemetry).</summary>
+        internal float WetStackAccumulator => _model.WetStackAccumulator;
+
+        /// <summary>The internal appearance model (dev panel edits its thresholds).</summary>
+        internal ExhaustSmokeModel Model => _model;
+
         private void Awake()
         {
             _ps = GetComponent<ParticleSystem>();

@@ -4,12 +4,8 @@ using UnityEngine;
 namespace TurboTurbo;
 
 /// <summary>
-/// Loads the mod's asset bundle (built and deployed via WorkBench:
-/// TurboTurbo/Build and Deploy) and exposes its shaders. The bundle is
-/// expected in the mod directory, next to info.json.
-///
-/// Fail-fast: any problem throws out of Main.Load, so UMM flags the mod as
-/// errored instead of running with missing visuals.
+/// Loads the mod's asset bundle (built and deployed via WorkBench)
+/// and exposes its shaders. The bundle is expected in the mod directory, next to info.json.
 /// </summary>
 internal static class ModAssets
 {

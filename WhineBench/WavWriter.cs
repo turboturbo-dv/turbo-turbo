@@ -1,9 +1,5 @@
-using System;
-using System.IO;
-
 namespace WhineBench;
 
-/// <summary>Writes float samples to a 16-bit PCM mono WAV file.</summary>
 internal static class WavWriter
 {
     public static void ExportWav(float[] samples, int sampleRate, string path)
@@ -13,6 +9,7 @@ internal static class WavWriter
         using (var stream = new FileStream(path, FileMode.Create))
         using (var writer = new BinaryWriter(stream))
         {
+            // do as I say, not as I do
             int dataBytes = samples.Length * 2;
             writer.Write(0x46464952);           // RIFF
             writer.Write(36 + dataBytes);

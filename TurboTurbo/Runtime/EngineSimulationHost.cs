@@ -11,20 +11,16 @@ using UnityEngine;
 namespace TurboTurbo.Runtime;
 
 /// <summary>
-/// Per-car runtime host: attached to the car's root GameObject by the
+/// Per-car runtime host, attached to the car's root GameObject by the
 /// Orchestrator when a matching EngineConfiguration exists, living alongside
-/// DV's own per-car runtime components (SimController, CarDamageModel, ...).
+/// DV's own per-car runtime components.
 /// Waits for the car's simulation to initialize, then binds the configured
 /// features to it.
-///
-/// Survives car pool cycles deactivated and resumes on revival; the sim
-/// bindings stay valid because SimController/SimulationFlow are never
-/// rebuilt for pooled cars.
 /// </summary>
 internal sealed class EngineSimulationHost : MonoBehaviour
 {
     /// <summary>Pair of emitters sharing one exhaust position.</summary>
-    private sealed class ExhaustEmitters
+    internal sealed class ExhaustEmitters
     {
         public SmokeParticles Smoke;
         public ShimmerParticles Shimmer;
@@ -46,6 +42,18 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private readonly List<ExhaustEmitters> _exhausts = new();
     private bool _effectsBound;
 
+    internal TurboModel TurboModel => _turboModel;
+    internal TrainCar TrainCar => _trainCar;
+    internal IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
+    internal bool Bound => _simBound && _turboModel != null;
+    internal bool EngineOn => _turboModel != null && _engineOn();
+    internal string CarId => _trainCar != null ? _trainCar.ID : name;
+
+    private void OnDestroy()
+    {
+        Orchestrator.Forget(this);
+    }
+
     public EngineSimulationHost Configure(EngineConfiguration configuration, Logger log)
     {
         _configuration = configuration;
@@ -66,9 +74,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         bool engineOn = _engineOn();
         _turboModel.Tick(Time.deltaTime, _fuelNorm(), engineOn);
 
-        // write the torque-capped demand back to the engine's throttle port;
-        // the upstream throttle chain re-propagates the player's lever before
-        // we read again, so this only caps the engine, it never sticks
+        // write the torque-capped demand back to the engine's throttle port,
+        // this ensures the engine's power is limited by available air
         _throttlePort.Value = _turboModel.EffectiveDemand;
 
         if (_effectsBound)
@@ -77,14 +84,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// The car's SimulationFlow only exists after SimController.Initialize has
-    /// run - retry until it does, then bind the configured features.
-    /// </summary>
     private void TryBindSimulation()
     {
-        // the host lives on the car root, so plain GetComponent finds the
-        // car's SimController (same lookup TrainCar.SimController does)
         _simController = GetComponent<SimController>();
         if (_simController == null || _simController.SimulationFlow == null)
         {
@@ -123,7 +124,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             return;
         }
 
-        // THROTTLE is a PortReference - the actual Port hangs off a private field
+        // throttle is a port reference, the actual port hangs off a private field
         PortReference throttleRef = engine.GetAllPortReferences()
             .FirstOrDefault(r => r.id.EndsWith(".THROTTLE", StringComparison.OrdinalIgnoreCase));
         _throttlePort = throttleRef != null
@@ -159,14 +160,10 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
-    // ------------------------------------------------------------------
-    // exhaust effects
-    // ------------------------------------------------------------------
-
     /// <summary>
     /// Spawns the smoke + shimmer emitters on each configured exhaust
-    /// transform and takes over the vanilla exhaust smoke. Runs once; the
-    /// emitters live under the car root and survive pool cycles.
+    /// transform and takes over the vanilla exhaust smoke. Runs once, the
+    /// emitters live under the car root and /should/ survive pool cycles.
     /// </summary>
     private void TryBindEffects()
     {
@@ -182,8 +179,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 continue;
             }
 
-            // vanilla takeover: our emitters replace the vanilla smoke; the
-            // vanilla PS stays in place as the position/orientation donor
             ParticleSystem vanillaPs = exhaust.GetComponent<ParticleSystem>();
             if (vanillaPs != null)
             {
@@ -231,8 +226,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void PlaceAtExhaust(Transform t, Transform exhaust)
     {
-        // shared car-local placement (see ExhaustPlacement for the
-        // rationale); offset is the car-type's ExhaustSpawnOffset
+        // TODO: this needs some work
         ExhaustPlacement.PlaceAt(t, exhaust.position, _trainCar.transform,
             _configuration.ExhaustSpawnOffset);
     }
@@ -252,9 +246,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;
 
-            // disabling the component stops emission while the ParticleSystem
-            // keeps simulating, so lingering shimmer particles finish their
-            // decay envelope instead of popping out of existence
             ShimmerParticles shimmer = e.Shimmer;
             shimmer.enabled = engineOn;
             if (engineOn)
