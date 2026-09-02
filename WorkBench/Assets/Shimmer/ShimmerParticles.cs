@@ -196,7 +196,10 @@ namespace TurboTurbo
             em.rateOverTime = 0f;
 
             var rend = _renderer;
-            rend.sortMode = ParticleSystemSortMode.Distance; // correct shimmer-over-shimmer compositing
+            // Distance: correct shimmer-over-shimmer compositing for now
+            // (displacement is per-pixel, last draw wins); we may want
+            // YoungestInFront here too
+            rend.sortMode = ParticleSystemSortMode.Distance;
             if (useShimmerShader)
             {
                 var shimmer = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/HeatShimmer");
@@ -287,6 +290,33 @@ namespace TurboTurbo
         public static float Calculate(float heat)
         {
             return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
+        }
+    }
+
+    /// <summary>
+    /// Shared emitter placement (mod + bench): parent-first, then local
+    /// values. Two deliberate choices that differ from the vanilla exhaust
+    /// transform's own axes:
+    /// 1. offset along WORLD up (converted to parent-local): the vanilla
+    ///    exhaust PS transforms sit below the visible stack mouth (DE6:
+    ///    0.25 m, see Main) and world up is safe under gradients/roll;
+    /// 2. rotation = local -90 X, i.e. emission along the parent's up
+    ///    axis - the vanilla transform's own axes are not trusted (its
+    ///    upward emission comes from its shape module, not the transform).
+    /// </summary>
+    public static class ExhaustPlacement
+    {
+        /// <summary>Places an emitter relative to <paramref name="parent"/>:
+        /// <paramref name="exhaustPosition"/> raised by
+        /// <paramref name="offsetMeters"/> along world up, cone pointing up
+        /// the parent's +Y.</summary>
+        public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, float offsetMeters)
+        {
+            emitter.SetParent(parent, worldPositionStays: false);
+            Vector3 localMouth = parent.InverseTransformPoint(exhaustPosition);
+            Vector3 localUp = parent.InverseTransformDirection(Vector3.up);
+            emitter.localPosition = localMouth + localUp * offsetMeters;
+            emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
         }
     }
 }

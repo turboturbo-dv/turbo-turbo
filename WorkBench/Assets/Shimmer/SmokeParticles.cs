@@ -25,16 +25,19 @@ namespace TurboTurbo.WorkBench
 
         [Header("Emission (match TurboSmoke semantics)")]
         public float cleanRate = 20f;
-        public float maxRate = 120f;
+        public float maxRate = 40f;
 
         [Header("Particle look")]
         public float lifetime = 2f;
-        public float startSizeMin = 1f;
-        public float startSizeMax = 1.4f;
+        public float startSizeMin = 0.6f;
+        public float startSizeMax = 0.9f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 4f;
+        public float sizeOverLifetimeEnd = 6f;
         public float buoyancy = 0.3f;
         public float drag = 0.8f;
+        /// <summary>Max spin speed [deg/s]; each particle gets a random
+        /// value in [-max, max], so puffs rotate in both directions.</summary>
+        public float angularVelocityMax = 20f;
 
         /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
         [Range(0f, 1f)] public float heat;
@@ -75,6 +78,17 @@ namespace TurboTurbo.WorkBench
         {
             _ps = GetComponent<ParticleSystem>();
             if (_ps == null) _ps = gameObject.AddComponent<ParticleSystem>();
+        }
+
+        /// <summary>Live-tuning path for the WorkBench: inspector edits
+        /// re-apply the structural layout in play mode. Editor-only message -
+        /// never invoked in builds; script-driven structural changes must
+        /// call Configure() explicitly. The play-mode guard keeps edit-mode
+        /// invocations (script reload, edit-time inspector edits) from
+        /// creating materials.</summary>
+        private void OnValidate()
+        {
+            if (Application.isPlaying) Configure();
         }
 
         private void Start()
@@ -151,7 +165,7 @@ namespace TurboTurbo.WorkBench
                 new[]
                 {
                     new GradientAlphaKey(0f, 0f),
-                    new GradientAlphaKey(1f, 0.1f),
+                    new GradientAlphaKey(1f, 0.05f),
                     new GradientAlphaKey(1f, 0.4f),
                     new GradientAlphaKey(0f, 1f),
                 });
@@ -198,7 +212,7 @@ namespace TurboTurbo.WorkBench
             // vertex color (model color per particle) x envelope alpha.
             // TSA tile UVs are baked into the UV stream by the renderer.
             var rend = GetComponent<ParticleSystemRenderer>();
-            rend.sortMode = ParticleSystemSortMode.Distance;
+            rend.sortMode = ParticleSystemSortMode.YoungestInFront; // newest puffs draw over the older, dispersing ones
             var smokeShader = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/Smoke");
             if (smokeShader != null)
             {
@@ -237,8 +251,10 @@ namespace TurboTurbo.WorkBench
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = _model.Color, // rgb+alpha baked per particle at emission
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
-                        // rotation disabled: to verify TSA animation frames
-                        // rotation = Random.Range(0f, 360f),
+                        // random orientation + slow spin so the atlas puffs
+                        // don't all read identically
+                        rotation = Random.Range(0f, 360f),
+                        angularVelocity = Random.Range(-angularVelocityMax, angularVelocityMax),
                     };
                     _ps.Emit(ep, 1);
                 }
