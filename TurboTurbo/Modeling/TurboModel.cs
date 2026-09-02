@@ -3,7 +3,7 @@ using System;
 namespace TurboTurbo.Modeling;
 
 /// <summary>
-/// Pure mathematical model of a turbocharged diesel engine and its turbocharger.
+/// Model of a turbocharged diesel engine and its turbocharger.
 ///
 /// Completely independent of the game: throttle and engine speed enter as
 /// supplier functions (wired to the game's ports by the adapter), configuration
@@ -14,12 +14,11 @@ namespace TurboTurbo.Modeling;
 /// 1. charge      - per-stroke cylinder air index; 1.0 = naturally aspirated,
 ///                  rises with boost (turcharged air density).
 /// 2. lambda      - air-fuel ratio proxy = charge / (calibration x fuel flow).
-///                  Below SmokeOnsetLambda the engine overfuels and soots.
-/// 3. smoke       - 0..1 smoke density from the lambda deficit.
-/// 4. torque cap  - fuel flow is capped by available air (charge), blended
+///                  Feeds the exhaust appearance model (ExhaustSmokeModel).
+/// 3. torque cap  - fuel flow is capped by available air (charge), blended
 ///                  with engine speed via RpmTorqueExponent. Below
 ///                  TorqueLambdaFloor extra fuel contributes no torque.
-/// 5. boost       - first-order lag towards an equilibrium set by exhaust
+/// 4. boost       - first-order lag towards an equilibrium set by exhaust
 ///                  energy (fuel x rpm mass flow). Overfueling shortens
 ///                  spool-up (thermal enthalpy feedback).
 /// </summary>
@@ -36,12 +35,6 @@ public sealed class TurboModel
 
         /// <summary>Boost multiplier on top of NA charge at full boost (charge = NA + (1-NA) x (1 + k x boost)).</summary>
         public float BoostChargeMultiplier { get; set; } = 2.5f;
-
-        /// <summary>Lambda where soot formation begins (fueling above this vs air is overfueling).</summary>
-        public float SmokeOnsetLambda { get; set; } = 0.85f;
-
-        /// <summary>Lambda where smoke reaches full opacity.</summary>
-        public float SmokeOpaqueLambda { get; set; } = 0.45f;
 
         /// <summary>0 = torque cap is pure per-stroke charge, 1 = strict airflow on top.</summary>
         public float RpmTorqueExponent { get; set; } = 0f;
@@ -98,9 +91,6 @@ public sealed class TurboModel
     /// <summary>Overfueling amount [0..1] - fuel beyond available air.</summary>
     public float Overfuel { get; private set; }
 
-    /// <summary>Smoke density [0..1] from the lambda deficit.</summary>
-    public float SmokeDensity { get; private set; }
-
     /// <summary>Throttle demand after the available-air torque cap is applied.
     /// The adapter writes this back to the engine's throttle port.</summary>
     public float EffectiveDemand { get; private set; }
@@ -141,13 +131,8 @@ public sealed class TurboModel
         // 2. per-stroke air-fuel ratio proxy
         Lambda = Charge / (s.LambdaCalibration * Math.Max(0.01f, fuelDemand));
 
-        // 3. smoke density from the lambda deficit
-        SmokeDensity = fuelDemand < 0.02f
-            ? 0f
-            : Clamp((s.SmokeOnsetLambda - Lambda) / (s.SmokeOnsetLambda - s.SmokeOpaqueLambda), 0f, 1f);
-
-        // 4. torque cap: per-stroke charge sets usable work, blended with
-        //    engine speed via RpmTorqueExponent. Between SmokeOnsetLambda and
+        // 3. torque cap: per-stroke charge sets usable work, blended with
+        //    engine speed via RpmTorqueExponent. Between overfueling and
         //    TorqueLambdaFloor the engine still pulls hard - it just smokes -
         //    which keeps a lugging engine from stalling.
         float rpmFactor = Clamp(rpmNorm, 0f, 1f);
@@ -156,10 +141,10 @@ public sealed class TurboModel
                               / (s.LambdaCalibration * s.TorqueLambdaFloor);
         EffectiveDemand = Math.Min(fuelDemand, fuelMaxTorque);
 
-        // 5. overfueling: fuel beyond available air
+        // 4. overfueling: fuel beyond available air
         Overfuel = Math.Max(0f, fuelDemand - Charge / s.LambdaCalibration);
 
-        // 6. boost: first-order lag towards an equilibrium ceiling set by
+        // 5. boost: first-order lag towards an equilibrium ceiling set by
         //    exhaust mass flow (fuel x rpm). Spool mode keys off demand (not
         //    target) so a lug-driven ceiling drop eases boost down with
         //    turbine inertia instead of blowing it off. Thermal enthalpy
@@ -173,7 +158,7 @@ public sealed class TurboModel
         _boost += (target - _boost) * (1f - (float)Math.Exp(-delta / tau));
         Boost = _boost;
 
-        // 7. surge detection: sharp demand drop while boost is high
+        // 6. surge detection: sharp demand drop while boost is high
         SurgeThisTick = engineOn && _prevDemand - demand > 0.3f && _boost > 0.75f;
         _prevDemand = demand;
     }

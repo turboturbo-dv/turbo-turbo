@@ -6,8 +6,9 @@ using Xunit;
 namespace TurboTurboTests
 {
     /// <summary>
-    /// Tests for the pure-math TurboModel: charge ladder, lambda/smoke
-    /// response, torque cap, boost lag dynamics and surge detection.
+    /// Tests for the pure-math TurboModel: charge ladder, lambda response,
+    /// torque cap, boost lag dynamics and surge detection. Smoke appearance
+    /// lives in ExhaustSmokeModel and is tested separately.
     ///
     /// The model's inputs (throttle, rpm) are supplier functions, so every
     /// test scripts them through mutable fields captured by the suppliers.
@@ -131,58 +132,6 @@ namespace TurboTurboTests
         }
 
         // ------------------------------------------------------------
-        // lambda / smoke
-        // ------------------------------------------------------------
-
-        [Fact]
-        public void SmokeDensity_IsZero_AtLambdaOnset()
-        {
-            var model = CreateModel();
-
-            // boost 0 -> charge 1; lambda = 1 / (calibration x fuel)
-            // lambda = onset (0.85) when fuel = 1 / (2.5 x 0.85) = 0.4706
-            _throttle = 0.4706f;
-            model.Tick(0.016f, fuelNorm: 0.4706f, engineOn: true);
-
-            model.SmokeDensity.ShouldBe(0f, tolerance: 0.001f);
-        }
-
-        [Fact]
-        public void SmokeDensity_IsOne_AtLambdaOpaque()
-        {
-            var model = CreateModel();
-
-            // lambda = opaque (0.45) when fuel = 1 / (2.5 x 0.45) = 0.889
-            _throttle = 0.889f;
-            model.Tick(0.016f, fuelNorm: 0.889f, engineOn: true);
-
-            model.SmokeDensity.ShouldBe(1f, tolerance: 0.001f);
-        }
-
-        [Fact]
-        public void SmokeDensity_IsIntermediate_BetweenThresholds()
-        {
-            var model = CreateModel();
-
-            // fuel 0.65 -> lambda = 1 / (2.5 x 0.65) = 0.615, between 0.85 and 0.45
-            _throttle = 0.65f;
-            model.Tick(0.016f, fuelNorm: 0.65f, engineOn: true);
-
-            model.SmokeDensity.ShouldBeInRange(0.4f, 0.8f);
-        }
-
-        [Fact]
-        public void SmokeDensity_IsZero_WhenEngineOff()
-        {
-            var model = CreateModel();
-            _throttle = 1f;
-
-            model.Tick(0.016f, fuelNorm: 1f, engineOn: false);
-
-            model.SmokeDensity.ShouldBe(0f);
-        }
-
-        // ------------------------------------------------------------
         // torque cap
         // ------------------------------------------------------------
 
@@ -239,7 +188,6 @@ namespace TurboTurboTests
             model.Tick(0.016f, fuelNorm: 0f, engineOn: false);
 
             model.EffectiveDemand.ShouldBe(0f, tolerance: 0.0001f);
-            model.SmokeDensity.ShouldBe(0f);
         }
 
         // ------------------------------------------------------------
