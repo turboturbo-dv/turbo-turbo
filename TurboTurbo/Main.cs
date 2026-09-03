@@ -27,7 +27,7 @@ public static class Main
 
         Orchestrator.Create();
 
-        DevUI.TurboDevPanel.Create();
+        DevUI.DevPanelPresenter.Create();
 
         Log.ForContext("main").Info("TurboTurbo ready!");
     }

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 using TurboTurbo.Modeling;
@@ -11,11 +10,9 @@ namespace TurboTurbo.DevUI;
 
 internal sealed class TurboDevPanel : MonoBehaviour
 {
-    private const KeyCode ToggleKey = KeyCode.F6;
     internal const float LabelWidth = 165f;
 
     private Rect _rect = new(20f, 20f, 360f, 120f);
-    private bool _visible;
     private int _selected;
     private bool _requiresReconfigure;
     private readonly Logger _log = Log.ForContext("devpanel");
@@ -27,26 +24,26 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private string _diagLine = "orchestrator: ?\nspawner: ?";
     private float _diagTimer;
 
-    public static TurboDevPanel Create()
+    internal Rect WindowRect => _rect;
+
+    public static TurboDevPanel Create(Rect initialRect)
     {
         var go = new GameObject("TurboTurbo.DevPanel");
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
-        return go.AddComponent<TurboDevPanel>();
+        var panel = go.AddComponent<TurboDevPanel>();
+        panel._rect = initialRect;
+        return panel;
+    }
+
+    private void OnEnable()
+    {
+        PickDefaultTarget();
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(ToggleKey))
-        {
-            _visible = !_visible;
-            if (_visible) PickDefaultTarget();
-        }
-
-        if (_visible)
-        {
-            RefreshDiagnostics();
-        }
+        RefreshDiagnostics();
 
         if (_requiresReconfigure)
         {
@@ -64,12 +61,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!_visible)
-        {
-            TurboTooltipLayer.Tooltip = "";
-            return;
-        }
-
         if (_needsShrink)
         {
             // not correct, but next draw will resize the window to fit the content
