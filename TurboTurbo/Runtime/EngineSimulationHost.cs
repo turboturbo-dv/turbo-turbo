@@ -28,7 +28,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private EngineConfiguration _configuration;
     private Logger _log;
-
     private SimController _simController;
     private bool _simBound;
     private bool _loggedNoSim;
@@ -54,10 +53,14 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         Orchestrator.Instance.Forget(this);
     }
 
-    public EngineSimulationHost Configure(EngineConfiguration configuration, Logger log)
+    public EngineSimulationHost Configure(EngineConfiguration configuration)
     {
         _configuration = configuration;
-        _log = log;
+
+        // per-car context: logs from multiple locos stay distinguishable
+        var car = GetComponent<TrainCar>();
+        _log = Log.ForContext(car != null ? $"host:{car.ID}" : "host");
+
         return this;
     }
 
@@ -92,13 +95,13 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             if (!_loggedNoSim)
             {
                 _loggedNoSim = true;
-                _log.LogInfo($"[host] no SimController (yet) on '{name}'");
+                _log.Info($"no SimController (yet) on '{name}'");
             }
             return;
         }
 
         _simBound = true;
-        _log.LogInfo($"[host] sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
+        _log.Info($"sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
                      $"{_configuration.ExhaustPositionSelectors.Count} exhaust selector(s))");
 
         if (_configuration.HasTurbo)
@@ -120,7 +123,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         var engine = flow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
         if (engine == null)
         {
-            _log.LogWarning($"[host] no DieselEngineDirect on '{name}' - turbo not bound");
+            _log.Warn($"no DieselEngineDirect on '{name}' - turbo not bound");
             return;
         }
 
@@ -140,7 +143,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         if (_throttlePort == null || rpmPort == null)
         {
-            _log.LogWarning($"[host] could not resolve throttle/rpm ports on '{name}' - turbo not bound");
+            _log.Warn($"could not resolve throttle/rpm ports on '{name}' - turbo not bound");
             return;
         }
 
@@ -156,7 +159,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             () => _throttlePort.Value,
             () => rpmPort.Value);
 
-        _log.LogInfo($"[host] turbo bound on '{name}' (throttle: {_throttlePort.id}, " +
+        _log.Info($"turbo bound on '{name}' (throttle: {_throttlePort.id}, " +
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
@@ -177,7 +180,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             Transform exhaust = _configuration.ExhaustPositionSelectors[i](_trainCar);
             if (exhaust == null)
             {
-                _log.LogWarning($"[host] exhaust selector {i} resolved to null on '{name}' - skipping");
+                _log.Warn($"exhaust selector {i} resolved to null on '{name}' - skipping");
                 continue;
             }
 
@@ -189,7 +192,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             }
             else
             {
-                _log.LogWarning($"[host] exhaust selector {i} ('{exhaust.name}') has no ParticleSystem on '{name}'");
+                _log.Warn($"exhaust selector {i} ('{exhaust.name}') has no ParticleSystem on '{name}'");
             }
 
             Texture atlas = vanillaPs != null
@@ -204,7 +207,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         _effectsBound = true;
-        _log.LogInfo($"[host] effects bound on '{name}' ({_exhausts.Count} exhaust emitter(s))");
+        _log.Info($"effects bound on '{name}' ({_exhausts.Count} exhaust emitter(s))");
     }
 
     private SmokeParticles CreateSmokeEmitter(int index, Transform exhaust, Texture atlas)

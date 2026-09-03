@@ -1,4 +1,3 @@
-using System.Linq;
 using DV.ThingTypes;
 using UnityEngine;
 
@@ -8,15 +7,11 @@ using UnityModManagerNet;
 
 public static class Main
 {
-    private static UnityModManager.ModEntry _modEntry;
-    internal static Logger Log;
-
     public static void Load(UnityModManager.ModEntry entry)
     {
-        _modEntry = entry;
-        Log = new Logger(_modEntry.Logger);
+        Log.Init(entry.Logger);
 
-        ModAssets.Initialize(entry.Path, Log);
+        ModAssets.Initialize(entry.Path);
 
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .AddTurbo()
@@ -29,10 +24,10 @@ public static class Main
             .AddTractionMotorVent(c =>
                 c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "DamagedEngineSmoke")?.transform));
 
-        Orchestrator.Create(Log);
+        Orchestrator.Create();
 
         DevUI.TurboDevPanel.Create();
 
-        Log.LogInfo("TurboTurbo ready!");
+        Log.ForContext("main").Info("TurboTurbo ready!");
     }
 }

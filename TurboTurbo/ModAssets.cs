@@ -14,7 +14,7 @@ internal static class ModAssets
     private const string SmokeAssetPath = "Assets/Shimmer/SmokeShader.shader";
 
     private static string _modDirectory;
-    private static Logger _log;
+    private static readonly Logger _log = Log.ForContext("assets");
     private static AssetBundle _bundle;
     private static bool _everLoaded;
 
@@ -24,13 +24,12 @@ internal static class ModAssets
     internal static bool ShadersValid => HeatShimmerShader != null && SmokeShader != null;
 
     /// <summary>
-    /// Initializes the asset bundle loader with the mod directory and logger, and loads the assets.
+    /// Initializes the asset bundle loader with the mod directory, and loads the assets.
     /// Needs to be called once at startup, so the loader knows where to look.
     /// </summary>
-    internal static void Initialize(string modDirectory, Logger log)
+    internal static void Initialize(string modDirectory)
     {
         _modDirectory = modDirectory;
-        _log = log;
         
         // throwing here ensures our mod will fail to load, which is better than failing silently as it doesn't leave
         // the mod in a half-broken state
@@ -86,11 +85,11 @@ internal static class ModAssets
             _everLoaded = true;
             if (reload)
             {
-                _log.LogInfo("[assets] shaders lost (scene unload) - bundle reloaded");
+                _log.Info("shaders lost, bundle reloaded");
             }
             else
             {
-                _log.LogInfo($"[assets] bundle loaded from '{bundlePath}'");
+                _log.Info($"bundle loaded from '{bundlePath}'");
             }
         }
         catch (Exception e)
@@ -102,8 +101,8 @@ internal static class ModAssets
                 throw;
             }
             
-            _log.LogException(e);
-            _log.LogError($"[assets] failed to load asset bundle '{BundleName}': {e.Message}");
+            _log.Exception(e);
+            _log.Error($"failed to load asset bundle '{BundleName}': {e.Message}");
         }
     }
 }

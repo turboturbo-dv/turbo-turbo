@@ -1,20 +1,27 @@
 using System;
+using UnityModManagerNet;
 
 namespace TurboTurbo;
 
-using UnityModManagerNet;
-
-public class Logger
+/// <summary>
+/// Context-tagged logger: prefixes every message with [context]. Created
+/// exclusively through Log.ForContext.
+/// </summary>
+internal class Logger
 {
     private readonly UnityModManager.ModEntry.ModLogger _logger;
+    private readonly string _context;
 
-    public Logger(UnityModManager.ModEntry.ModLogger modLogger)
+    internal Logger(UnityModManager.ModEntry.ModLogger logger, string context)
     {
-        _logger = modLogger;
+        _logger = logger;
+        _context = context;
     }
 
-    public void LogInfo(string message) => _logger.Log(message);
-    public void LogWarning(string message) => _logger.Warning(message);
-    public void LogError(string message) => _logger.Error(message);
-    public void LogException(Exception e) => _logger.LogException(e);
+    public void Info(string message) => _logger.Log(Format(message));
+    public void Warn(string message) => _logger.Warning(Format(message));
+    public void Error(string message) => _logger.Error(Format(message));
+    public void Exception(Exception exception) => _logger.LogException(exception);
+
+    private string Format(string message) => $"[{_context}] {message}";
 }

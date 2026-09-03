@@ -11,6 +11,8 @@ namespace TurboTurbo;
 /// </summary>
 internal sealed class Orchestrator : MonoBehaviour
 {
+    private readonly Logger _log = Log.ForContext("orchestrator");
+
     private readonly List<Runtime.EngineSimulationHost> _hosts = [];
 
     internal IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
@@ -18,7 +20,7 @@ internal sealed class Orchestrator : MonoBehaviour
     internal void Forget(Runtime.EngineSimulationHost host)
     {
         var car = host.TrainCar;
-        Main.Log.LogInfo($"[orchestrator] forgetting about '{car.name}' ({car.carType}, id={car.ID})");
+        _log.Info($"forgetting about '{car.name}' ({car.carType}, id={car.ID})");
         _hosts.Remove(host);
     }
 
@@ -27,13 +29,12 @@ internal sealed class Orchestrator : MonoBehaviour
 
     internal static Orchestrator Instance { get; private set; }
 
-    public static Orchestrator Create(Logger log)
+    public static Orchestrator Create()
     {
         // the game has SingletonBehaviour, which is probably what we want, but this works fine
         var go = new GameObject("TurboTurbo.Orchestrator");
         DontDestroyOnLoad(go);
         var orchestrator = go.AddComponent<Orchestrator>();
-        orchestrator.Log = log;
         Instance = orchestrator;
         return orchestrator;
     }
@@ -62,8 +63,6 @@ internal sealed class Orchestrator : MonoBehaviour
         return $"hosts: {_hosts.Count}\nspawner: {spawner}";
     }
 
-    private Logger Log { get; set; }
-
     private void Update()
     {
         EnsureSpawnerHooked();
@@ -80,7 +79,7 @@ internal sealed class Orchestrator : MonoBehaviour
         if (!ReferenceEquals(_hookedSpawner, null) && !_loggedSpawnerLost)
         {
             _loggedSpawnerLost = true;
-            Log?.LogInfo("[orchestrator] car spawner lost, waiting for a new one");
+            _log.Info("car spawner lost, waiting for a new one");
         }
 
         var spawner = CarSpawner.Instance;
@@ -92,7 +91,7 @@ internal sealed class Orchestrator : MonoBehaviour
 
     private void Hook(CarSpawner spawner)
     {
-        Log.LogInfo($"[orchestrator] hooked {spawner}");
+        _log.Info($"hooked {spawner}");
 
         spawner.CarSpawned += OnCarSpawned;
         spawner.CarAboutToBeDeleted += OnCarAboutToBeDeleted;
@@ -122,7 +121,7 @@ internal sealed class Orchestrator : MonoBehaviour
             return;
         }
 
-        Log?.LogInfo($"[orchestrator] about to be deleted '{car.name}' ({car.carType}, id={car.ID})");
+        _log.Info($"about to be deleted '{car.name}' ({car.carType}, id={car.ID})");
     }
 
     private void Track(TrainCar car)
@@ -137,16 +136,16 @@ internal sealed class Orchestrator : MonoBehaviour
         // ensures revived cars don't receive another host
         if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
         {
-            Log?.LogInfo(
-                $"[orchestrator] '{car.name}' ({car.carType}, id={car.ID}) already has a simulation host, skipping");
+            _log.Info(
+                $"'{car.name}' ({car.carType}, id={car.ID}) already has a simulation host, skipping");
             return;
         }
 
-        Log?.LogInfo($"[orchestrator] attaching simulation host to '{car.name}' ({car.carType}, id={car.ID})");
+        _log.Info($"attaching simulation host to '{car.name}' ({car.carType}, id={car.ID})");
 
         // host is a component of the car so it dies along with it if the car is fully removed
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
-        host.Configure(matchingConfiguration.Value, Log);
+        host.Configure(matchingConfiguration.Value);
         _hosts.Add(host);
     }
 }

@@ -17,6 +17,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private bool _visible;
     private int _selected;
     private bool _structuralDirty;
+    private static readonly Logger _log = Log.ForContext("devpanel");
 
     private EngineSimulationHost _boundHost;
     private readonly List<Section> _sections = new();
@@ -206,23 +207,13 @@ internal sealed class TurboDevPanel : MonoBehaviour
         EngineSimulationHost host = CurrentHost();
         if (host == null)
         {
-            Main.Log.LogInfo("[ps-dump] no car targeted");
+            _log.Warn("no car targeted for inspection");
             return;
         }
 
         // the host lives on the car root, so this always finds the TrainCar
         TrainCar car = host.GetComponent<TrainCar>();
-
-        // roots only: Describe() already recurses into child systems
-        var roots = car.GetComponentsInChildren<ParticleSystem>(true)
-            .Where(ps => ps.transform.parent == null || ps.transform.parent.GetComponent<ParticleSystem>() == null)
-            .ToList();
-
-        Main.Log.LogInfo($"[ps-dump] === car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
-        foreach (ParticleSystem root in roots)
-        {
-            Main.Log.LogInfo(ParticleSystemInspector.Describe(root));
-        }
+        ParticleSystemInspector.Dump(car);
     }
 
     private void DrawSections()

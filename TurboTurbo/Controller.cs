@@ -9,6 +9,8 @@ namespace TurboTurbo;
 
 public static class Controller
 {
+    private static readonly Logger _log = Log.ForContext("controller");
+
     internal static readonly Dictionary<TrainCarType, EngineConfiguration> Configurations = new();
 
     public static void ConfigureEngine(TrainCarType trainCarType, Action<EngineOptions> configure)
@@ -19,8 +21,8 @@ public static class Controller
         var configuration = configurator.Build();
 
         Configurations.Add(trainCarType, configuration);
-        
-        Main.Log.LogInfo($"[controller] configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
+
+        _log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)

@@ -7,12 +7,24 @@ namespace TurboTurbo.DevUI;
 
 internal static class ParticleSystemInspector
 {
-    private const string Prefix = "[ps-dump]";
+    private static readonly Logger _log = Log.ForContext("ps-dump");
+
+    public static void Dump(TrainCar car)
+    {
+        var roots = car.GetComponentsInChildren<ParticleSystem>(true)
+            .Where(ps => ps.transform.parent == null || ps.transform.parent.GetComponent<ParticleSystem>() == null)
+            .ToList();
+
+        _log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
+        foreach (ParticleSystem root in roots)
+        {
+            _log.Info(Describe(root));
+        }
+    }
 
     public static string Describe(ParticleSystem root)
     {
         var sb = new StringBuilder();
-        sb.Append(Prefix).Append(' ');
         Describe(root, root.transform.name, 0, sb);
         return sb.ToString().TrimEnd();
     }
