@@ -1,6 +1,9 @@
 using Shouldly;
+
 using TurboTurbo.Modeling;
+
 using UnityEngine;
+
 using Xunit;
 
 namespace TurboTurboTests
@@ -63,7 +66,7 @@ namespace TurboTurboTests
         public void LambdaBetweenThresholds_GivesIntermediateDensity()
         {
             // midway between the soot thresholds gives an intermediate ladder value
-            float midLambda = (_model.SootOnsetLambda + _model.SootOpaqueLambda) * 0.5f;
+            var midLambda = (_model.SootOnsetLambda + _model.SootOpaqueLambda) * 0.5f;
             _model.Update(midLambda, 0.8f, 0.5f, engineOn: true, 0.016f);
 
             _model.Density.ShouldBeInRange(0.2f, 0.9f);
@@ -74,8 +77,8 @@ namespace TurboTurboTests
         public void SootDensity_MonotonicallyIncreases_AsLambdaFalls()
         {
             var model = new ExhaustSmokeModel();
-            float last = -1f;
-            for (float lambda = 2f; lambda >= 0.3f; lambda -= 0.05f)
+            var last = -1f;
+            for (var lambda = 2f; lambda >= 0.3f; lambda -= 0.05f)
             {
                 model.Update(lambda, 0.8f, 0.5f, engineOn: true, 0.016f);
                 model.Density.ShouldBeGreaterThanOrEqualTo(last);
@@ -114,7 +117,7 @@ namespace TurboTurboTests
         public void WetStack_AccumulatesAtIdle_BurnsOffUnderLoad()
         {
             // idle: fill the accumulator (1s steps)
-            for (int i = 0; i < FillSteps; i++)
+            for (var i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
             }
@@ -134,7 +137,7 @@ namespace TurboTurboTests
         public void WetStack_Idle_AlphaStaysAtHazeFloor()
         {
             // idle long enough to fully wet-stack
-            for (int i = 0; i < FillSteps; i++)
+            for (var i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
             }
@@ -151,13 +154,13 @@ namespace TurboTurboTests
         public void WetStack_DoesNotBurnOff_BelowDemandGate()
         {
             // accumulate
-            for (int i = 0; i < FillSteps; i++)
+            for (var i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.5f, engineOn: true, 1f);
             }
 
             // demand increase but still under the burn gate
-            float gatedDemand = ExhaustSmokeModel.WetStackBurnDemand * 0.8f;
+            var gatedDemand = ExhaustSmokeModel.WetStackBurnDemand * 0.8f;
             _model.Update(1.2f, gatedDemand, 0.5f, engineOn: true, 1f);
 
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
@@ -167,7 +170,7 @@ namespace TurboTurboTests
         public void WetStack_BurnsOff_Completely_UnderSustainedLoad()
         {
             // idle a long time to fully accumulate
-            for (int i = 0; i < FillSteps; i++)
+            for (var i = 0; i < FillSteps; i++)
             {
                 _model.Update(1.2f, 0f, 0.3f, engineOn: true, 1f);
             }
@@ -175,9 +178,9 @@ namespace TurboTurboTests
             // then hold load long enough to burn everything off
             // (0.1s steps, 2x the drain time at this demand)
             const float burnDemand = 0.8f;
-            int burnSteps = 2 * Mathf.CeilToInt(
+            var burnSteps = 2 * Mathf.CeilToInt(
                 1f / (0.1f * burnDemand * ExhaustSmokeModel.WetStackBurnRate));
-            for (int i = 0; i < burnSteps; i++)
+            for (var i = 0; i < burnSteps; i++)
             {
                 _model.Update(1.2f, burnDemand, 0.6f, engineOn: true, 0.1f);
             }

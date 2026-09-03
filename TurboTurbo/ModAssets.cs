@@ -20,16 +20,16 @@ internal static class ModAssets
     private static AssetBundle _bundle;
     private static bool _everLoaded;
 
-    internal static Shader HeatShimmerShader { get; private set; }
-    internal static Shader SmokeShader { get; private set; }
+    public static Shader HeatShimmerShader { get; private set; }
+    public static Shader SmokeShader { get; private set; }
 
-    internal static bool ShadersValid => HeatShimmerShader != null && SmokeShader != null;
+    public static bool ShadersValid => HeatShimmerShader != null && SmokeShader != null;
 
     /// <summary>
     /// Initializes the asset bundle loader with the mod directory, and loads the assets.
     /// Needs to be called once at startup, so the loader knows where to look.
     /// </summary>
-    internal static void Initialize(string modDirectory)
+    public static void Initialize(string modDirectory)
     {
         _modDirectory = modDirectory;
 
@@ -42,7 +42,7 @@ internal static class ModAssets
     /// Ensures the assets are loaded. They will be destroyed during a game reload, so this will reload them when that
     /// happens. Does nothing if the assets are still valid.
     /// </summary>
-    internal static void EnsureLoaded()
+    public static void EnsureLoaded()
     {
         EnsureLoaded(throwOnError: false);
     }
@@ -51,7 +51,7 @@ internal static class ModAssets
     {
         if (ShadersValid) return;
 
-        bool reload = _everLoaded;
+        var reload = _everLoaded;
         try
         {
             // after UnloadAllAssetBundles the handle is destroyed already;
@@ -62,7 +62,7 @@ internal static class ModAssets
                 _bundle = null;
             }
 
-            string bundlePath = Path.Combine(_modDirectory, BundleName);
+            var bundlePath = Path.Combine(_modDirectory, BundleName);
             if (!File.Exists(bundlePath))
             {
                 throw new FileNotFoundException(

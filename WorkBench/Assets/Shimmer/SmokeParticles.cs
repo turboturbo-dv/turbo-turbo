@@ -47,9 +47,6 @@ namespace TurboTurbo.WorkBench
 
         public int ParticleCount => _ps.particleCount;
 
-        /// <summary>Wet-stack accumulator of the internal model (dev panel telemetry).</summary>
-        internal float WetStackAccumulator => _model.WetStackAccumulator;
-
         /// <summary>The internal appearance model (dev panel edits its thresholds).</summary>
         internal ExhaustSmokeModel Model => _model;
 
@@ -142,7 +139,7 @@ namespace TurboTurbo.WorkBench
             tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f);
 
             var rend = GetComponent<ParticleSystemRenderer>();
-            
+
             // nothing really works perfectly here, but YoungestInFront is pretty good, as you generally want newer
             // particles to be more visible than older ones. When looking at a thick smoke trail from the back it
             // can look a bit weird, but the other modes have their own issues.
@@ -161,20 +158,20 @@ namespace TurboTurbo.WorkBench
             // manual emission: exit velocity = shared ExhaustVelocity curve;
             // particles inherit the vehicle's world velocity at emission,
             // then drag (limitVelocityOverLifetime) decays it in sim
-            float rate = rpmNorm * cleanRate + _model.Density * maxRate;
+            var rate = rpmNorm * cleanRate + _model.Density * maxRate;
             _emitAccumulator += rate * Time.deltaTime;
-            int n = (int)_emitAccumulator;
+            var n = (int)_emitAccumulator;
             if (n > 0)
             {
                 _emitAccumulator -= n;
-                
+
                 // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
-                float upSpeed = ExhaustVelocity.Calculate(heat);
-                Vector3 coneDir = transform.forward;
+                var upSpeed = ExhaustVelocity.Calculate(heat);
+                var coneDir = transform.forward;
 
-                for (int i = 0; i < n; i++)
+                for (var i = 0; i < n; i++)
                 {
                     var ep = new ParticleSystem.EmitParams
                     {

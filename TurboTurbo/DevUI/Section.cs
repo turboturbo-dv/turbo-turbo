@@ -48,8 +48,8 @@ internal sealed class Section
     {
         get
         {
-            int n = 0;
-            foreach (ITweakSpec spec in _specs)
+            var n = 0;
+            foreach (var spec in _specs)
             {
                 if (spec.Changed) n++;
             }
@@ -60,15 +60,15 @@ internal sealed class Section
     public void ExportYaml(StringBuilder sb)
     {
         var lines = new List<string>();
-        foreach (ITweakSpec spec in _specs)
+        foreach (var spec in _specs)
         {
-            string line = spec.Export();
+            var line = spec.Export();
             if (line != null) lines.Add(line);
         }
         if (lines.Count == 0) return;
 
         sb.Append(YamlKey).AppendLine(":");
-        foreach (string line in lines)
+        foreach (var line in lines)
         {
             sb.AppendLine(line);
         }
@@ -76,22 +76,22 @@ internal sealed class Section
 
     public void Draw()
     {
-        int changed = ChangedCount;
+        var changed = ChangedCount;
 
         GUILayout.BeginHorizontal();
-        bool prevOpen = Open;
+        var prevOpen = Open;
         Open = GUILayout.Toggle(Open, (Open ? "▾ " : "▸ ") + Title);
         if (Open != prevOpen && OnToggle != null) OnToggle();
         GUILayout.Label(changed > 0 ? $"{changed} changed" : "", GUILayout.Width(70f));
         if (changed > 0 && GUILayout.Button("reset", GUILayout.Width(46f)))
         {
-            foreach (ITweakSpec spec in _specs) spec.Reset();
+            foreach (var spec in _specs) spec.Reset();
         }
         GUILayout.EndHorizontal();
 
         if (Open)
         {
-            foreach (ITweakSpec spec in _specs) spec.Draw();
+            foreach (var spec in _specs) spec.Draw();
         }
     }
 }

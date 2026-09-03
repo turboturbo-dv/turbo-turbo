@@ -16,9 +16,9 @@ internal sealed class Orchestrator : MonoBehaviour
 
     private readonly List<Runtime.EngineSimulationHost> _hosts = [];
 
-    internal IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
+    public IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
 
-    internal void Forget(Runtime.EngineSimulationHost host)
+    public void Forget(Runtime.EngineSimulationHost host)
     {
         var car = host.TrainCar;
         _log.Info($"forgetting about '{car.name}' ({car.carType}, id={car.ID})");
@@ -28,7 +28,7 @@ internal sealed class Orchestrator : MonoBehaviour
     private CarSpawner _hookedSpawner;
     private bool _loggedSpawnerLost;
 
-    internal static Orchestrator Instance { get; private set; }
+    public static Orchestrator Instance { get; private set; }
 
     public static Orchestrator Create()
     {
@@ -44,10 +44,10 @@ internal sealed class Orchestrator : MonoBehaviour
     /// Generate diagnostics, used in the <see cref="DevUI.TurboDevPanel"/>
     /// </summary>
     /// <returns></returns>
-    internal string DescribeDiagnostics()
+    public string DescribeDiagnostics()
     {
-        CarSpawner current = CarSpawner.Instance;
-        string currentId = current != null ? current.GetInstanceID().ToString() : "none";
+        var current = CarSpawner.Instance;
+        var currentId = current != null ? current.GetInstanceID().ToString() : "none";
         string spawner;
         if (ReferenceEquals(_hookedSpawner, null))
         {
@@ -55,9 +55,9 @@ internal sealed class Orchestrator : MonoBehaviour
         }
         else
         {
-            bool alive = _hookedSpawner != null;
-            string hookedId = alive ? _hookedSpawner.GetInstanceID().ToString() : "<destroyed>";
-            string verdict = alive && current != null && current == _hookedSpawner ? "ok" : "mismatch";
+            var alive = _hookedSpawner != null;
+            var hookedId = alive ? _hookedSpawner.GetInstanceID().ToString() : "<destroyed>";
+            var verdict = alive && current != null && current == _hookedSpawner ? "ok" : "mismatch";
             spawner = $"hooked to {hookedId}, current {currentId} ({verdict})";
         }
 

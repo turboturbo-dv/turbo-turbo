@@ -77,13 +77,13 @@ public sealed class TurboModel
     {
         var s = _settings;
 
-        float demand = Clamp(_throttle(), 0f, 1f);
-        float rpmNorm = Clamp(_rpmNorm(), 0f, 1f);
+        var demand = Clamp(_throttle(), 0f, 1f);
+        var rpmNorm = Clamp(_rpmNorm(), 0f, 1f);
         Demand = demand;
         RpmNorm = rpmNorm;
 
         // gate all combustion on the engine's own running state, the port may not read 0
-        float fuelDemand = engineOn ? demand : 0f;
+        var fuelDemand = engineOn ? demand : 0f;
 
         // 1.0 = naturally aspirated
         // full boost = NA + (1-NA) x (1 + BoostChargeMultiplier)
@@ -93,20 +93,20 @@ public sealed class TurboModel
 
         // Capping torque by usable air charge. Extra fuel below TorqueLambdaFloor still 
         // produces work rather than instant torque loss to keep lugging engines from stalling.
-        float rpmFactor = Clamp(rpmNorm, 0f, 1f);
+        var rpmFactor = Clamp(rpmNorm, 0f, 1f);
         rpmFactor = (float)Math.Pow(rpmFactor, s.RpmTorqueExponent);
-        float fuelMaxTorque = rpmFactor * Charge
-                              / (s.LambdaCalibration * s.TorqueLambdaFloor);
+        var fuelMaxTorque = rpmFactor * Charge
+                            / (s.LambdaCalibration * s.TorqueLambdaFloor);
         EffectiveDemand = Math.Min(fuelDemand, fuelMaxTorque);
 
         Overfuel = Math.Max(0f, fuelDemand - Charge / s.LambdaCalibration);
 
         // Boost lag chases equilibrium set by exhaust mass flow. Spooling checks fuelDemand 
         // directly so lug-driven target drops decay with turbine inertia.
-        float rpmMassFlow = (float)Math.Pow(Clamp(rpmNorm, 0f, 1f), s.RpmBoostExponent);
-        float target = Clamp(fuelDemand, 0f, 1f) * rpmMassFlow;
+        var rpmMassFlow = (float)Math.Pow(Clamp(rpmNorm, 0f, 1f), s.RpmBoostExponent);
+        var target = Clamp(fuelDemand, 0f, 1f) * rpmMassFlow;
         ExhaustHeat = target;
-        float tau = fuelDemand > _boost
+        var tau = fuelDemand > _boost
             ? Math.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * Overfuel))
             : s.TauDown;
         _boost += (target - _boost) * (1f - (float)Math.Exp(-delta / tau));

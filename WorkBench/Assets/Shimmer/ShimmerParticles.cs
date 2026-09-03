@@ -94,7 +94,7 @@ namespace TurboTurbo
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            float holdEnd = Mathf.Clamp01(shimmerHoldTime);
+            var holdEnd = Mathf.Clamp01(shimmerHoldTime);
             _alphaGradient = new Gradient();
             _alphaGradient.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
@@ -161,20 +161,20 @@ namespace TurboTurbo
 
         private void Update()
         {
-            float rate = Mathf.Lerp(idleRate, fullRate, heat);
+            var rate = Mathf.Lerp(idleRate, fullRate, heat);
             _emitAccumulator += rate * Time.deltaTime;
-            int n = (int)_emitAccumulator;
+            var n = (int)_emitAccumulator;
             if (n > 0)
             {
                 _emitAccumulator -= n;
-                
+
                 // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
-                float upSpeed = ExhaustVelocity.Calculate(heat);
-                Vector3 coneDir = transform.forward;
+                var upSpeed = ExhaustVelocity.Calculate(heat);
+                var coneDir = transform.forward;
 
-                for (int i = 0; i < n; i++)
+                for (var i = 0; i < n; i++)
                 {
                     var ep = new ParticleSystem.EmitParams
                     {
@@ -192,7 +192,7 @@ namespace TurboTurbo
 
             if (_material != null)
             {
-                float speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat) * speedMultiplier;
+                var speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat) * speedMultiplier;
                 _animTime += Time.deltaTime * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
@@ -225,8 +225,8 @@ namespace TurboTurbo
             // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
             // boy have I got you covered
             emitter.SetParent(parent, worldPositionStays: false);
-            Vector3 localMouth = parent.InverseTransformPoint(exhaustPosition);
-            Vector3 localUp = parent.InverseTransformDirection(Vector3.up);
+            var localMouth = parent.InverseTransformPoint(exhaustPosition);
+            var localUp = parent.InverseTransformDirection(Vector3.up);
             emitter.localPosition = localMouth + localUp * offsetMeters;
             emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
         }

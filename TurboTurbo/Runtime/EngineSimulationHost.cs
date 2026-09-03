@@ -46,12 +46,12 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private readonly List<ExhaustEmitters> _exhausts = new();
     private bool _effectsBound;
 
-    internal TurboModel TurboModel => _turboModel;
-    internal TrainCar TrainCar => _trainCar;
-    internal IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
-    internal bool Bound => _simBound && _turboModel != null;
-    internal bool EngineOn => _turboModel != null && _engineOn();
-    internal string CarId => _trainCar.ID;
+    public TurboModel TurboModel => _turboModel;
+    public TrainCar TrainCar => _trainCar;
+    public IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
+    public bool Bound => _simBound && _turboModel != null;
+    public bool EngineOn => _turboModel != null && _engineOn();
+    public string CarId => _trainCar.ID;
 
     private void OnDestroy()
     {
@@ -79,7 +79,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         if (_turboModel == null) return;
 
-        bool engineOn = _engineOn();
+        var engineOn = _engineOn();
         _turboModel.Tick(Time.deltaTime, _fuelNorm(), engineOn);
 
         // write the torque-capped demand back to the engine's throttle port,
@@ -133,17 +133,17 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         // throttle is a port reference, the actual port hangs off a private field
-        PortReference throttleRef = engine.GetAllPortReferences()
+        var throttleRef = engine.GetAllPortReferences()
             .FirstOrDefault(r => r.id.EndsWith(".THROTTLE", StringComparison.OrdinalIgnoreCase));
         _throttlePort = throttleRef != null
             ? Traverse.Create(throttleRef).Field("port").GetValue<Port>()
             : null;
 
-        Port rpmPort = engine.GetAllPorts()
+        var rpmPort = engine.GetAllPorts()
             .FirstOrDefault(p => p.id.EndsWith(".RPM_NORMALIZED", StringComparison.OrdinalIgnoreCase));
-        Port fuelPort = engine.GetAllPorts()
+        var fuelPort = engine.GetAllPorts()
             .FirstOrDefault(p => p.id.EndsWith(".FUEL_CONSUMPTION_NORMALIZED", StringComparison.OrdinalIgnoreCase));
-        Port engineOnPort = engine.GetAllPorts()
+        var engineOnPort = engine.GetAllPorts()
             .FirstOrDefault(p => p.id.EndsWith(".ENGINE_ON", StringComparison.OrdinalIgnoreCase));
 
         if (_throttlePort == null || rpmPort == null)
@@ -180,16 +180,16 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         _trainCar = GetComponent<TrainCar>();
         _exhausts.Clear();
 
-        for (int i = 0; i < _configuration.ExhaustPositionSelectors.Count; i++)
+        for (var i = 0; i < _configuration.ExhaustPositionSelectors.Count; i++)
         {
-            Transform exhaust = _configuration.ExhaustPositionSelectors[i](_trainCar);
+            var exhaust = _configuration.ExhaustPositionSelectors[i](_trainCar);
             if (exhaust == null)
             {
                 _log.Warn($"exhaust selector {i} resolved to null on '{name}' - skipping");
                 continue;
             }
 
-            ParticleSystem vanillaPs = exhaust.GetComponent<ParticleSystem>();
+            var vanillaPs = exhaust.GetComponent<ParticleSystem>();
             if (vanillaPs != null)
             {
                 var vanillaEmission = vanillaPs.emission;
@@ -200,11 +200,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 _log.Warn($"exhaust selector {i} ('{exhaust.name}') has no ParticleSystem on '{name}'");
             }
 
-            Texture atlas = vanillaPs != null
+            var atlas = vanillaPs != null
                 ? vanillaPs.GetComponent<ParticleSystemRenderer>()?.sharedMaterial?.mainTexture
                 : null;
 
-            Transform simSpace = WorldMover.OriginShiftParent;
+            var simSpace = WorldMover.OriginShiftParent;
             _exhausts.Add(new ExhaustEmitters
             {
                 Smoke = CreateSmokeEmitter(i, exhaust, atlas, simSpace),
@@ -248,12 +248,12 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void UpdateEffects(bool engineOn)
     {
-        Vector3 velocity = _trainCar.GetVelocity();
-        float heat = _turboModel.ExhaustHeat;
+        var velocity = _trainCar.GetVelocity();
+        var heat = _turboModel.ExhaustHeat;
 
-        foreach (ExhaustEmitters e in _exhausts)
+        foreach (var e in _exhausts)
         {
-            SmokeParticles smoke = e.Smoke;
+            var smoke = e.Smoke;
             smoke.lambda = _turboModel.Lambda;
             smoke.demand = _turboModel.Demand;
             smoke.rpmNorm = _turboModel.RpmNorm;
@@ -261,7 +261,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;
 
-            ShimmerParticles shimmer = e.Shimmer;
+            var shimmer = e.Shimmer;
             shimmer.enabled = engineOn;
             if (engineOn)
             {

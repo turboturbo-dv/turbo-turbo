@@ -1,6 +1,9 @@
 using System;
+
 using Shouldly;
+
 using TurboTurbo.Modeling;
+
 using Xunit;
 
 namespace TurboTurboTests
@@ -48,7 +51,7 @@ namespace TurboTurboTests
             // hold full load long enough for boost to reach equilibrium
             _throttle = 1f;
             _rpmNorm = 1f;
-            for (int i = 0; i < 600; i++)
+            for (var i = 0; i < 600; i++)
             {
                 model.Tick(0.1f, fuelNorm: 1f, engineOn: true);
             }
@@ -99,8 +102,8 @@ namespace TurboTurboTests
             _throttle = 1f;
             _rpmNorm = 1f;
 
-            float last = 0f;
-            for (int i = 0; i < 50; i++)
+            var last = 0f;
+            for (var i = 0; i < 50; i++)
             {
                 model.Tick(0.1f, fuelNorm: 1f, engineOn: true);
                 model.Boost.ShouldBeGreaterThanOrEqualTo(last);
@@ -116,15 +119,15 @@ namespace TurboTurboTests
             // spool up first
             _throttle = 1f;
             _rpmNorm = 1f;
-            for (int i = 0; i < 600; i++)
+            for (var i = 0; i < 600; i++)
             {
                 model.Tick(0.1f, fuelNorm: 1f, engineOn: true);
             }
-            float peak = model.Boost;
+            var peak = model.Boost;
 
             // cut the throttle: boost must bleed off through TauDown
             _throttle = 0f;
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 model.Tick(0.5f, fuelNorm: 0f, engineOn: true);
                 model.Boost.ShouldBeLessThan(peak);
@@ -167,7 +170,7 @@ namespace TurboTurboTests
             var model = CreateModel();
             _rpmNorm = 1f;
 
-            for (float throttle = 0f; throttle <= 1f; throttle += 0.05f)
+            for (var throttle = 0f; throttle <= 1f; throttle += 0.05f)
             {
                 _throttle = throttle;
                 model.Tick(0.016f, fuelNorm: throttle, engineOn: true);
@@ -202,7 +205,7 @@ namespace TurboTurboTests
             // spool boost above 0.75: 5 ticks of 1s at full load
             _throttle = 1f;
             _rpmNorm = 1f;
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 model.Tick(1f, fuelNorm: 1f, engineOn: true);
             }
@@ -224,7 +227,7 @@ namespace TurboTurboTests
 
             _throttle = 1f;
             _rpmNorm = 1f;
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 model.Tick(1f, fuelNorm: 1f, engineOn: true);
             }

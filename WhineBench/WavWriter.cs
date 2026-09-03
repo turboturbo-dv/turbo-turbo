@@ -4,13 +4,13 @@ internal static class WavWriter
 {
     public static void ExportWav(float[] samples, int sampleRate, string path)
     {
-        string dir = Path.GetDirectoryName(Path.GetFullPath(path));
+        var dir = Path.GetDirectoryName(Path.GetFullPath(path));
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         using (var stream = new FileStream(path, FileMode.Create))
         using (var writer = new BinaryWriter(stream))
         {
             // do as I say, not as I do
-            int dataBytes = samples.Length * 2;
+            var dataBytes = samples.Length * 2;
             writer.Write(0x46464952);           // RIFF
             writer.Write(36 + dataBytes);
             writer.Write(0x45564157);           // WAVE
@@ -24,7 +24,7 @@ internal static class WavWriter
             writer.Write((short)16);            // bits
             writer.Write(0x61746164);           // data
             writer.Write(dataBytes);
-            foreach (float v in samples)
+            foreach (var v in samples)
             {
                 writer.Write((short)(Clamp(v, -1f, 1f) * 32767f));
             }

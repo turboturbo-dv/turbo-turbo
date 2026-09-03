@@ -14,13 +14,13 @@ const double spoolTau = 0.8;                    // boost easing time constant
 GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
 double throttleTarget = 0.0, boost = 0.0;
-bool engineOn = false;
-double masterVolume = 0.8;
+var engineOn = false;
+var masterVolume = 0.8;
 double blades = 12, bpfScale = 1.0, whineGain = 0.4, flowGain = 0.6, ductGain = 0.5, ductQ = 2.0, jitter = 0.008;
-bool cabFilter = false;
-bool rebuild = true;
-bool showHelp = true;
-bool quit = false;
+var cabFilter = false;
+var rebuild = true;
+var showHelp = true;
+var quit = false;
 
 var provider = new TurboPlaybackProvider();
 IWavePlayer output = new WaveOutEvent { DesiredLatency = 200, NumberOfBuffers = 4 };
@@ -100,19 +100,19 @@ while (!quit)
         rebuild = false;
     }
 
-    double now = clock.ElapsedTicks / (double)Stopwatch.Frequency;
-    double dt = Math.Min(0.1, now - lastTick);
+    var now = clock.ElapsedTicks / (double)Stopwatch.Frequency;
+    var dt = Math.Min(0.1, now - lastTick);
     lastTick = now;
 
-    double demand = engineOn ? throttleTarget : 0.0;
+    var demand = engineOn ? throttleTarget : 0.0;
     boost += (demand - boost) * (1.0 - Math.Exp(-dt / spoolTau));
 
     wobblePhase += dt * 2.0 * Math.PI * 0.5;
-    double wobble = 1.0 + 0.003 * Math.Sin(wobblePhase);
+    var wobble = 1.0 + 0.003 * Math.Sin(wobblePhase);
 
-    double pitch = (pitchMin + (pitchMax - pitchMin) * boost) * wobble;
-    double boostDelta = Math.Min(1.0, boost * demand);
-    double volume = masterVolume * Math.Pow(boost, 1.5) * (0.10 + 0.90 * boostDelta);
+    var pitch = (pitchMin + (pitchMax - pitchMin) * boost) * wobble;
+    var boostDelta = Math.Min(1.0, boost * demand);
+    var volume = masterVolume * Math.Pow(boost, 1.5) * (0.10 + 0.90 * boostDelta);
     provider.SetOutput(pitch, volume);
 
     if (now - lastDraw > 0.2)

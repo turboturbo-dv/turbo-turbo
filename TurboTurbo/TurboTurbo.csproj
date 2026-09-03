@@ -1,0 +1,130 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Game install location. Override with: dotnet build -p:GameDir="C:\path\to\Derail Valley" -->
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Derail Valley</GameDir>
+    <ManagedDir>$(GameDir)\DerailValley_Data\Managed</ManagedDir>
+    <ModDir>$(GameDir)\Mods\TurboTurbo</ModDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.400">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="UnityModManager" Version="0.32.4" />
+  </ItemGroup>
+  
+  <!-- Shared source files -->
+  <ItemGroup>
+    <Compile Include="..\WorkBench\Assets\Shimmer\ExhaustSmokeModel.cs">
+      <Link>Modeling\ExhaustSmokeModel.cs</Link>
+    </Compile>
+    <Compile Include="..\WorkBench\Assets\Shimmer\ShimmerParticles.cs">
+      <Link>Effects\ShimmerParticles.cs</Link>
+    </Compile>
+    <Compile Include="..\WorkBench\Assets\Shimmer\SmokeParticles.cs">
+      <Link>Effects\SmokeParticles.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <!-- Unity + framework assemblies -->
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExCore)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="CommandTerminal">
+      <HintPath>$(ManagedDir)\CommandTerminal.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="sc.posteffects.runtime">
+      <HintPath>$(ManagedDir)\sc.posteffects.runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(ManagedDir)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(ManagedDir)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ManagedDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(ManagedDir)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(ManagedDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(ManagedDir)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ManagedDir)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Postprocessing.Runtime">
+      <HintPath>$(ManagedDir)\Unity.Postprocessing.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  
+  <!-- Game assemblies -->
+  <ItemGroup>
+    <Reference Include="DV.Simulation">
+      <HintPath>$(ManagedDir)\DV.Simulation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DV.ThingTypes">
+      <HintPath>$(ManagedDir)\DV.ThingTypes.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="WorldStreamer">
+      <HintPath>$(ManagedDir)\WorldStreamer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DV.LayeredAudio">
+      <HintPath>$(ManagedDir)\DV.LayeredAudio.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DV.Utils">
+      <HintPath>$(ManagedDir)\DV.Utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="Deploy" AfterTargets="Build" Condition="'$(DeployMod)' != 'false'">
+    <MakeDir Directories="$(ModDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModDir)" />
+    <Copy SourceFiles="info.json" DestinationFolder="$(ModDir)" />
+    <Message Importance="high" Text="Deployed TurboTurbo to $(ModDir)" />
+  </Target>
+
+</Project>

@@ -10,7 +10,7 @@ namespace TurboTurbo.DevUI;
 
 internal sealed class TurboDevPanel : MonoBehaviour
 {
-    internal const float LabelWidth = 165f;
+    public const float LabelWidth = 165f;
 
     private Rect _rect = new(20f, 20f, 360f, 120f);
     private int _selected;
@@ -50,7 +50,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
             _requiresReconfigure = false;
             if (_boundHost != null)
             {
-                foreach (EngineSimulationHost.ExhaustEmitters e in _boundHost.Exhausts)
+                foreach (var e in _boundHost.Exhausts)
                 {
                     e.Smoke.Configure();
                     e.Shimmer.Configure();
@@ -109,10 +109,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
             return;
         }
 
-        string self = Orchestrator.Instance == null
+        var self = Orchestrator.Instance == null
             ? "destroyed"
             : $"alive (id {Orchestrator.Instance.GetInstanceID()})";
-        string shaders = ModAssets.ShadersValid ? "ok" : "lost";
+        var shaders = ModAssets.ShadersValid ? "ok" : "lost";
         _diagLine = $"orchestrator: {self}; shaders: {shaders}\n{Orchestrator.Instance.DescribeDiagnostics()}";
     }
 
@@ -126,7 +126,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private void DumpParticleSystems()
     {
-        EngineSimulationHost host = CurrentHost();
+        var host = CurrentHost();
         if (host == null)
         {
             _log.Warn("no car targeted for inspection");
@@ -134,13 +134,13 @@ internal sealed class TurboDevPanel : MonoBehaviour
         }
 
         // the host lives on the car root, so this always finds the TrainCar
-        TrainCar car = host.GetComponent<TrainCar>();
+        var car = host.GetComponent<TrainCar>();
         ParticleSystemInspector.Dump(car);
     }
 
     private void DrawSections()
     {
-        EngineSimulationHost host = CurrentHost();
+        var host = CurrentHost();
         if (host != _boundHost)
         {
             _boundHost = host;
@@ -153,7 +153,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
             return;
         }
 
-        foreach (Section section in _sections)
+        foreach (var section in _sections)
         {
             section.Draw();
         }
@@ -178,7 +178,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private void BuildTurboSection(EngineSimulationHost host)
     {
         var section = new Section("turbo model", "turbo", MarkRequiresReconfigure) { Open = true, OnToggle = () => _needsShrink = true };
-        TurboModel.Settings s = host.TurboModel.Tuning;
+        var s = host.TurboModel.Tuning;
         section.AddFloat("airNAFraction",
             "Per-stroke charge index of naturally-aspirated operation (zero boost).",
             0f, 1f, false, () => s.AirNAFraction, v => s.AirNAFraction = v);
@@ -215,7 +215,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private void BuildSmokeModelSections(EngineSimulationHost host)
     {
         var models = new List<ExhaustSmokeModel>();
-        foreach (EngineSimulationHost.ExhaustEmitters e in host.Exhausts)
+        foreach (var e in host.Exhausts)
         {
             models.Add(e.Smoke.Model);
         }
@@ -223,15 +223,15 @@ internal sealed class TurboDevPanel : MonoBehaviour
         if (models.Count > 0)
         {
             var section = new Section("smoke model (loco)", "smokeModel", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
-            ExhaustSmokeModel first = models[0];
+            var first = models[0];
             section.AddFloat("sootOnsetLambda",
                 "Lambda where soot starts forming.",
                 0.3f, 1.5f, false,
-                () => first.SootOnsetLambda, v => { foreach (ExhaustSmokeModel m in models) m.SootOnsetLambda = v; });
+                () => first.SootOnsetLambda, v => { foreach (var m in models) m.SootOnsetLambda = v; });
             section.AddFloat("sootOpaqueLambda",
                 "Lambda where soot reaches maximum opacity.",
                 0.1f, 1f, false,
-                () => first.SootOpaqueLambda, v => { foreach (ExhaustSmokeModel m in models) m.SootOpaqueLambda = v; });
+                () => first.SootOpaqueLambda, v => { foreach (var m in models) m.SootOpaqueLambda = v; });
             _sections.Add(section);
         }
 
@@ -276,7 +276,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     {
         var smokes = new List<SmokeParticles>();
         var shimmers = new List<ShimmerParticles>();
-        foreach (EngineSimulationHost.ExhaustEmitters e in host.Exhausts)
+        foreach (var e in host.Exhausts)
         {
             smokes.Add(e.Smoke);
             shimmers.Add(e.Shimmer);
@@ -285,86 +285,86 @@ internal sealed class TurboDevPanel : MonoBehaviour
         if (smokes.Count > 0)
         {
             var section = new Section("smoke emitter", "smokeEmitter", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
-            SmokeParticles f = smokes[0];
+            var f = smokes[0];
             section.AddFloat("lifetime", "Particle lifetime in seconds.",
-                0.5f, 6f, false, () => f.lifetime, v => { foreach (SmokeParticles s in smokes) s.lifetime = v; });
+                0.5f, 6f, false, () => f.lifetime, v => { foreach (var s in smokes) s.lifetime = v; });
             section.AddFloat("startSizeMin", "Particle size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (SmokeParticles s in smokes) s.startSizeMin = v; });
+                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (var s in smokes) s.startSizeMin = v; });
             section.AddFloat("startSizeMax", "Particle size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (SmokeParticles s in smokes) s.startSizeMax = v; });
+                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (var s in smokes) s.startSizeMax = v; });
             section.AddFloat("sizeOverLifetimeStart", "Growth factor at emission.",
-                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (SmokeParticles s in smokes) s.sizeOverLifetimeStart = v; });
+                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (var s in smokes) s.sizeOverLifetimeStart = v; });
             section.AddFloat("sizeOverLifetimeEnd", "Growth factor at end of lifetime.",
-                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (SmokeParticles s in smokes) s.sizeOverLifetimeEnd = v; });
+                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.sizeOverLifetimeEnd = v; });
             section.AddFloat("buoyancy", "Constant upward drift [m/s].",
-                -1f, 2f, true, () => f.buoyancy, v => { foreach (SmokeParticles s in smokes) s.buoyancy = v; });
+                -1f, 2f, true, () => f.buoyancy, v => { foreach (var s in smokes) s.buoyancy = v; });
             section.AddFloat("drag", "Air resistance decaying the inherited train velocity.",
-                0f, 3f, true, () => f.drag, v => { foreach (SmokeParticles s in smokes) s.drag = v; });
+                0f, 3f, true, () => f.drag, v => { foreach (var s in smokes) s.drag = v; });
             section.AddFloat("angularVelocityMax", "Max random spin speed [deg/s], sign-randomized per particle.",
-                0f, 90f, false, () => f.angularVelocityMax, v => { foreach (SmokeParticles s in smokes) s.angularVelocityMax = v; });
+                0f, 90f, false, () => f.angularVelocityMax, v => { foreach (var s in smokes) s.angularVelocityMax = v; });
             section.AddFloat("cleanRate", "Base emission rate [p/s] scaled by rpm.",
-                0f, 60f, false, () => f.cleanRate, v => { foreach (SmokeParticles s in smokes) s.cleanRate = v; });
+                0f, 60f, false, () => f.cleanRate, v => { foreach (var s in smokes) s.cleanRate = v; });
             section.AddFloat("maxRate", "Extra emission rate [p/s] at full soot density.",
-                0f, 150f, false, () => f.maxRate, v => { foreach (SmokeParticles s in smokes) s.maxRate = v; });
+                0f, 150f, false, () => f.maxRate, v => { foreach (var s in smokes) s.maxRate = v; });
             _sections.Add(section);
         }
 
         if (shimmers.Count > 0)
         {
             var section = new Section("shimmer emitter", "shimmerEmitter", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
-            ShimmerParticles f = shimmers[0];
+            var f = shimmers[0];
             section.AddFloat("idleRate", "Emission rate [p/s] at zero heat.",
-                0f, 20f, false, () => f.idleRate, v => { foreach (ShimmerParticles s in shimmers) s.idleRate = v; });
+                0f, 20f, false, () => f.idleRate, v => { foreach (var s in shimmers) s.idleRate = v; });
             section.AddFloat("fullRate", "Emission rate [p/s] at full heat.",
-                0f, 40f, false, () => f.fullRate, v => { foreach (ShimmerParticles s in shimmers) s.fullRate = v; });
+                0f, 40f, false, () => f.fullRate, v => { foreach (var s in shimmers) s.fullRate = v; });
             section.AddFloat("lifetime", "Particle lifetime in seconds.",
-                0.5f, 6f, true, () => f.lifetime, v => { foreach (ShimmerParticles s in shimmers) s.lifetime = v; });
+                0.5f, 6f, true, () => f.lifetime, v => { foreach (var s in shimmers) s.lifetime = v; });
             section.AddFloat("startSizeMin", "Billboard size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (ShimmerParticles s in shimmers) s.startSizeMin = v; });
+                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (var s in shimmers) s.startSizeMin = v; });
             section.AddFloat("startSizeMax", "Billboard size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (ShimmerParticles s in shimmers) s.startSizeMax = v; });
+                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (var s in shimmers) s.startSizeMax = v; });
             section.AddFloat("sizeOverLifetimeStart", "Growth factor at emission.",
-                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (ShimmerParticles s in shimmers) s.sizeOverLifetimeStart = v; });
+                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (var s in shimmers) s.sizeOverLifetimeStart = v; });
             section.AddFloat("sizeOverLifetimeEnd", "Growth factor at end of lifetime.",
-                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (ShimmerParticles s in shimmers) s.sizeOverLifetimeEnd = v; });
+                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.sizeOverLifetimeEnd = v; });
             section.AddFloat("gravity", "Gravity modifier (negative = buoyant).",
-                -1f, 0.5f, true, () => f.gravity, v => { foreach (ShimmerParticles s in shimmers) s.gravity = v; });
+                -1f, 0.5f, true, () => f.gravity, v => { foreach (var s in shimmers) s.gravity = v; });
             section.AddFloat("drag", "Air resistance decaying the inherited train velocity.",
-                0f, 3f, true, () => f.drag, v => { foreach (ShimmerParticles s in shimmers) s.drag = v; });
+                0f, 3f, true, () => f.drag, v => { foreach (var s in shimmers) s.drag = v; });
             section.AddFloat("buoyancy", "Constant upward drift [m/s].",
-                0f, 2f, true, () => f.buoyancy, v => { foreach (ShimmerParticles s in shimmers) s.buoyancy = v; });
+                0f, 2f, true, () => f.buoyancy, v => { foreach (var s in shimmers) s.buoyancy = v; });
             section.AddFloat("strength", "Max shimmer displacement at full heat.",
-                0f, 0.05f, false, () => f.strength, v => { foreach (ShimmerParticles s in shimmers) s.strength = v; });
+                0f, 0.05f, false, () => f.strength, v => { foreach (var s in shimmers) s.strength = v; });
             section.AddFloat("baseStrength", "Displacement multiplier at zero heat (lerps to 1 at full heat).",
-                0f, 1f, false, () => f.baseStrength, v => { foreach (ShimmerParticles s in shimmers) s.baseStrength = v; });
+                0f, 1f, false, () => f.baseStrength, v => { foreach (var s in shimmers) s.baseStrength = v; });
             section.AddFloat("freq", "Noise frequency of the shimmer field.",
-                1f, 20f, false, () => f.freq, v => { foreach (ShimmerParticles s in shimmers) s.freq = v; });
+                1f, 20f, false, () => f.freq, v => { foreach (var s in shimmers) s.freq = v; });
             section.AddFloat("idleRadius", "Displacement radius at zero heat.",
-                0.2f, 2f, false, () => f.idleRadius, v => { foreach (ShimmerParticles s in shimmers) s.idleRadius = v; });
+                0.2f, 2f, false, () => f.idleRadius, v => { foreach (var s in shimmers) s.idleRadius = v; });
             section.AddFloat("fullRadius", "Displacement radius at full heat.",
-                0.2f, 2f, false, () => f.fullRadius, v => { foreach (ShimmerParticles s in shimmers) s.fullRadius = v; });
+                0.2f, 2f, false, () => f.fullRadius, v => { foreach (var s in shimmers) s.fullRadius = v; });
             section.AddFloat("idleAnimSpeed", "Noise scroll speed at zero heat.",
-                0f, 3f, false, () => f.idleAnimSpeed, v => { foreach (ShimmerParticles s in shimmers) s.idleAnimSpeed = v; });
+                0f, 3f, false, () => f.idleAnimSpeed, v => { foreach (var s in shimmers) s.idleAnimSpeed = v; });
             section.AddFloat("fullAnimSpeed", "Noise scroll speed at full heat.",
-                0f, 5f, false, () => f.fullAnimSpeed, v => { foreach (ShimmerParticles s in shimmers) s.fullAnimSpeed = v; });
+                0f, 5f, false, () => f.fullAnimSpeed, v => { foreach (var s in shimmers) s.fullAnimSpeed = v; });
             section.AddFloat("speedMultiplier", "Multiplier on the noise scroll speed.",
-                0f, 4f, false, () => f.speedMultiplier, v => { foreach (ShimmerParticles s in shimmers) s.speedMultiplier = v; });
+                0f, 4f, false, () => f.speedMultiplier, v => { foreach (var s in shimmers) s.speedMultiplier = v; });
             section.AddFloat("shimmerHoldTime", "Fraction of the particle's lifetime held at full strength; decays linearly to zero at death.",
-                0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (ShimmerParticles s in shimmers) s.shimmerHoldTime = v; });
+                0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (var s in shimmers) s.shimmerHoldTime = v; });
             section.AddBool("outline", "Debug: outline the shimmer billboards.",
-                false, () => f.outline, v => { foreach (ShimmerParticles s in shimmers) s.outline = v; });
+                false, () => f.outline, v => { foreach (var s in shimmers) s.outline = v; });
             section.AddInt("debug", "Shader debug mode.",
-                0, 5, false, () => f.debug, v => { foreach (ShimmerParticles s in shimmers) s.debug = v; });
+                0, 5, false, () => f.debug, v => { foreach (var s in shimmers) s.debug = v; });
             section.AddInt("renderQueue", "Material render queue (3000 = smoke, 3010 = after the smoke).",
-                2000, 4000, true, () => f.renderQueue, v => { foreach (ShimmerParticles s in shimmers) s.renderQueue = v; });
+                2000, 4000, true, () => f.renderQueue, v => { foreach (var s in shimmers) s.renderQueue = v; });
             _sections.Add(section);
         }
     }
 
     private void DrawDumpButtons()
     {
-        int total = 0;
-        foreach (Section section in _sections)
+        var total = 0;
+        foreach (var section in _sections)
         {
             total += section.ChangedCount;
         }
@@ -383,7 +383,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     {
         // poor man's YAML. only really intended to give you a simple, clipboardable representation of changed settings
         var sb = new System.Text.StringBuilder();
-        foreach (Section section in _sections)
+        foreach (var section in _sections)
         {
             section.ExportYaml(sb);
         }
@@ -394,7 +394,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     {
         var hosts = Orchestrator.Instance.Hosts;
         _selected = 0;
-        for (int i = 0; i < hosts.Count; i++)
+        for (var i = 0; i < hosts.Count; i++)
         {
             if (hosts[i].TrainCar == PlayerManager.Car)
             {
@@ -440,7 +440,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         var hosts = Orchestrator.Instance.Hosts;
         if (hosts.Count == 0) return;
 
-        EngineSimulationHost host = hosts[_selected];
+        var host = hosts[_selected];
 
         GUILayout.BeginVertical(GUI.skin.box);
 
@@ -451,18 +451,18 @@ internal sealed class TurboDevPanel : MonoBehaviour
             return;
         }
 
-        TurboModel m = host.TurboModel;
+        var m = host.TurboModel;
         GUILayout.Label($"{host.CarId}   engineOn: {host.EngineOn}");
         GUILayout.Label($"boost {m.Boost:0.000}   charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   demand {m.Demand:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}");
 
-        for (int i = 0; i < host.Exhausts.Count; i++)
+        for (var i = 0; i < host.Exhausts.Count; i++)
         {
-            EngineSimulationHost.ExhaustEmitters e = host.Exhausts[i];
+            var e = host.Exhausts[i];
             GUILayout.Label($"exhaust {i}: smoke {e.Smoke.ParticleCount} p, " +
                             $"shimmer {e.Shimmer.ParticleCount} p, " +
-                            $"wetStack {e.Smoke.WetStackAccumulator:0.00}");
+                            $"wetStack {e.Smoke.Model.WetStackAccumulator:0.00}");
         }
 
         GUILayout.EndVertical();

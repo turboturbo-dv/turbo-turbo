@@ -31,7 +31,7 @@ desktop.ini
 [Mm]emoryCaptures/
 sysinfo.txt
 *.sysinfo
-*.csproj
+WorkBench/*.csproj
 *.sln
 *.pidb
 *.booproj

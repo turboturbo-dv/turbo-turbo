@@ -76,24 +76,24 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
 
     public void Draw()
     {
-        int current = _get();
+        var current = _get();
         GUILayout.BeginHorizontal();
         GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
-        int sliderV = Mathf.RoundToInt(GUILayout.HorizontalSlider(current, _min, _max));
+        var sliderV = Mathf.RoundToInt(GUILayout.HorizontalSlider(current, _min, _max));
         if (sliderV != current)
         {
             Commit(sliderV);
             _editText = null;
         }
 
-        string shown = _editText ?? current.ToString(CultureInfo.InvariantCulture);
-        string typed = GUILayout.TextField(shown, GUILayout.Width(48f));
+        var shown = _editText ?? current.ToString(CultureInfo.InvariantCulture);
+        var typed = GUILayout.TextField(shown, GUILayout.Width(48f));
         if (typed != shown)
         {
             _editText = typed;
-            if (int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+            if (int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
             {
-                int clamped = Mathf.Clamp(parsed, _min, _max);
+                var clamped = Mathf.Clamp(parsed, _min, _max);
                 if (clamped != current) Commit(clamped);
             }
         }
@@ -120,24 +120,24 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
 
     public void Draw()
     {
-        float current = _get();
+        var current = _get();
         GUILayout.BeginHorizontal();
         GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
-        float sliderV = GUILayout.HorizontalSlider(current, _min, _max);
+        var sliderV = GUILayout.HorizontalSlider(current, _min, _max);
         if (sliderV != current)
         {
             Commit(sliderV);
             _editText = null;
         }
 
-        string shown = _editText ?? Format(current);
-        string typed = GUILayout.TextField(shown, GUILayout.Width(48f));
+        var shown = _editText ?? Format(current);
+        var typed = GUILayout.TextField(shown, GUILayout.Width(48f));
         if (typed != shown)
         {
             _editText = typed;
-            if (float.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
+            if (float.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
             {
-                float clamped = Mathf.Clamp(parsed, _min, _max);
+                var clamped = Mathf.Clamp(parsed, _min, _max);
                 if (clamped != current) Commit(clamped);
             }
         }
@@ -159,7 +159,7 @@ internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
 
     public void Draw()
     {
-        bool value = GUILayout.Toggle(_get(), _label);
+        var value = GUILayout.Toggle(_get(), _label);
         if (value != _get()) Commit(value);
     }
 

@@ -14,7 +14,7 @@ internal struct Xorshift32
 
     public double NextUnit()
     {
-        uint x = _state;
+        var x = _state;
         x ^= x << 13;
         x ^= x >> 17;
         x ^= x << 5;

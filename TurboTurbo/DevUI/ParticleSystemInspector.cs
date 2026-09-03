@@ -17,7 +17,7 @@ internal static class ParticleSystemInspector
             .ToList();
 
         Log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
-        foreach (ParticleSystem root in roots)
+        foreach (var root in roots)
         {
             Log.Info(Describe(root));
         }
@@ -41,7 +41,7 @@ internal static class ParticleSystemInspector
         sb.AppendLine($"{pad}  transform: world={ps.transform.position} local={ps.transform.localPosition} rot={ps.transform.eulerAngles}");
 
         var main = ps.main;
-        string seed = ps.useAutoRandomSeed
+        var seed = ps.useAutoRandomSeed
             ? "autoRandomSeed=yes"
             : $"autoRandomSeed=no seed={ps.randomSeed}";
         sb.AppendLine($"{pad}  main: duration={main.duration} prewarm={main.prewarm} playOnAwake={main.playOnAwake} " +

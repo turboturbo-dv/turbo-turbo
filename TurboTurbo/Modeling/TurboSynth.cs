@@ -10,19 +10,19 @@ public static class TurboSynth
     /// </summary>
     public static float[] RenderSweep(TurboDsp.Settings p, double sweepSeconds)
     {
-        int total = (int)(p.SampleRate * sweepSeconds);
+        var total = (int)(p.SampleRate * sweepSeconds);
         var output = new float[total];
         var dsp = new TurboDsp(p);
-        double dt = 1.0 / p.SampleRate;
-        double peak = 0.0;
-        for (int i = 0; i < total; i++)
+        var dt = 1.0 / p.SampleRate;
+        var peak = 0.0;
+        for (var i = 0; i < total; i++)
         {
-            double t = i * dt;
-            double command = 0.5 - 0.5 * Math.Cos(2.0 * Math.PI * t / sweepSeconds);
-            double rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * command;
-            double s = dsp.ProcessSample(rpmNorm, command, dt);
+            var t = i * dt;
+            var command = 0.5 - 0.5 * Math.Cos(2.0 * Math.PI * t / sweepSeconds);
+            var rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * command;
+            var s = dsp.ProcessSample(rpmNorm, command, dt);
             output[i] = (float)s;
-            double a = Math.Abs(s);
+            var a = Math.Abs(s);
             if (a > peak) peak = a;
         }
         Normalize(output, peak);
@@ -35,17 +35,17 @@ public static class TurboSynth
     /// </summary>
     public static float[] RenderSteady(TurboDsp.Settings p, double seconds, double load)
     {
-        int total = (int)(p.SampleRate * seconds);
+        var total = (int)(p.SampleRate * seconds);
         var output = new float[total];
         var dsp = new TurboDsp(p);
-        double dt = 1.0 / p.SampleRate;
-        double rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * load;
-        double peak = 0.0;
-        for (int i = 0; i < total; i++)
+        var dt = 1.0 / p.SampleRate;
+        var rpmNorm = p.IdleEngineRpmNorm + (1.0 - p.IdleEngineRpmNorm) * load;
+        var peak = 0.0;
+        for (var i = 0; i < total; i++)
         {
-            double s = dsp.ProcessSample(rpmNorm, load, dt);
+            var s = dsp.ProcessSample(rpmNorm, load, dt);
             output[i] = (float)s;
-            double a = Math.Abs(s);
+            var a = Math.Abs(s);
             if (a > peak) peak = a;
         }
         Normalize(output, peak);
@@ -62,30 +62,30 @@ public static class TurboSynth
     public static float[] RenderLoop(TurboDsp.Settings p, double steadySeconds, double load)
     {
         var pj = CloneForLoop(p);
-        double spoolSeconds = 4.0 * pj.TauSpool + 1.0;
-        int total = (int)(pj.SampleRate * (spoolSeconds + steadySeconds));
+        var spoolSeconds = 4.0 * pj.TauSpool + 1.0;
+        var total = (int)(pj.SampleRate * (spoolSeconds + steadySeconds));
         var dsp = new TurboDsp(pj);
-        double dt = 1.0 / pj.SampleRate;
-        double rpmNorm = pj.IdleEngineRpmNorm + (1.0 - pj.IdleEngineRpmNorm) * load;
+        var dt = 1.0 / pj.SampleRate;
+        var rpmNorm = pj.IdleEngineRpmNorm + (1.0 - pj.IdleEngineRpmNorm) * load;
 
-        int skip = (int)(pj.SampleRate * spoolSeconds);
-        int n = total - skip;
+        var skip = (int)(pj.SampleRate * spoolSeconds);
+        var n = total - skip;
         var kept = new float[n];
-        for (int i = 0; i < total; i++)
+        for (var i = 0; i < total; i++)
         {
-            double s = dsp.ProcessSample(rpmNorm, load, dt);
+            var s = dsp.ProcessSample(rpmNorm, load, dt);
             if (i >= skip) kept[i - skip] = (float)s;
         }
 
         // equal-power wrap crossfade (long, so residual tonal phase mismatch
         // smears into a gentle swell instead of a click)
-        int xf = Math.Min(n / 4, (int)(pj.SampleRate * 0.2));
+        var xf = Math.Min(n / 4, (int)(pj.SampleRate * 0.2));
         var output = new float[n - xf];
-        for (int i = 0; i < output.Length; i++)
+        for (var i = 0; i < output.Length; i++)
         {
             if (i < xf)
             {
-                double th = Math.PI * i / (2.0 * xf);
+                var th = Math.PI * i / (2.0 * xf);
                 output[i] = (float)(kept[i] * Math.Sin(th) + kept[n - xf + i] * Math.Cos(th));
             }
             else
@@ -94,12 +94,12 @@ public static class TurboSynth
             }
         }
 
-        float peak = 0f;
-        foreach (float v in output) peak = Math.Max(peak, Math.Abs(v));
+        var peak = 0f;
+        foreach (var v in output) peak = Math.Max(peak, Math.Abs(v));
         if (peak > 1e-9)
         {
-            float gain = (float)(0.9 / peak);
-            for (int i = 0; i < output.Length; i++) output[i] *= gain;
+            var gain = (float)(0.9 / peak);
+            for (var i = 0; i < output.Length; i++) output[i] *= gain;
         }
         return output;
     }
@@ -132,7 +132,7 @@ public static class TurboSynth
     private static void Normalize(float[] samples, double peak)
     {
         if (peak < 1e-9) return;
-        float gain = (float)(0.9 / peak);
-        for (int i = 0; i < samples.Length; i++) samples[i] *= gain;
+        var gain = (float)(0.9 / peak);
+        for (var i = 0; i < samples.Length; i++) samples[i] *= gain;
     }
 }

@@ -4,10 +4,10 @@ namespace TurboTurbo.Modeling
 {
     public class ExhaustSmokeModel
     {
-        internal static readonly Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 0.22f);
-        internal static readonly Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 0.95f);
-        internal static readonly Color ColorWetStack = new Color(0.85f, 0.82f, 0.78f, 0.85f);
-        internal static readonly Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 0.50f);
+        public static readonly Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 0.22f);
+        public static readonly Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 0.95f);
+        public static readonly Color ColorWetStack = new Color(0.85f, 0.82f, 0.78f, 0.85f);
+        public static readonly Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 0.50f);
 
         public static float WetStackIdleDemand = 0.1f;
         public static float WetStackFillRate = 0.005f;
@@ -52,31 +52,30 @@ namespace TurboTurbo.Modeling
                 _wetStackAccumulator = Mathf.Max(0f, _wetStackAccumulator - delta * demand * WetStackBurnRate);
             }
 
-            Color current = ColorIdleHaze;
+            var current = ColorIdleHaze;
 
-            // oil blowby layer, dependent on engine speed
+            // oil blowby layer
             current = Color.Lerp(current, ColorOilBurn, OilBlowbyTintStrength * rpmNorm);
 
             // soot layer
-            float sootFactor = Mathf.Clamp01(
+            var sootFactor = Mathf.Clamp01(
                 (SootOnsetLambda - lambda) / (SootOnsetLambda - SootOpaqueLambda));
             sootFactor = Mathf.Pow(sootFactor, SootCurveExponent);
             current = Color.Lerp(current, ColorHeavySoot, sootFactor);
 
-            // wet-stack vapor when the throttle opens after idling
-            float wetBurn = 0f;
+            // wet-stack layer
+            var wetBurn = 0f;
             if (_wetStackAccumulator > WetStackBurnThreshold && demand > WetStackBurnDemand)
             {
-                float ramp = Mathf.Clamp01(
+                var ramp = Mathf.Clamp01(
                     (demand - WetStackIdleDemand) / (WetStackBurnRampDemand - WetStackIdleDemand));
                 wetBurn = _wetStackAccumulator * ramp;
                 current = Color.Lerp(current, ColorWetStack, wetBurn);
             }
 
-            // opacity: haze floor up to near-opaque soot / wet-stack burn cloud
             current.a = Mathf.Lerp(AlphaFloor, AlphaCeiling, Mathf.Max(sootFactor, wetBurn * WetStackAlphaScale));
-
             Color = current;
+
             Density = Mathf.Max(sootFactor, wetBurn);
         }
     }

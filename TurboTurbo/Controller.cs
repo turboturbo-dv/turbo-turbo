@@ -13,7 +13,7 @@ public static class Controller
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("controller");
 
-    internal static readonly Dictionary<TrainCarType, EngineConfiguration> Configurations = new();
+    private static readonly Dictionary<TrainCarType, EngineConfiguration> Configurations = new();
 
     public static void ConfigureEngine(TrainCarType trainCarType, Action<EngineOptions> configure)
     {
@@ -38,4 +38,7 @@ public static class Controller
     }
 }
 
-internal record struct EngineConfiguration(bool HasTurbo, float ExhaustSpawnOffset, List<Func<TrainCar, Transform>> ExhaustPositionSelectors);
+internal record struct EngineConfiguration(
+    bool HasTurbo,
+    float ExhaustSpawnOffset,
+    List<Func<TrainCar, Transform>> ExhaustPositionSelectors);

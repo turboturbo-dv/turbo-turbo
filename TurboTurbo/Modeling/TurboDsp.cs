@@ -96,7 +96,7 @@ public sealed class TurboDsp
 
     public double ProcessSample(double engineRpmNorm, double load, double dt)
     {
-        Settings p = _p;
+        var p = _p;
         double sr = p.SampleRate;
 
         _lastDt = dt;
@@ -105,15 +105,15 @@ public sealed class TurboDsp
         if (!UseExternalState)
         {
             // exhaust-energy target, scaled so N=1, L=1 reaches MaxTurboRpm
-            double target = engineRpmNorm * engineRpmNorm * (9000.0 + 27000.0 * Math.Max(0.0, load));
-            double tau = target > _turboRpm ? p.TauSpool : p.TauDump;
+            var target = engineRpmNorm * engineRpmNorm * (9000.0 + 27000.0 * Math.Max(0.0, load));
+            var tau = target > _turboRpm ? p.TauSpool : p.TauDump;
             _turboRpm += (target - _turboRpm) * Math.Min(1.0, dt / tau);
             _boost = 1.0 + 2.5 * (_turboRpm / p.MaxTurboRpm) * Math.Max(0.0, load);
         }
         else
         {
             _rampPos = Math.Min(_rampPos + 1, _rampSamples);
-            double t = (double)_rampPos / _rampSamples;
+            var t = (double)_rampPos / _rampSamples;
             _turboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
             _boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
         }
@@ -127,49 +127,49 @@ public sealed class TurboDsp
         _prevLoad = load;
         _hasPrevLoad = true;
 
-        double bpf = (_turboRpm / 60.0) * p.BladeCount * p.BpfScale;
+        var bpf = (_turboRpm / 60.0) * p.BladeCount * p.BpfScale;
         if (bpf > 0.45 * sr) bpf = 0.45 * sr;
 
         // pitch jitter: xorshift noise, low-passed at JitterHz
-        double white1 = _rng.NextUnit() * 2.0 - 1.0;
+        var white1 = _rng.NextUnit() * 2.0 - 1.0;
         _jitter += _kJitter * (white1 - _jitter);
-        double freq = bpf * (1.0 + p.JitterAmount * _jitter);
+        var freq = bpf * (1.0 + p.JitterAmount * _jitter);
 
         // Branch A: whine
         _phase += 2.0 * Math.PI * freq / sr;
         if (_phase >= 2.0 * Math.PI) _phase -= 2.0 * Math.PI;
-        double raw = Math.Sin(_phase);
+        var raw = Math.Sin(_phase);
 
         // dynamic harmonic taper: fade the wavefold drive as the fundamental
         // approaches the fold-free budget (3rd harmonic at Nyquist/3 = fs/6),
         // so harmonics taper off naturally instead of aliasing
-        double foldBudget = sr / 6.0;
-        double taper = (foldBudget - bpf) / (0.35 * foldBudget);
+        var foldBudget = sr / 6.0;
+        var taper = (foldBudget - bpf) / (0.35 * foldBudget);
         if (taper > 1.0) taper = 1.0;
         else if (taper < 0.0) taper = 0.0;
-        double drive = 1.0 + (_boost - 1.0) * taper;
-        double tonal = Math.Tanh(raw * drive) / Math.Tanh(drive);
+        var drive = 1.0 + (_boost - 1.0) * taper;
+        var tonal = Math.Tanh(raw * drive) / Math.Tanh(drive);
 
-        double w = _turboRpm / p.MaxTurboRpm;
+        var w = _turboRpm / p.MaxTurboRpm;
 
         // acoustic loading: sound power tracks boost pressure differential,
         // not shaft speed alone. Right after a load drop the blade loading
         // collapses even while shaft inertia keeps w high (0.1 floor = faint
         // high-rpm overrun whistle)
-        double boostDeltaNorm = Clamp01((_boost - 1.0) / 2.5);
-        double pressureFactor = 0.10 + 0.90 * boostDeltaNorm;
+        var boostDeltaNorm = Clamp01((_boost - 1.0) / 2.5);
+        var pressureFactor = 0.10 + 0.90 * boostDeltaNorm;
 
-        double whineGain = Math.Pow(w, p.WhineGainExponent) * pressureFactor * p.WhineGain;
+        var whineGain = Math.Pow(w, p.WhineGainExponent) * pressureFactor * p.WhineGain;
 
         // Branch B: flow noise, LPF cutoff tracks mass flow
-        double cutoff = 400.0 + 6000.0 * w;
-        double rc = 1.0 / (2.0 * Math.PI * cutoff);
-        double alpha = dt / (rc + dt);
-        double white2 = _rng.NextUnit() * 2.0 - 1.0;
+        var cutoff = 400.0 + 6000.0 * w;
+        var rc = 1.0 / (2.0 * Math.PI * cutoff);
+        var alpha = dt / (rc + dt);
+        var white2 = _rng.NextUnit() * 2.0 - 1.0;
         _lpfState += alpha * (white2 - _lpfState);
 
         // intake duct resonance: 2-pole SVF band-pass tracking 0.35 x BPF
-        double fc = bpf * 0.35;
+        var fc = bpf * 0.35;
         if (fc < 40.0) fc = 40.0;
         else if (fc > 0.1 * sr) fc = 0.1 * sr;
         if (Math.Abs(fc - _svfLastFc) > 25.0)
@@ -179,17 +179,17 @@ public sealed class TurboDsp
         }
 
         _svfLow += _svfF * _svfBand;
-        double svfHigh = white2 - _svfLow - _svfQInv * _svfBand;
+        var svfHigh = white2 - _svfLow - _svfQInv * _svfBand;
         _svfBand += _svfF * svfHigh;
-        double duct = _svfBand * p.DuctResGain;
+        var duct = _svfBand * p.DuctResGain;
 
         // air flow tracks engine demand too, without the load term the rush
         // stays loud through load rejection while the whine decays away
-        double loadTerm = 0.35 + 0.65 * Clamp01(load);
-        double flowGain = w * loadTerm * p.FlowGain;
+        var loadTerm = 0.35 + 0.65 * Clamp01(load);
+        var flowGain = w * loadTerm * p.FlowGain;
 
         // Branch C: surge flutter AM on flow
-        double surgeMod = 1.0;
+        var surgeMod = 1.0;
         if (_surgeEnvelope > 0.001)
         {
             _surgePhase += 2.0 * Math.PI * 16.0 / sr;
@@ -197,7 +197,7 @@ public sealed class TurboDsp
             _surgeEnvelope *= _surgeDecay;
         }
 
-        double output = tonal * whineGain + (_lpfState + duct) * flowGain * surgeMod;
+        var output = tonal * whineGain + (_lpfState + duct) * flowGain * surgeMod;
 
         if (p.CabFilter)
         {

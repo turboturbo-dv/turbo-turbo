@@ -21,22 +21,22 @@ internal sealed class TurboPlaybackProvider : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
-        float[] loop = _loop;
-        int n = loop.Length;
-        double dt = 1.0 / WaveFormat.SampleRate;
-        double glide = 1.0 - Math.Exp(-dt / GlideTau);
+        var loop = _loop;
+        var n = loop.Length;
+        var dt = 1.0 / WaveFormat.SampleRate;
+        var glide = 1.0 - Math.Exp(-dt / GlideTau);
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             _pitch += (_pitchTarget - _pitch) * glide;
             _volume += (_volumeTarget - _volume) * glide;
 
             _phase += _pitch;
             if (_phase >= n) _phase -= n;
-            int i0 = (int)_phase;
-            int i1 = i0 + 1 >= n ? 0 : i0 + 1;
-            double frac = _phase - Math.Floor(_phase);
-            double s = loop[i0] * (1.0 - frac) + loop[i1] * frac;
+            var i0 = (int)_phase;
+            var i1 = i0 + 1 >= n ? 0 : i0 + 1;
+            var frac = _phase - Math.Floor(_phase);
+            var s = loop[i0] * (1.0 - frac) + loop[i1] * frac;
 
             buffer[offset + i] = (float)(_volume * s);
         }

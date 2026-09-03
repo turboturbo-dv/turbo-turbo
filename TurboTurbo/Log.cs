@@ -12,7 +12,7 @@ internal static class Log
 
     /// <summary>Must be the first thing Main.Load does. Idempotent, so a
     /// UMM mod reload can call it again.</summary>
-    internal static void Init(UnityModManager.ModEntry.ModLogger modLogger) => _modLogger = modLogger;
+    public static void Init(UnityModManager.ModEntry.ModLogger modLogger) => _modLogger = modLogger;
 
-    internal static Logger ForContext(string context) => new Logger(_modLogger, context);
+    public static Logger ForContext(string context) => new Logger(_modLogger, context);
 }
