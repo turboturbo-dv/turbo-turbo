@@ -51,7 +51,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void OnDestroy()
     {
-        Orchestrator.Forget(this);
+        Orchestrator.Instance.Forget(this);
     }
 
     public EngineSimulationHost Configure(EngineConfiguration configuration, Logger log)

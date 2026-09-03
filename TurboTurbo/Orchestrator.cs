@@ -3,22 +3,29 @@ using UnityEngine;
 
 namespace TurboTurbo;
 
+/// <summary>
+/// Orchestrates the creation of <see cref="Runtime.EngineSimulationHost"/>s on cars that match the mod's configuration,
+/// as configured on the <see cref="Controller"/>. Tracks the lifecycle of hosts and as well as the
+/// <see cref="CarSpawner"/> to ensure that all spawned cars that match a configuration entry receive the correct
+/// simulation host.
+/// </summary>
 internal sealed class Orchestrator : MonoBehaviour
 {
-    private bool _hooked;
+    private readonly List<Runtime.EngineSimulationHost> _hosts = [];
 
-    private static readonly List<Runtime.EngineSimulationHost> _hosts = new();
+    internal IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
 
-    internal static IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
-
-    internal static void Forget(Runtime.EngineSimulationHost host)
+    internal void Forget(Runtime.EngineSimulationHost host)
     {
         var car = host.TrainCar;
         Main.Log.LogInfo($"[orchestrator] forgetting about '{car.name}' ({car.carType}, id={car.ID})");
         _hosts.Remove(host);
     }
 
-    private CarSpawner Spawner { get; set; }
+    private CarSpawner _hookedSpawner;
+    private bool _loggedSpawnerLost;
+
+    internal static Orchestrator Instance { get; private set; }
 
     public static Orchestrator Create(Logger log)
     {
@@ -27,32 +34,71 @@ internal sealed class Orchestrator : MonoBehaviour
         DontDestroyOnLoad(go);
         var orchestrator = go.AddComponent<Orchestrator>();
         orchestrator.Log = log;
+        Instance = orchestrator;
         return orchestrator;
+    }
+
+    /// <summary>
+    /// Generate diagnostics, used in the <see cref="DevUI.TurboDevPanel"/>
+    /// </summary>
+    /// <returns></returns>
+    internal string DescribeDiagnostics()
+    {
+        CarSpawner current = FindObjectOfType<CarSpawner>();
+        string currentId = current != null ? current.GetInstanceID().ToString() : "none";
+        string spawner;
+        if (ReferenceEquals(_hookedSpawner, null))
+        {
+            spawner = $"not hooked (current spawner: {currentId})";
+        }
+        else
+        {
+            bool alive = _hookedSpawner != null;
+            string hookedId = alive ? _hookedSpawner.GetInstanceID().ToString() : "<destroyed>";
+            string verdict = alive && current != null && current == _hookedSpawner ? "ok" : "mismatch";
+            spawner = $"hooked to {hookedId}, current {currentId} ({verdict})";
+        }
+
+        return $"hosts: {_hosts.Count}\nspawner: {spawner}";
     }
 
     private Logger Log { get; set; }
 
     private void Update()
     {
-        if (!_hooked)
-        {
-            Hook();
-        }
+        EnsureSpawnerHooked();
     }
 
-    private void Hook()
+    /// <summary>
+    /// Self-healing spawner hook. The spawner is destroyed during a reload, this method registers when that happens and
+    /// ensures the new spawner is hooked as soon as it appears.
+    /// </summary>
+    private void EnsureSpawnerHooked()
     {
-        // CarSpawner lives in the game scene, wait for it to exist
+        if (_hookedSpawner != null) return;
+
+        if (!ReferenceEquals(_hookedSpawner, null) && !_loggedSpawnerLost)
+        {
+            _loggedSpawnerLost = true;
+            Log?.LogInfo("[orchestrator] car spawner lost, waiting for a new one");
+        }
+
         var spawner = CarSpawner.Instance;
         if (spawner == null) return;
-        
+
+        _loggedSpawnerLost = false;
+        Hook(spawner);
+    }
+
+    private void Hook(CarSpawner spawner)
+    {
         Log.LogInfo($"[orchestrator] hooked {spawner}");
 
         spawner.CarSpawned += OnCarSpawned;
         spawner.CarAboutToBeDeleted += OnCarAboutToBeDeleted;
-        _hooked = true;
+        _hookedSpawner = spawner;
 
-        // this probably doesn't happen, but if the spawner already has cars before we discover it, we should track those too.
+        // if the spawner already has cars before we discover it, track those too.
         // slight race condition here, but track is idempotent so that's fine
         foreach (var car in spawner.AllCars)
         {
@@ -91,7 +137,8 @@ internal sealed class Orchestrator : MonoBehaviour
         // ensures revived cars don't receive another host
         if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
         {
-            Log?.LogInfo($"[orchestrator] '{car.name}' ({car.carType}, id={car.ID}) already has a simulation host - skipping");
+            Log?.LogInfo(
+                $"[orchestrator] '{car.name}' ({car.carType}, id={car.ID}) already has a simulation host, skipping");
             return;
         }
 

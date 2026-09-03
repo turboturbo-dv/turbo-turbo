@@ -1,20 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Linq;
 using TurboTurbo.Modeling;
 using TurboTurbo.Runtime;
 using TurboTurbo.WorkBench;
 using UnityEngine;
-
-// float equality comp is actually fine here, since we only need to check for exact matches
-// ReSharper disable CompareOfFloatsByEqualityOperator
 
 namespace TurboTurbo.DevUI;
 
 internal sealed class TurboDevPanel : MonoBehaviour
 {
     private const KeyCode ToggleKey = KeyCode.F6;
-    private const float LabelWidth = 165f;
+    internal const float LabelWidth = 165f;
 
     private Rect _rect = new(20f, 20f, 360f, 120f);
     private bool _visible;
@@ -24,6 +21,9 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private EngineSimulationHost _boundHost;
     private readonly List<Section> _sections = new();
     private bool _needsShrink;
+
+    private string _diagLine = "orchestrator: ?\nspawner: ?";
+    private float _diagTimer;
 
     public static TurboDevPanel Create()
     {
@@ -39,6 +39,11 @@ internal sealed class TurboDevPanel : MonoBehaviour
         {
             _visible = !_visible;
             if (_visible) PickDefaultTarget();
+        }
+
+        if (_visible)
+        {
+            RefreshDiagnostics();
         }
 
         if (_structuralDirty)
@@ -65,23 +70,27 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         if (_needsShrink)
         {
-            // Not correct, but next draw will resize the window to fit the content
+            // not correct, but next draw will resize the window to fit the content
             _rect.height = 10f;
             _needsShrink = false;
         }
 
-        _rect = GUILayout.Window(GetInstanceID(), _rect, DrawWindow, "TurboTurbo Dev (F6)");
+        _rect = GUILayout.Window(GetInstanceID(), _rect, DrawWindow, "TurboTurbo Dev UI");
     }
 
     private void DrawWindow(int id)
     {
         DrawTargetSelector();
         GUILayout.Space(6f);
+        DrawDiagnostics();
+        GUILayout.Space(6f);
         DrawTelemetry();
         GUILayout.Space(6f);
         DrawSections();
         GUILayout.Space(4f);
         DrawDumpButtons();
+        GUILayout.Space(2f);
+        DrawDiagnosticsButtons();
 
         // GUI.tooltip is only populated during repaint; capture then, so
         // other event passes don't overwrite it.
@@ -93,177 +102,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUI.DragWindow();
     }
 
-    private interface ITweakSpec
-    {
-        string Key { get; }
-        bool Changed { get; }
-        void Reset();
-        void Draw();
-        string DumpLine(); // null when unchanged
-    }
-
     private void MarkStructuralDirty() => _structuralDirty = true;
-
-    private void AddFloat(Section section, string key, string tooltip,
-        float min, float max, bool structural, Func<float> get, Action<float> set)
-    {
-        section.Specs.Add(new FloatSpec(key, tooltip, get, set, min, max,
-            structural ? (Action)MarkStructuralDirty : null));
-    }
-
-    private void AddBool(Section section, string key, string tooltip,
-        bool structural, Func<bool> get, Action<bool> set)
-    {
-        section.Specs.Add(new BoolSpec(key, tooltip, get, set,
-            structural ? (Action)MarkStructuralDirty : null));
-    }
-
-    private void AddInt(Section section, string key, string tooltip,
-        int min, int max, bool structural, Func<int> get, Action<int> set)
-    {
-        section.Specs.Add(new IntSpec(key, tooltip, get, set, min, max,
-            structural ? (Action)MarkStructuralDirty : null));
-    }
-
-    private abstract class SpecBase<T>
-    {
-        private readonly string _key;
-        protected readonly Func<T> Get;
-        protected readonly Action<T> Set;
-        protected readonly T Initial;
-        private readonly Action _onStructural;
-        protected readonly bool Structural;
-        protected readonly GUIContent Label;
-
-        protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onStructural)
-        {
-            _key = key;
-            Label = new GUIContent(key, tooltip);
-            Get = get;
-            Set = set;
-            Initial = get();
-            _onStructural = onStructural;
-            Structural = onStructural != null;
-        }
-
-        public string Key => _key;
-
-        public bool Changed => !EqualityComparer<T>.Default.Equals(Get(), Initial);
-
-        protected void Commit(T value)
-        {
-            Set(value);
-            if (Structural) _onStructural();
-        }
-
-        public void Reset()
-        {
-            if (!Changed) return;
-            Commit(Initial);
-        }
-    }
-
-    private sealed class FloatSpec : SpecBase<float>, ITweakSpec
-    {
-        private readonly float _min;
-        private readonly float _max;
-        private string _editText;
-
-        public FloatSpec(string key, string tooltip, Func<float> get, Action<float> set,
-            float min, float max, Action onStructural)
-            : base(key, tooltip, get, set, onStructural)
-        {
-            _min = min;
-            _max = max;
-        }
-
-        public void Draw()
-        {
-            float current = Get();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Label, GUILayout.Width(LabelWidth));
-            float sliderV = GUILayout.HorizontalSlider(current, _min, _max);
-            if (sliderV != current)
-            {
-                Commit(sliderV);
-                _editText = null;
-            }
-            string shown = _editText ?? Format(current);
-            string typed = GUILayout.TextField(shown, GUILayout.Width(48f));
-            if (typed != shown)
-            {
-                _editText = typed;
-                if (float.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
-                {
-                    float clamped = Mathf.Clamp(parsed, _min, _max);
-                    if (clamped != current) Commit(clamped);
-                }
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        public string DumpLine() => Changed ? $"  {Key}: {Format(Get())}" : null;
-
-        private static string Format(float v) => v.ToString("0.#####", CultureInfo.InvariantCulture);
-    }
-
-    private sealed class BoolSpec : SpecBase<bool>, ITweakSpec
-    {
-        public BoolSpec(string key, string tooltip, Func<bool> get, Action<bool> set, Action onStructural)
-            : base(key, tooltip, get, set, onStructural)
-        {
-        }
-
-        public void Draw()
-        {
-            bool value = GUILayout.Toggle(Get(), Label);
-            if (value != Get()) Commit(value);
-        }
-
-        public string DumpLine() => Changed ? $"  {Key}: {Get().ToString().ToLowerInvariant()}" : null;
-    }
-
-    private sealed class IntSpec : SpecBase<int>, ITweakSpec
-    {
-        private readonly int _min;
-        private readonly int _max;
-        private string _editText;
-
-        public IntSpec(string key, string tooltip, Func<int> get, Action<int> set,
-            int min, int max, Action onStructural)
-            : base(key, tooltip, get, set, onStructural)
-        {
-            _min = min;
-            _max = max;
-        }
-
-        public void Draw()
-        {
-            int current = Get();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Label, GUILayout.Width(LabelWidth));
-            int sliderV = Mathf.RoundToInt(GUILayout.HorizontalSlider(current, _min, _max));
-            if (sliderV != current)
-            {
-                Commit(sliderV);
-                _editText = null;
-            }
-            string shown = _editText ?? current.ToString(CultureInfo.InvariantCulture);
-            string typed = GUILayout.TextField(shown, GUILayout.Width(48f));
-            if (typed != shown)
-            {
-                _editText = typed;
-                if (int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
-                {
-                    int clamped = Mathf.Clamp(parsed, _min, _max);
-                    if (clamped != current) Commit(clamped);
-                }
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        public string DumpLine() => Changed ? $"  {Key}: {Get()}" : null;
-    }
 
     private sealed class Section
     {
@@ -314,6 +153,77 @@ internal sealed class TurboDevPanel : MonoBehaviour
         }
     }
 
+    private void AddFloat(Section section, string key, string tooltip,
+        float min, float max, bool structural, Func<float> get, Action<float> set)
+    {
+        section.Specs.Add(new FloatSpec(key, tooltip, get, set, min, max,
+            structural ? (Action)MarkStructuralDirty : null));
+    }
+
+    private void AddBool(Section section, string key, string tooltip,
+        bool structural, Func<bool> get, Action<bool> set)
+    {
+        section.Specs.Add(new BoolSpec(key, tooltip, get, set,
+            structural ? (Action)MarkStructuralDirty : null));
+    }
+
+    private void AddInt(Section section, string key, string tooltip,
+        int min, int max, bool structural, Func<int> get, Action<int> set)
+    {
+        section.Specs.Add(new IntSpec(key, tooltip, get, set, min, max,
+            structural ? (Action)MarkStructuralDirty : null));
+    }
+
+    private void RefreshDiagnostics()
+    {
+        _diagTimer -= Time.deltaTime;
+        if (_diagTimer > 0f) return;
+        _diagTimer = 1f;
+
+        if (ReferenceEquals(Orchestrator.Instance, null))
+        {
+            _diagLine = "orchestrator: no instance\nspawner: ?";
+            return;
+        }
+
+        string self = Orchestrator.Instance == null
+            ? "destroyed"
+            : $"alive (id {Orchestrator.Instance.GetInstanceID()})";
+        _diagLine = $"orchestrator: {self}\n{Orchestrator.Instance.DescribeDiagnostics()}";
+    }
+
+    private void DrawDiagnosticsButtons()
+    {
+        if (GUILayout.Button("inspect car (dump particle systems to log)"))
+        {
+            DumpParticleSystems();
+        }
+    }
+
+    private void DumpParticleSystems()
+    {
+        EngineSimulationHost host = CurrentHost();
+        if (host == null)
+        {
+            Main.Log.LogInfo("[ps-dump] no car targeted");
+            return;
+        }
+
+        // the host lives on the car root, so this always finds the TrainCar
+        TrainCar car = host.GetComponent<TrainCar>();
+
+        // roots only: Describe() already recurses into child systems
+        var roots = car.GetComponentsInChildren<ParticleSystem>(true)
+            .Where(ps => ps.transform.parent == null || ps.transform.parent.GetComponent<ParticleSystem>() == null)
+            .ToList();
+
+        Main.Log.LogInfo($"[ps-dump] === car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
+        foreach (ParticleSystem root in roots)
+        {
+            Main.Log.LogInfo(ParticleSystemInspector.Describe(root));
+        }
+    }
+
     private void DrawSections()
     {
         EngineSimulationHost host = CurrentHost();
@@ -337,7 +247,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private EngineSimulationHost CurrentHost()
     {
-        var hosts = Orchestrator.Hosts;
+        var hosts = Orchestrator.Instance.Hosts;
         return hosts.Count == 0 ? null : hosts[_selected];
     }
 
@@ -401,11 +311,11 @@ internal sealed class TurboDevPanel : MonoBehaviour
             var section = new Section("smoke model (loco)", "smokeModel") { OnToggle = () => _needsShrink = true };
             ExhaustSmokeModel first = models[0];
             AddFloat(section, "sootOnsetLambda",
-                "Lambda where soot starts forming (fueling richer than this smokes).",
+                "Lambda where soot starts forming.",
                 0.3f, 1.5f, false,
                 () => first.SootOnsetLambda, v => { foreach (ExhaustSmokeModel m in models) m.SootOnsetLambda = v; });
             AddFloat(section, "sootOpaqueLambda",
-                "Lambda where smoke reaches full opacity.",
+                "Lambda where soot reaches maximum opacity.",
                 0.1f, 1f, false,
                 () => first.SootOpaqueLambda, v => { foreach (ExhaustSmokeModel m in models) m.SootOpaqueLambda = v; });
             _sections.Add(section);
@@ -417,12 +327,12 @@ internal sealed class TurboDevPanel : MonoBehaviour
             0f, 0.5f, false, () => ExhaustSmokeModel.WetStackIdleDemand, v => ExhaustSmokeModel.WetStackIdleDemand = v);
         AddFloat(global, "wetStackFillRate",
             "Accumulator fill rate [1/s] while idling.",
-            0f, 0.5f, false, () => ExhaustSmokeModel.WetStackFillRate, v => ExhaustSmokeModel.WetStackFillRate = v);
+            0f, 0.1f, false, () => ExhaustSmokeModel.WetStackFillRate, v => ExhaustSmokeModel.WetStackFillRate = v);
         AddFloat(global, "wetStackBurnThreshold",
             "The accumulator must exceed this before burn-off becomes visible.",
             0f, 0.5f, false, () => ExhaustSmokeModel.WetStackBurnThreshold, v => ExhaustSmokeModel.WetStackBurnThreshold = v);
         AddFloat(global, "wetStackBurnDemand",
-            "Demand above which the wet-stack burn produces straw puffs.",
+            "Demand above which the wet-stack burn produces white smoke.",
             0f, 0.6f, false, () => ExhaustSmokeModel.WetStackBurnDemand, v => ExhaustSmokeModel.WetStackBurnDemand = v);
         AddFloat(global, "wetStackBurnRate",
             "Burn-off rate [1/s] per unit demand.",
@@ -437,13 +347,13 @@ internal sealed class TurboDevPanel : MonoBehaviour
             "Gamma shaping the soot ladder over the lambda deficit.",
             0.5f, 3f, false, () => ExhaustSmokeModel.SootCurveExponent, v => ExhaustSmokeModel.SootCurveExponent = v);
         AddFloat(global, "alphaFloor",
-            "Puff opacity floor (clean haze).",
+            "Smoke opacity floor (clean haze).",
             0f, 0.5f, false, () => ExhaustSmokeModel.AlphaFloor, v => ExhaustSmokeModel.AlphaFloor = v);
         AddFloat(global, "alphaCeiling",
-            "Puff opacity ceiling (soot).",
+            "Smoke opacity ceiling (soot).",
             0.5f, 1f, false, () => ExhaustSmokeModel.AlphaCeiling, v => ExhaustSmokeModel.AlphaCeiling = v);
         AddFloat(global, "wetStackAlphaScale",
-            "How strongly the wet-stack burn pushes opacity toward the ceiling.",
+            "How strongly the wet-stack burn pushes opacity towards the ceiling.",
             0f, 1f, false, () => ExhaustSmokeModel.WetStackAlphaScale, v => ExhaustSmokeModel.WetStackAlphaScale = v);
         _sections.Add(global);
     }
@@ -493,7 +403,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 20f, false, () => f.idleRate, v => { foreach (ShimmerParticles s in shimmers) s.idleRate = v; });
             AddFloat(section, "fullRate", "Emission rate [p/s] at full heat.",
                 0f, 40f, false, () => f.fullRate, v => { foreach (ShimmerParticles s in shimmers) s.fullRate = v; });
-            AddFloat(section, "lifetime", "Particle lifetime in seconds (drives the shimmer decay envelope).",
+            AddFloat(section, "lifetime", "Particle lifetime in seconds.",
                 0.5f, 6f, true, () => f.lifetime, v => { foreach (ShimmerParticles s in shimmers) s.lifetime = v; });
             AddFloat(section, "startSizeMin", "Billboard size range at emission [m].",
                 0.1f, 3f, false, () => f.startSizeMin, v => { foreach (ShimmerParticles s in shimmers) s.startSizeMin = v; });
@@ -559,13 +469,14 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private string BuildYaml()
     {
+        // poor man's YAML. only really intended to give you a simple, clipboardable representation of changed settings
         var sb = new System.Text.StringBuilder();
         foreach (Section section in _sections)
         {
             var lines = new List<string>();
             foreach (ITweakSpec spec in section.Specs)
             {
-                string line = spec.DumpLine();
+                string line = spec.Export();
                 if (line != null) lines.Add(line);
             }
             if (lines.Count == 0) continue;
@@ -581,7 +492,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private void PickDefaultTarget()
     {
-        var hosts = Orchestrator.Hosts;
+        var hosts = Orchestrator.Instance.Hosts;
         _selected = 0;
         for (int i = 0; i < hosts.Count; i++)
         {
@@ -595,7 +506,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private void DrawTargetSelector()
     {
-        var hosts = Orchestrator.Hosts;
+        var hosts = Orchestrator.Instance.Hosts;
         if (hosts.Count == 0)
         {
             GUILayout.Label("no loco tracked");
@@ -617,9 +528,16 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.EndHorizontal();
     }
 
+    private void DrawDiagnostics()
+    {
+        GUILayout.BeginVertical(GUI.skin.box);
+        GUILayout.Label(_diagLine);
+        GUILayout.EndVertical();
+    }
+
     private void DrawTelemetry()
     {
-        var hosts = Orchestrator.Hosts;
+        var hosts = Orchestrator.Instance.Hosts;
         if (hosts.Count == 0) return;
 
         EngineSimulationHost host = hosts[_selected];
