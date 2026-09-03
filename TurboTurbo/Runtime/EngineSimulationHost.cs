@@ -167,6 +167,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     /// </summary>
     private void TryBindEffects()
     {
+        ModAssets.EnsureLoaded();
+
         _trainCar = GetComponent<TrainCar>();
         _exhausts.Clear();
 

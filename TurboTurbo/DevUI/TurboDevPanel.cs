@@ -189,7 +189,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
         string self = Orchestrator.Instance == null
             ? "destroyed"
             : $"alive (id {Orchestrator.Instance.GetInstanceID()})";
-        _diagLine = $"orchestrator: {self}\n{Orchestrator.Instance.DescribeDiagnostics()}";
+        string shaders = ModAssets.ShadersValid ? "ok" : "lost";
+        _diagLine = $"orchestrator: {self}; shaders: {shaders}\n{Orchestrator.Instance.DescribeDiagnostics()}";
     }
 
     private void DrawDiagnosticsButtons()

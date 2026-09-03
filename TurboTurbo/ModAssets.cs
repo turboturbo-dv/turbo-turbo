@@ -1,11 +1,11 @@
+using System;
 using System.IO;
 using UnityEngine;
 
 namespace TurboTurbo;
 
 /// <summary>
-/// Loads the mod's asset bundle (built and deployed via WorkBench)
-/// and exposes its shaders. The bundle is expected in the mod directory, next to info.json.
+/// Manages the mod's asset bundle, reloading when necessary and providing access to the assets contained.
 /// </summary>
 internal static class ModAssets
 {
@@ -13,34 +13,97 @@ internal static class ModAssets
     private const string HeatShimmerAssetPath = "Assets/Shimmer/HeatShimmer.shader";
     private const string SmokeAssetPath = "Assets/Shimmer/SmokeShader.shader";
 
+    private static string _modDirectory;
+    private static Logger _log;
+    private static AssetBundle _bundle;
+    private static bool _everLoaded;
+
     internal static Shader HeatShimmerShader { get; private set; }
     internal static Shader SmokeShader { get; private set; }
 
-    internal static void Load(string modDirectory, Logger log)
+    internal static bool ShadersValid => HeatShimmerShader != null && SmokeShader != null;
+
+    /// <summary>
+    /// Initializes the asset bundle loader with the mod directory and logger, and loads the assets.
+    /// Needs to be called once at startup, so the loader knows where to look.
+    /// </summary>
+    internal static void Initialize(string modDirectory, Logger log)
     {
-        string bundlePath = Path.Combine(modDirectory, BundleName);
-        if (!File.Exists(bundlePath))
-        {
-            throw new FileNotFoundException(
-                $"asset bundle '{BundleName}' not found in '{modDirectory}' - " +
-                "build and deploy it via WorkBench: TurboTurbo/Build and Deploy");
-        }
+        _modDirectory = modDirectory;
+        _log = log;
+        
+        // throwing here ensures our mod will fail to load, which is better than failing silently as it doesn't leave
+        // the mod in a half-broken state
+        EnsureLoaded(throwOnError: true);
+    }
 
-        AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
-        if (bundle == null)
-        {
-            throw new IOException($"asset bundle '{bundlePath}' failed to load");
-        }
+    /// <summary>
+    /// Ensures the assets are loaded. They will be destroyed during a game reload, so this will reload them when that
+    /// happens. Does nothing if the assets are still valid.
+    /// </summary>
+    internal static void EnsureLoaded()
+    {
+        EnsureLoaded(throwOnError: false);
+    }
 
-        HeatShimmerShader = bundle.LoadAsset<Shader>(HeatShimmerAssetPath);
-        SmokeShader = bundle.LoadAsset<Shader>(SmokeAssetPath);
-        if (HeatShimmerShader == null || SmokeShader == null)
-        {
-            throw new FileNotFoundException(
-                $"asset bundle '{BundleName}' does not contain the expected shaders " +
-                $"('{HeatShimmerAssetPath}', '{SmokeAssetPath}') - rebuild via WorkBench: TurboTurbo/Build and Deploy");
-        }
+    private static void EnsureLoaded(bool throwOnError)
+    {
+        if (ShadersValid) return;
 
-        log.LogInfo($"[assets] bundle loaded from '{bundlePath}'");
+        bool reload = _everLoaded;
+        try
+        {
+            // after UnloadAllAssetBundles the handle is destroyed already;
+            // Unload(true) is the correct teardown in any other stale case
+            if (_bundle != null)
+            {
+                _bundle.Unload(true);
+                _bundle = null;
+            }
+
+            string bundlePath = Path.Combine(_modDirectory, BundleName);
+            if (!File.Exists(bundlePath))
+            {
+                throw new FileNotFoundException(
+                    $"asset bundle '{BundleName}' not found in '{_modDirectory}', make sure the mod is installed correctly ");
+            }
+
+            _bundle = AssetBundle.LoadFromFile(bundlePath);
+            if (_bundle == null)
+            {
+                throw new IOException($"asset bundle '{bundlePath}' failed to load");
+            }
+
+            HeatShimmerShader = _bundle.LoadAsset<Shader>(HeatShimmerAssetPath);
+            SmokeShader = _bundle.LoadAsset<Shader>(SmokeAssetPath);
+            if (!ShadersValid)
+            {
+                throw new FileNotFoundException(
+                    $"asset bundle '{BundleName}' does not contain the expected shaders " +
+                    $"('{HeatShimmerAssetPath}', '{SmokeAssetPath}')");
+            }
+
+            _everLoaded = true;
+            if (reload)
+            {
+                _log.LogInfo("[assets] shaders lost (scene unload) - bundle reloaded");
+            }
+            else
+            {
+                _log.LogInfo($"[assets] bundle loaded from '{bundlePath}'");
+            }
+        }
+        catch (Exception e)
+        {
+            HeatShimmerShader = null;
+            SmokeShader = null;
+            if (throwOnError)
+            {
+                throw;
+            }
+            
+            _log.LogException(e);
+            _log.LogError($"[assets] failed to load asset bundle '{BundleName}': {e.Message}");
+        }
     }
 }

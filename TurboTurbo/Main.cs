@@ -16,7 +16,7 @@ public static class Main
         _modEntry = entry;
         Log = new Logger(_modEntry.Logger);
 
-        ModAssets.Load(entry.Path, Log);
+        ModAssets.Initialize(entry.Path, Log);
 
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .AddTurbo()

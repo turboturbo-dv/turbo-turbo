@@ -1,5 +1,14 @@
 # TurboTurbo TODO
 
+- [ ] **Make dev panel state tracking resilient**
+  If there are no tracked locos, and one appears, the panel tracks it only
+  halfway: the telemetry appears, but the specs do not. We should investigate
+  this.
+
+- [ ] **Cleaner logging API**
+  The API should have a static method to create a logger for a given
+  context, and all logging consumers should be updated to use it.
+
 - [ ] **Distinguish between adding and replacing exhausts in public API**
   The replace method should resolve a ParticleSystem, which represents the
   exhaust to be replaced, as well as an optional offset in case we want to
@@ -37,15 +46,19 @@
   Our smoke shader is unlit (constant per-particle color), so the plume
   keeps daytime brightness at night. Investigation findings, ready to
   work from:
-  - *What vanilla does:* the exhaust material (`ExhaustSmokeBlack.mat`,
-    main texture = Cloud01_8x8 — the atlas we already lift) uses the
-    built-in **Legacy Shaders/Diffuse**, **opaque** (`_SrcBlend: 1,
-    _DstBlend: 0, _ZWrite: 1`), **no vertex color, no alpha fade** — lit
-    solid quads. Being lit is the whole reason vanilla reads correctly at
-    night. DV also ships a custom smoke shader family
-    (`FAKE_LIGHTING`, `SOFT_CLIPPING`, `VOLUMETRIC_LIGHTING` keywords)
-    for explosion/white smoke — the game's own VFX use fake lighting,
-    not real normals.
+  - *What vanilla does (runtime dump, logs/DE6_particle_systems.log):*
+    the ExhaustEngineSmoke renderer material is `'ExhaustSmokeBlack'`
+    with shader **`DV/SmokeShader`** (DV-custom - almost certainly the
+    same FAKE_LIGHTING/SOFT_CLIPPING family as the explosion/white smoke
+    materials), tex Cloud01_8x8, queue 3000, sortMode YoungestInFront,
+    inheritVelocity Initial curve=1. Note: the extracted
+    `ExhaustSmokeBlack.mat` claims Legacy Shaders/Diffuse - the runtime
+    material differs from the bench import; trust the dump. Vanilla is
+    lit (fake-lighting family) - being lit is why it reads correctly at
+    night. Key vanilla numbers: lifetime 1-1.5 s, startSpeed 7.5,
+    startSize 4, gravity 0.045, cone 23.6 deg, maxParticles 113,
+    CoL alpha fade-in key at 0.047 then decay to 0, emission module
+    DISABLED (DV drives it via bursts from code).
   - *What the lighting environment exposes:* the sun is a single
     directional driven by the Time of Day asset
     (`LightingCoordinator` gets it via `TOD_Components.LightSource`,
@@ -103,6 +116,16 @@
     speedJitter) + `speed` in telemetry; knobs join the YAML dump
     automatically. Shimmer unaffected (short-lived, hugs the stack).
   - *Effort:* ~15 lines in SmokeParticles, 1 line in the host, 4 spec rows.
+
+- [ ] **Match vanilla's custom simulation space (WorldMover-correct
+  world-sim particles)**
+  The vanilla ExhaustEngineSmoke dump shows `main.simulationSpace =
+  Custom` - DV simulates particles against a custom transform (the
+  world-shift origin), which is how its plumes survive WorldMover shifts
+  in long sessions. Our emitters use plain World space; consider setting
+  `main.customSimulationSpace` to the same transform vanilla uses
+  (find it near the WorldMover/TOD hierarchy at runtime) so our trails
+  shift with the world instead of lagging behind a shift.
 
 ## Spikes (investigate, don't commit yet)
 

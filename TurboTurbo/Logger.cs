@@ -1,3 +1,5 @@
+using System;
+
 namespace TurboTurbo;
 
 using UnityModManagerNet;
@@ -14,4 +16,5 @@ public class Logger
     public void LogInfo(string message) => _logger.Log(message);
     public void LogWarning(string message) => _logger.Warning(message);
     public void LogError(string message) => _logger.Error(message);
+    public void LogException(Exception e) => _logger.LogException(e);
 }
