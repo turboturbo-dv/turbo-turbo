@@ -547,7 +547,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"{host.CarId}   engineOn: {host.EngineOn}");
         GUILayout.Label($"boost {m.Boost:0.000}   charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   demand {m.Demand:0.000}   rpm {m.RpmNorm:0.000}");
-        GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}   surge {m.SurgeThisTick}");
+        GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}");
 
         for (int i = 0; i < host.Exhausts.Count; i++)
         {

@@ -42,7 +42,7 @@ namespace TurboTurbo.Modeling
                 return;
             }
 
-            // 1. wet stacking: unburned fuel accumulates at idle, burns off under load
+            // wet stacking: unburned fuel accumulates at idle, burns off under load
             if (demand < WetStackIdleDemand)
             {
                 _wetStackAccumulator = Mathf.Min(1f, _wetStackAccumulator + delta * WetStackFillRate);
@@ -52,19 +52,18 @@ namespace TurboTurbo.Modeling
                 _wetStackAccumulator = Mathf.Max(0f, _wetStackAccumulator - delta * demand * WetStackBurnRate);
             }
 
-            // 2. base: slightly tinted idle haze
             Color current = ColorIdleHaze;
 
-            // 3. oil blowby layer, scaled with engine speed
+            // oil blowby layer, dependent on engine speed
             current = Color.Lerp(current, ColorOilBurn, OilBlowbyTintStrength * rpmNorm);
 
-            // 4. soot layer
+            // soot layer
             float sootFactor = Mathf.Clamp01(
                 (SootOnsetLambda - lambda) / (SootOnsetLambda - SootOpaqueLambda));
             sootFactor = Mathf.Pow(sootFactor, SootCurveExponent);
             current = Color.Lerp(current, ColorHeavySoot, sootFactor);
 
-            // 5. wet-stack vapor puffs when the throttle opens after idling
+            // wet-stack vapor when the throttle opens after idling
             float wetBurn = 0f;
             if (_wetStackAccumulator > WetStackBurnThreshold && demand > WetStackBurnDemand)
             {
@@ -74,7 +73,7 @@ namespace TurboTurbo.Modeling
                 current = Color.Lerp(current, ColorWetStack, wetBurn);
             }
 
-            // 6. opacity: haze floor up to near-opaque soot / wet-stack burn cloud
+            // opacity: haze floor up to near-opaque soot / wet-stack burn cloud
             current.a = Mathf.Lerp(AlphaFloor, AlphaCeiling, Mathf.Max(sootFactor, wetBurn * WetStackAlphaScale));
 
             Color = current;

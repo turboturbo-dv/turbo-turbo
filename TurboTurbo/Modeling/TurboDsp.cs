@@ -99,16 +99,12 @@ public sealed class TurboDsp
         Settings p = _p;
         double sr = p.SampleRate;
 
-        if (dt != _lastDt)
-        {
-            _lastDt = dt;
-            _surgeDecay = Math.Exp(-4.0 * dt);
-        }
+        _lastDt = dt;
+        _surgeDecay = Math.Exp(-4.0 * dt);
 
         if (!UseExternalState)
         {
             // exhaust-energy target, scaled so N=1, L=1 reaches MaxTurboRpm
-            // (same proportions as Gemini's original: 25% floor at full N, no load)
             double target = engineRpmNorm * engineRpmNorm * (9000.0 + 27000.0 * Math.Max(0.0, load));
             double tau = target > _turboRpm ? p.TauSpool : p.TauDump;
             _turboRpm += (target - _turboRpm) * Math.Min(1.0, dt / tau);
@@ -187,7 +183,7 @@ public sealed class TurboDsp
         _svfBand += _svfF * svfHigh;
         double duct = _svfBand * p.DuctResGain;
 
-        // air flow tracks engine demand too - without the load term the rush
+        // air flow tracks engine demand too, without the load term the rush
         // stays loud through load rejection while the whine decays away
         double loadTerm = 0.35 + 0.65 * Clamp01(load);
         double flowGain = w * loadTerm * p.FlowGain;
@@ -228,7 +224,7 @@ public sealed class TurboDsp
     private static double Clamp01(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
 
 
-    // TODO: several of these are targeted at the DE6, which by all means is a reasonable default but we need to support other options.
+    // TODO: several of these are targeted at the DE6, which is reasonable as a default but we need to support other options.
     // to configure settings for other engines we should expose a flow via the Controller
     public sealed class Settings
     {
