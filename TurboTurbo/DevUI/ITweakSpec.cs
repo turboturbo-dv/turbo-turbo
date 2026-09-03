@@ -28,19 +28,19 @@ internal abstract class SpecBase<T>
     protected readonly Func<T> _get;
     protected readonly Action<T> _set;
     protected readonly T _initial;
-    private readonly Action _onStructural;
-    protected readonly bool _structural;
+    private readonly Action _onRequiresReconfigure;
+    protected readonly bool _requiresReconfigure;
     protected readonly GUIContent _label;
 
-    protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onStructural)
+    protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onRequiresReconfigure)
     {
         _key = key;
         _label = new GUIContent(key, tooltip);
         _get = get;
         _set = set;
         _initial = get();
-        _onStructural = onStructural;
-        _structural = onStructural != null;
+        _onRequiresReconfigure = onRequiresReconfigure;
+        _requiresReconfigure = onRequiresReconfigure != null;
     }
 
     public string Key => _key;
@@ -50,7 +50,7 @@ internal abstract class SpecBase<T>
     protected void Commit(T value)
     {
         _set(value);
-        if (_structural) _onStructural();
+        if (_requiresReconfigure) _onRequiresReconfigure();
     }
 
     public void Reset()
@@ -67,8 +67,8 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
     private string _editText;
 
     public IntSpec(string key, string tooltip, Func<int> get, Action<int> set,
-        int min, int max, Action onStructural)
-        : base(key, tooltip, get, set, onStructural)
+        int min, int max, Action onRequiresReconfigure)
+        : base(key, tooltip, get, set, onRequiresReconfigure)
     {
         _min = min;
         _max = max;
@@ -111,8 +111,8 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
     private string _editText;
 
     public FloatSpec(string key, string tooltip, Func<float> get, Action<float> set,
-        float min, float max, Action onStructural)
-        : base(key, tooltip, get, set, onStructural)
+        float min, float max, Action onRequiresReconfigure)
+        : base(key, tooltip, get, set, onRequiresReconfigure)
     {
         _min = min;
         _max = max;
@@ -152,8 +152,8 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
 
 internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
 {
-    public BoolSpec(string key, string tooltip, Func<bool> get, Action<bool> set, Action onStructural)
-        : base(key, tooltip, get, set, onStructural)
+    public BoolSpec(string key, string tooltip, Func<bool> get, Action<bool> set, Action onRequiresReconfigure)
+        : base(key, tooltip, get, set, onRequiresReconfigure)
     {
     }
 

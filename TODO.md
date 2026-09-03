@@ -1,5 +1,13 @@
 # TurboTurbo TODO
 
+- [ ] **Cleanup pass**
+  Do a full pass over the code base to eliminate defensive guards and other
+  needlessly defensive code. If we cannot envision a justification for a guard,
+  it should be removed, as it just adds unnecessary noise and complexity.
+
+- [ ] **Style pass**
+  Use var.
+
 - [ ] **Dev UI activation tweaks**
   Make dev UI hotkey configurable. Independent of hotkey, it should also be
   possible to toggle it by typing `turbodev` in the console. This way, if
