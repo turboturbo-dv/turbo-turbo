@@ -46,7 +46,7 @@ internal sealed class Orchestrator : MonoBehaviour
     /// <returns></returns>
     internal string DescribeDiagnostics()
     {
-        CarSpawner current = FindObjectOfType<CarSpawner>();
+        CarSpawner current = CarSpawner.Instance;
         string currentId = current != null ? current.GetInstanceID().ToString() : "none";
         string spawner;
         if (ReferenceEquals(_hookedSpawner, null))
