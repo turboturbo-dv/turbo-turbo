@@ -3,25 +3,19 @@ using UnityEngine;
 
 namespace TurboTurbo.WorkBench
 {
-    /// <summary>
-    /// Standalone harness for the shimmer particle system: a DE6 reference
-    /// model inside a movable reference frame, against a high-contrast
-    /// scrolling background. All shimmer uniforms are owned by the
-    /// ShimmerParticles component; the bench only feeds the heat signal.
-    /// </summary>
     public class ShimmerBench : MonoBehaviour
     {
-        [Header("Heat signal (0..1) - drives emission, velocity, shimmer")]
+        [Header("Heat signal")]
         [Range(0f, 1f)] public float heat = 1f;
 
         [Header("Background scroll speed (uv/s)")]
         public float backgroundScroll = 0.03f;
 
-        [Header("Emitter placement (anchored to vanilla ExhaustEngineSmoke)")]
-        [Tooltip("World-up offset from the vanilla exhaust transform - same tuning value as the mod's DE6 configuration")]
+        [Header("Emitter placement")]
+        [Tooltip("World-up offset from the vanilla exhaust transform")]
         public float exhaustSpawnOffset = 0.25f;
 
-        [Header("Exhaust smoke emitter (fresh system, TurboSmoke semantics)")]
+        [Header("Exhaust smoke emitter")]
         public bool smokeEnabled = true;
         [Range(0.3f, 2f)] public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
@@ -29,11 +23,10 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 100f)] public float cleanRate = 20f;
         [Range(0f, 300f)] public float maxRate = 40f;
 
-        [Header("Draw order experiment")]
-        [Tooltip("On = shimmer renders after the smoke (queue 3010) and displaces the plume; Off = shimmer before the smoke (2990)")]
+        [Header("Draw order")]
         public bool shimmerOverSmoke = false;
 
-        [Header("Reference frame movement (world-sim trail test)")]
+        [Header("Movement speed")]
         [Range(0f, 8f)] public float moveSpeed = 1.5f;
 
         private Renderer _background;
@@ -44,9 +37,7 @@ namespace TurboTurbo.WorkBench
 
         private void Start()
         {
-            // everything bench-side lives under one reference frame; moving
-            // the frame while particles simulate in world space leaves them
-            // trailing behind, like a loco driving away from its plume
+            // this lets us move the whole bench setup so particles stay behind
             _frame = new GameObject("ReferenceFrame");
 
             GameObject cam = new GameObject("BenchCamera");
@@ -59,7 +50,6 @@ namespace TurboTurbo.WorkBench
             cam.tag = "MainCamera";
             cam.transform.SetParent(_frame.transform, false);
 
-            // high-contrast checker backdrop - displacement shows as wobble
             Texture2D checker = MakeChecker(512, 16);
             GameObject bg = GameObject.CreatePrimitive(PrimitiveType.Quad);
             bg.name = "Background";
@@ -71,36 +61,37 @@ namespace TurboTurbo.WorkBench
             _background = bg.GetComponent<Renderer>();
             bg.transform.SetParent(_frame.transform, false);
 
-            // the imported loco joins the reference frame too
             var loco = GameObject.Find("LocoDE6");
             if (loco != null) loco.transform.SetParent(_frame.transform, true);
 
-            // both emitters anchor to the vanilla exhaust, exactly like the
-            // game does (EngineSimulationHost resolves the same transform on
-            // real cars)
             var vanillaExhaust = loco != null
                 ? loco.GetComponentsInChildren<ParticleSystem>(true)
                       .FirstOrDefault(ps => ps.name == "ExhaustEngineSmoke")
                 : null;
             if (vanillaExhaust == null)
             {
-                Debug.LogError("[ShimmerBench] no LocoDE6 with 'ExhaustEngineSmoke' in the scene - emitters not created");
+                Debug.LogError("[ShimmerBench] no LocoDE6 with 'ExhaustEngineSmoke' in the scene, emitters not created");
                 return;
             }
 
-            // reusable emitter component (shimmer-particles spike phase 1)
+            var vanillaAtlas = vanillaExhaust.GetComponent<ParticleSystemRenderer>()?.sharedMaterial?.mainTexture;
+
             var go = new GameObject("ShimmerParticles");
             _particleEmitter = go.AddComponent<ShimmerParticles>();
+            _particleEmitter.shader = Shader.Find("TurboTurbo/HeatShimmer");
+            _particleEmitter.Configure();
             ExhaustPlacement.PlaceAt(go.transform, vanillaExhaust.transform.position,
                 _frame.transform, exhaustSpawnOffset);
 
-            // fresh smoke emitter (no game clone) - same anchor as the shimmer
             if (smokeEnabled)
             {
                 var smokeGo = new GameObject("SmokeParticles");
                 _smokeBench = smokeGo.AddComponent<SmokeParticles>();
+                _smokeBench.shader = Shader.Find("TurboTurbo/Smoke");
+                _smokeBench.atlas = vanillaAtlas;
                 _smokeBench.cleanRate = cleanRate;
                 _smokeBench.maxRate = maxRate;
+                _smokeBench.Configure();
                 ExhaustPlacement.PlaceAt(smokeGo.transform, vanillaExhaust.transform.position,
                     _frame.transform, exhaustSpawnOffset);
             }
@@ -108,14 +99,11 @@ namespace TurboTurbo.WorkBench
 
         private void Update()
         {
-            // the bench heat slider drives the emitter exactly like the mod's
-            // HeatIntensity will (UpdateSources -> SetFlow per frame)
             if (_particleEmitter != null)
             {
                 _particleEmitter.SetFlow(heat);
             }
 
-            // smoke model inputs (live sliders; pushed per frame)
             if (_smokeBench != null)
             {
                 _smokeBench.lambda = lambda;
@@ -123,12 +111,9 @@ namespace TurboTurbo.WorkBench
                 _smokeBench.rpmNorm = rpmNorm;
                 _smokeBench.cleanRate = cleanRate;
                 _smokeBench.maxRate = maxRate;
-                _smokeBench.heat = heat; // same signal that drives the shimmer
+                _smokeBench.heat = heat;
             }
 
-            // draw-order experiment: shimmer queue 3010 (over the smoke) or
-            // 2990 (before it, the old order). renderQueue is structural -
-            // re-apply Configure only when the toggle flips
             if (_particleEmitter != null && shimmerOverSmoke != _lastShimmerOverSmoke)
             {
                 _lastShimmerOverSmoke = shimmerOverSmoke;
@@ -142,16 +127,11 @@ namespace TurboTurbo.WorkBench
                 bg.mainTextureOffset = new Vector2(Time.time * backgroundScroll, 0f);
             }
 
-            // slide the whole reference frame; particles (world sim) stay
-            // behind and form the trail. Linear speed, live slider, 0 = rest
             if (moveSpeed > 0.001f)
             {
                 _frame.transform.position += Vector3.right * (moveSpeed * Time.deltaTime);
             }
 
-            // the emitters ride the frame, so the vehicle's world velocity is
-            // the frame velocity: particles inherit it at emission, then drag
-            // bleeds it off (the plumes bend backward)
             if (_particleEmitter != null)
             {
                 _particleEmitter.locoVelocity = Vector3.right * moveSpeed;

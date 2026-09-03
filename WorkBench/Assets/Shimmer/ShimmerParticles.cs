@@ -2,15 +2,10 @@ using UnityEngine;
 
 namespace TurboTurbo
 {
-    /// <summary>
-    /// Exhaust shimmer particle emitter. Each particle is a billboard running the shimmer grab shader.
-    /// A particle draws the scene behind it, displaced by a noise field that varies over time, generating the
-    /// characteristic shimmering effect of hot air.
-    /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour
     {
-        [Header("Emission (particles/s, lerped by heat)")]
+        [Header("Emission (particles/s)")]
         public float idleRate = 5f;
         public float fullRate = 7f;
 
@@ -23,7 +18,7 @@ namespace TurboTurbo
         public float gravity = -0.05f;
         public Color color = new Color(1f, 1f, 1f, 1f); // TODO: not actually used by the shader, figure out if we can remove this
 
-        [Header("Inherited motion (train velocity + air resistance)")]
+        [Header("Particle motion")]
         public float drag = 0.8f;
         public float buoyancy = 0.3f;
 
@@ -31,13 +26,10 @@ namespace TurboTurbo
         /// Particles inherit this at emission, then drag decays it.</summary>
         public Vector3 locoVelocity;
 
-        [Header("Shimmer (matches HeatQuad.UpdateFade semantics)")]
-        public bool useShimmerShader = true;
+        [Header("Shimmer")]
         public bool outline = false;
         public int debug;
         public float strength = 0.014f;
-        /// <summary>Displacement multiplier at zero heat; lerps to 1 at
-        /// full heat, so idling air still shimmers faintly.</summary>
         public float baseStrength = 0.1f;
         public float freq = 6f;
         public float idleRadius = 0.8f;
@@ -46,20 +38,19 @@ namespace TurboTurbo
         public float fullAnimSpeed = 2f;
         public float speedMultiplier = 1f;
 
-        [Header("Shimmer envelope (fractions of particle lifetime)")]
-        // full strength for this fraction of the particle's life, then
-        // linear decay to zero at death
+        [Header("Shimmer envelope (fraction of lifetime)")]
         [Range(0f, 1f)] public float shimmerHoldTime = 0.2f;
 
-        [Header("Engine signal (0..1) - driven by the mod per frame")]
+        [Header("Engine signal (0..1)")]
         [Range(0f, 1f)] public float heat;
 
         // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
         public int renderQueue = 3010;
 
-        // pretty ugly hack, but we need to have a way to set the shader both from the WorkBench and the mod.
-        // call Configure() after setting this.
-        public Shader shaderOverride;
+        public Shader shader;
+
+        /// <summary>Custom simulation space. If null, world space is used.</summary>
+        public Transform customSimulationSpace;
 
         private ParticleSystem _ps;
         private ParticleSystemRenderer _renderer;
@@ -73,24 +64,9 @@ namespace TurboTurbo
 
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
 
-        private void Awake()
-        {
-            _ps = GetComponent<ParticleSystem>();
-            _renderer = GetComponent<ParticleSystemRenderer>();
-        }
-
-        private void Start()
-        {
-            // deferred to Start so callers can inject shaderOverride between
-            // AddComponent and the first (and only) automatic Configure
-            Configure();
-        }
-
-        private void OnValidate()
-        {
-            if (Application.isPlaying) Configure();
-        }
-
+        /// <summary>Builds the ParticleSystem layout. Call once after the
+        /// required properties (shader, customSimulationSpace) are assigned;
+        /// call again after edits.</summary>
         public void Configure()
         {
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
@@ -98,7 +74,15 @@ namespace TurboTurbo
 
             // some properties are deliberately not set here; we only emit particles manually
             var main = _ps.main;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            if (customSimulationSpace != null)
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.Custom;
+                main.customSimulationSpace = customSimulationSpace;
+            }
+            else
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+            }
             main.maxParticles = 200;
             main.gravityModifier = gravity;
 
@@ -125,9 +109,7 @@ namespace TurboTurbo
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(_alphaGradient);
 
-            // no shape module currently, could introduce a small distribution here but for now a point source is fine
-
-            // air resistance: drag decays inherited velocity exponentially once the particle is emitted
+            // models air resistance
             var lvol = _ps.limitVelocityOverLifetime;
             lvol.enabled = true;
             lvol.space = ParticleSystemSimulationSpace.World;
@@ -137,7 +119,7 @@ namespace TurboTurbo
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
 
-            // buoyancy: constant upward drift so particles keep rising after drag has killed the initial kick
+            // some buoyancy to counteract the resistance
             var vol = _ps.velocityOverLifetime;
             vol.enabled = true;
             vol.space = ParticleSystemSimulationSpace.World;
@@ -145,33 +127,31 @@ namespace TurboTurbo
             vol.x = 0f;
             vol.z = 0f;
 
-            // manual emission: automatic emission can't add the vehicle's
-            // velocity to each particle, so Update() emits via EmitParams
             var em = _ps.emission;
             em.enabled = false;
-            em.rateOverTime = 0f;
 
             var rend = _renderer;
             // we may want YoungestInFront here too, though it probably won't matter too much.
             // any flicker that results from sorting issues just looks like shimmer noise anyway.
             rend.sortMode = ParticleSystemSortMode.Distance;
-            if (useShimmerShader)
+            if (shader != null)
             {
-                var shimmer = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/HeatShimmer");
-                if (shimmer != null)
+                if (_material == null || _material.shader != shader)
                 {
-                    if (_material == null || _material.shader != shimmer)
-                    {
-                        _material = new Material(shimmer) { name = "TurboTurbo.ShimmerParticleMat" };
-                        rend.material = _material;
-                    }
-                    _material.renderQueue = renderQueue;
+                    _material = new Material(shader) { name = "TurboTurbo.ShimmerParticleMat" };
+                    rend.material = _material;
                 }
+                _material.renderQueue = renderQueue;
             }
-            if (_material == null)
+            else
             {
-                rend.material = new Material(Shader.Find("Particles/Standard Unlit"));
+                Debug.LogWarning("[ShimmerParticles] no shader set - assign one and call Configure (mod: asset bundle, bench: Shader.Find)");
             }
+        }
+
+        private void OnValidate()
+        {
+            if (Application.isPlaying) Configure();
         }
 
         public void SetFlow(float newHeat)
@@ -187,10 +167,12 @@ namespace TurboTurbo
             if (n > 0)
             {
                 _emitAccumulator -= n;
-                n = Mathf.Min(n, 30); // burst cap after long frames
+                
+                // just a safety to avoid runaway particle counts if there's a long lag spike
+                n = Mathf.Min(n, 30);
 
                 float upSpeed = ExhaustVelocity.Calculate(heat);
-                Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
+                Vector3 coneDir = transform.forward;
 
                 for (int i = 0; i < n; i++)
                 {

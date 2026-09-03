@@ -1,13 +1,16 @@
 # TurboTurbo TODO
 
+- [ ] **Dev UI activation tweaks**
+  Make dev UI hotkey configurable. Independent of hotkey, it should also be
+  possible to toggle it by typing `turbodev` in the console. This way, if
+  no hotkey is set (which will be the default), the dev panel can still be
+  opened. To improve the workflow, the dev panel should also have a "close"
+  button, so it can be closed without having to type `turbodev` again.
+
 - [ ] **Make dev panel state tracking resilient**
   If there are no tracked locos, and one appears, the panel tracks it only
   halfway: the telemetry appears, but the specs do not. We should investigate
   this.
-
-- [ ] **Cleaner logging API**
-  The API should have a static method to create a logger for a given
-  context, and all logging consumers should be updated to use it.
 
 - [ ] **Distinguish between adding and replacing exhausts in public API**
   The replace method should resolve a ParticleSystem, which represents the
@@ -116,16 +119,6 @@
     speedJitter) + `speed` in telemetry; knobs join the YAML dump
     automatically. Shimmer unaffected (short-lived, hugs the stack).
   - *Effort:* ~15 lines in SmokeParticles, 1 line in the host, 4 spec rows.
-
-- [ ] **Match vanilla's custom simulation space (WorldMover-correct
-  world-sim particles)**
-  The vanilla ExhaustEngineSmoke dump shows `main.simulationSpace =
-  Custom` - DV simulates particles against a custom transform (the
-  world-shift origin), which is how its plumes survive WorldMover shifts
-  in long sessions. Our emitters use plain World space; consider setting
-  `main.customSimulationSpace` to the same transform vanilla uses
-  (find it near the WorldMover/TOD hierarchy at runtime) so our trails
-  shift with the world instead of lagging behind a shift.
 
 ## Spikes (investigate, don't commit yet)
 

@@ -432,8 +432,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (ShimmerParticles s in shimmers) s.shimmerHoldTime = v; });
             AddBool(section, "outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (ShimmerParticles s in shimmers) s.outline = v; });
-            AddBool(section, "useShimmerShader", "Use the heat shimmer shader (off = opaque fallback material).",
-                true, () => f.useShimmerShader, v => { foreach (ShimmerParticles s in shimmers) s.useShimmerShader = v; });
             AddInt(section, "debug", "Shader debug mode.",
                 0, 5, false, () => f.debug, v => { foreach (ShimmerParticles s in shimmers) s.debug = v; });
             AddInt(section, "renderQueue", "Material render queue (3000 = smoke, 3010 = after the smoke).",

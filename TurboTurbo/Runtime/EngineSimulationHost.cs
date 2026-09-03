@@ -51,7 +51,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     internal IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
     internal bool Bound => _simBound && _turboModel != null;
     internal bool EngineOn => _turboModel != null && _engineOn();
-    internal string CarId => _trainCar != null ? _trainCar.ID : name;
+    internal string CarId => _trainCar.ID;
 
     private void OnDestroy()
     {
@@ -204,10 +204,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 ? vanillaPs.GetComponent<ParticleSystemRenderer>()?.sharedMaterial?.mainTexture
                 : null;
 
+            Transform simSpace = WorldMover.OriginShiftParent;
             _exhausts.Add(new ExhaustEmitters
             {
-                Smoke = CreateSmokeEmitter(i, exhaust, atlas),
-                Shimmer = CreateShimmerEmitter(i, exhaust),
+                Smoke = CreateSmokeEmitter(i, exhaust, atlas, simSpace),
+                Shimmer = CreateShimmerEmitter(i, exhaust, simSpace),
             });
         }
 
@@ -215,22 +216,26 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         _log.Info($"effects bound on '{name}' ({_exhausts.Count} exhaust emitter(s))");
     }
 
-    private SmokeParticles CreateSmokeEmitter(int index, Transform exhaust, Texture atlas)
+    private SmokeParticles CreateSmokeEmitter(int index, Transform exhaust, Texture atlas, Transform simSpace)
     {
         var go = new GameObject($"TurboTurbo.Smoke[{index}]");
         PlaceAtExhaust(go.transform, exhaust);
         var smoke = go.AddComponent<SmokeParticles>();
-        smoke.shaderOverride = ModAssets.SmokeShader;
-        smoke.atlasOverride = atlas;
+        smoke.shader = ModAssets.SmokeShader;
+        smoke.atlas = atlas;
+        smoke.customSimulationSpace = simSpace;
+        smoke.Configure();
         return smoke;
     }
 
-    private ShimmerParticles CreateShimmerEmitter(int index, Transform exhaust)
+    private ShimmerParticles CreateShimmerEmitter(int index, Transform exhaust, Transform simSpace)
     {
         var go = new GameObject($"TurboTurbo.Shimmer[{index}]");
         PlaceAtExhaust(go.transform, exhaust);
         var shimmer = go.AddComponent<ShimmerParticles>();
-        shimmer.shaderOverride = ModAssets.HeatShimmerShader;
+        shimmer.shader = ModAssets.HeatShimmerShader;
+        shimmer.customSimulationSpace = simSpace;
+        shimmer.Configure();
         return shimmer;
     }
 
@@ -243,7 +248,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void UpdateEffects(bool engineOn)
     {
-        Vector3 velocity = _trainCar != null ? _trainCar.GetVelocity() : Vector3.zero;
+        Vector3 velocity = _trainCar.GetVelocity();
         float heat = _turboModel.ExhaustHeat;
 
         foreach (ExhaustEmitters e in _exhausts)

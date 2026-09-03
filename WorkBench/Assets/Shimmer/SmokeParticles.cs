@@ -1,27 +1,18 @@
-using System.Linq;
-
 using TurboTurbo.Modeling;
 
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
 {
-    /// <summary>
-    /// Exhaust smoke particle emitter.
-    /// Replaces the default to enable custom appearance and emission behaviour.
-    /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class SmokeParticles : MonoBehaviour
     {
-        [Header("Smoke model inputs (engineOn = true)")]
+        [Header("Smoke model inputs")]
         public float lambda = 1.2f;
         [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
 
-        [Header("Atlas source (children of the imported LocoDE6)")]
-        public string exhaustName = "ExhaustEngineSmoke";
-
-        [Header("Emission (match TurboSmoke semantics)")]
+        [Header("Emission")]
         public float cleanRate = 20f;
         public float maxRate = 40f;
 
@@ -33,44 +24,28 @@ namespace TurboTurbo.WorkBench
         public float sizeOverLifetimeEnd = 9f;
         public float buoyancy = 0.3f;
         public float drag = 0.8f;
-        /// <summary>Max spin speed [deg/s]; each particle gets a random
-        /// value in [-max, max], so puffs rotate in both directions.</summary>
         public float angularVelocityMax = 20f;
 
-        /// <summary>Shared engine heat signal (fed by ShimmerBench).</summary>
         [Range(0f, 1f)] public float heat;
 
-        /// <summary>Engine running state - fed by the mod per frame. The
-        /// bench default (true) keeps the harness behaviour unchanged.</summary>
         public bool engineOn = true;
 
-        /// <summary>World velocity of the vehicle carrying this emitter -
-        /// set by the caller every frame (mod: Car velocity, bench: frame
-        /// speed). Particles inherit this at emission, then drag decays it.</summary>
         public Vector3 locoVelocity;
 
-        /// <summary>Shader override for contexts where Shader.Find cannot
-        /// see the shader (the game mod injects it from the asset bundle) -
-        /// set after AddComponent, before Start.</summary>
-        public Shader shaderOverride;
+        public Shader shader;
+        public Texture atlas;
 
-        /// <summary>Atlas override for contexts where the vanilla exhaust
-        /// cannot be located by name (the game mod injects the vanilla
-        /// exhaust's Cloud01_8x8 at creation) - set after AddComponent,
-        /// before Start. Bench leaves it null and resolves the atlas from
-        /// the scene in Start().</summary>
-        public Texture atlasOverride;
+        /// <summary>Custom simulation space. If null, world space is used.</summary>
+        public Transform customSimulationSpace;
 
         private ParticleSystem _ps;
-        private Texture _cloudAtlas;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
         private float _sizeCurveStart = -1f;
         private float _sizeCurveEnd = -1f;
 
-        /// <summary>Live particle count, for console dumps.</summary>
-        public int ParticleCount => _ps != null ? _ps.particleCount : 0;
+        public int ParticleCount => _ps.particleCount;
 
         /// <summary>Wet-stack accumulator of the internal model (dev panel telemetry).</summary>
         internal float WetStackAccumulator => _model.WetStackAccumulator;
@@ -78,73 +53,37 @@ namespace TurboTurbo.WorkBench
         /// <summary>The internal appearance model (dev panel edits its thresholds).</summary>
         internal ExhaustSmokeModel Model => _model;
 
-        private void Awake()
-        {
-            _ps = GetComponent<ParticleSystem>();
-            if (_ps == null) _ps = gameObject.AddComponent<ParticleSystem>();
-        }
-
-        /// <summary>Live-tuning path for the WorkBench: inspector edits
-        /// re-apply the structural layout in play mode. Editor-only message -
-        /// never invoked in builds; script-driven structural changes must
-        /// call Configure() explicitly. The play-mode guard keeps edit-mode
-        /// invocations (script reload, edit-time inspector edits) from
-        /// creating materials.</summary>
         private void OnValidate()
         {
             if (Application.isPlaying) Configure();
         }
 
-        private void Start()
-        {
-            if (atlasOverride != null)
-            {
-                _cloudAtlas = atlasOverride;
-            }
-            else
-            {
-                // bench path: locate the vanilla exhaust and its material:
-                // the game renders this smoke with the LIT Standard shader +
-                // Cloud01_8x8 atlas - scene lighting is what makes it look
-                // correct
-                var loco = GameObject.Find("LocoDE6");
-                var vanilla = loco != null
-                    ? loco.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(ps => ps.name == exhaustName)
-                    : null;
-                Material vanillaMaterial = vanilla != null && vanilla.GetComponent<ParticleSystemRenderer>() != null
-                    ? vanilla.GetComponent<ParticleSystemRenderer>().sharedMaterial
-                    : null;
-
-                if (vanillaMaterial != null)
-                {
-                    // the smoke texture: the vanilla exhaust's own Cloud01_8x8 atlas
-                    _cloudAtlas = vanillaMaterial.mainTexture;
-                }
-            }
-
-            if (_cloudAtlas == null)
-            {
-                Debug.LogWarning($"[SmokeParticles] Could not find atlas texture on '{exhaustName}' (vanilla material)!");
-            }
-
-            Configure();
-        }
-
-        /// <summary>Builds the ParticleSystem layout. Idempotent; safe to
-        /// call again after changing structural settings.</summary>
+        /// <summary>Builds the ParticleSystem layout. Call once after the
+        /// required properties (shader, atlas, customSimulationSpace) are
+        /// assigned; call again after edits.</summary>
         public void Configure()
         {
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
 
+            if (shader == null || atlas == null)
+            {
+                Debug.LogWarning("[SmokeParticles] missing shader or atlas, smoke will not render");
+            }
+
+            // some properties are deliberately not set here; we only emit particles manually
             var main = _ps.main;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            if (customSimulationSpace != null)
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.Custom;
+                main.customSimulationSpace = customSimulationSpace;
+            }
+            else
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+            }
+
             main.maxParticles = 400;
             main.gravityModifier = 0f;
-            // per-particle properties (startLifetime/startSize/startColor/
-            // startSpeed) are deliberately not set on the main module: manual
-            // emission provides them per particle via EmitParams, which
-            // overrides the main module. If an emission path ever stops
-            // setting one, revisit this block.
 
             // growth: smoke expands as it disperses
             _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
@@ -155,12 +94,6 @@ namespace TurboTurbo.WorkBench
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            // fade envelope: alpha-only gradient (rgb untouched, so the
-            // per-particle model color in the vertex color stream survives).
-            // Quick fade-in over the first 10% of the lifetime (~0.2s) so
-            // particles don't pop in at full opacity, hold, then fade out
-            // over the last 60%; multiplies the color baked per particle at
-            // emission
             var fade = new Gradient();
             fade.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
@@ -175,7 +108,9 @@ namespace TurboTurbo.WorkBench
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(fade);
 
-            // air resistance decays the inherited train velocity
+            // no shape module currently, could introduce a small distribution here but for now a point source is fine
+
+            // models air resistance
             var lvol = _ps.limitVelocityOverLifetime;
             lvol.enabled = true;
             lvol.space = ParticleSystemSimulationSpace.World;
@@ -185,7 +120,7 @@ namespace TurboTurbo.WorkBench
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
 
-            // buoyancy: hot flue gas keeps drifting up
+            // some buoyancy to counteract the resistance
             var vol = _ps.velocityOverLifetime;
             vol.enabled = true;
             vol.space = ParticleSystemSimulationSpace.World;
@@ -194,38 +129,33 @@ namespace TurboTurbo.WorkBench
             vol.z = 0f;
 
             var em = _ps.emission;
-            em.enabled = false; // manual emission via EmitParams
+            em.enabled = false;
 
-            // texture sheet animation: 8x8 cloud atlas, random start tile,
-            // cycling through the set over the lifetime (vanilla behavior)
             var tsa = _ps.textureSheetAnimation;
             tsa.enabled = true;
             tsa.numTilesX = 8;
             tsa.numTilesY = 8;
             tsa.mode = ParticleSystemAnimationMode.Grid;
             tsa.cycleCount = 1;
-            // frameOverTime MUST be Curve mode: the two-constant constructor
-            // (MinMaxCurve(min, max)) picks ONE random frame per particle and
-            // freezes it - the classic no-animation trap
             tsa.frameOverTime = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0f, 1f, 1f));
-            tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f); // random phase
+            // random phase seems to look nice, though the game doesn't do this
+            tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f);
 
-            // 2. renderer material: our own unlit smoke shader - texture x
-            // vertex color (model color per particle) x envelope alpha.
-            // TSA tile UVs are baked into the UV stream by the renderer.
             var rend = GetComponent<ParticleSystemRenderer>();
-            rend.sortMode = ParticleSystemSortMode.YoungestInFront; // newest puffs draw over the older, dispersing ones
-            var smokeShader = shaderOverride != null ? shaderOverride : Shader.Find("TurboTurbo/Smoke");
-            if (smokeShader != null)
+            
+            // nothing really works perfectly here, but YoungestInFront is pretty good, as you generally want newer
+            // particles to be more visible than older ones. When looking at a thick smoke trail from the back it
+            // can look a bit weird, but the other modes have their own issues.
+            rend.sortMode = ParticleSystemSortMode.YoungestInFront;
+            if (shader != null)
             {
-                rend.material.shader = smokeShader;
-                rend.material.mainTexture = _cloudAtlas;
+                rend.material.shader = shader;
+                rend.material.mainTexture = atlas;
             }
         }
 
         private void Update()
         {
-            // per-frame model evaluation
             _model.Update(lambda, demand, rpmNorm, engineOn, Time.deltaTime);
 
             // manual emission: exit velocity = shared ExhaustVelocity curve;
@@ -237,6 +167,8 @@ namespace TurboTurbo.WorkBench
             if (n > 0)
             {
                 _emitAccumulator -= n;
+                
+                // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
                 float upSpeed = ExhaustVelocity.Calculate(heat);
