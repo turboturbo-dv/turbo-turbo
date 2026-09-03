@@ -12,15 +12,15 @@ namespace TurboTurbo
     public class ShimmerParticles : MonoBehaviour
     {
         [Header("Emission (particles/s, lerped by heat)")]
-        public float idleRate = 3f;
-        public float fullRate = 10f;
+        public float idleRate = 5f;
+        public float fullRate = 7f;
 
         [Header("Particle look")]
-        public float lifetime = 2f;
+        public float lifetime = 1.5f;
         public float startSizeMin = 0.8f;
         public float startSizeMax = 0.8f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 2.5f;
+        public float sizeOverLifetimeEnd = 6f;
         public float gravity = -0.05f;
         public Color color = new Color(1f, 1f, 1f, 1f); // TODO: not actually used by the shader, figure out if we can remove this
 
@@ -36,7 +36,10 @@ namespace TurboTurbo
         public bool useShimmerShader = true;
         public bool outline = false;
         public int debug;
-        public float strength = 0.01f;
+        public float strength = 0.014f;
+        /// <summary>Displacement multiplier at zero heat; lerps to 1 at
+        /// full heat, so idling air still shimmers faintly.</summary>
+        public float baseStrength = 0.1f;
         public float freq = 6f;
         public float idleRadius = 0.8f;
         public float fullRadius = 1f;
@@ -44,13 +47,13 @@ namespace TurboTurbo
         public float fullAnimSpeed = 2f;
         public float speedMultiplier = 1f;
 
-        [Header("Shimmer decay (proportional to lifetime)")]
-        public float shimmerHoldTime = 0.2f;
-        // ඞ sus ඞ
-        private float ShimmerDecayTime => 1 - shimmerHoldTime;
+        [Header("Shimmer envelope (fractions of particle lifetime)")]
+        // full strength for this fraction of the particle's life, then
+        // linear decay to zero at death
+        [Range(0f, 1f)] public float shimmerHoldTime = 0.2f;
 
         [Header("Engine signal (0..1) - driven by the mod per frame")]
-        [Range(0f, 1f)] public float flow;
+        [Range(0f, 1f)] public float heat;
 
         // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
         public int renderQueue = 3010;
@@ -68,9 +71,6 @@ namespace TurboTurbo
         private float _sizeCurveStart = -1f;
         private float _sizeCurveEnd = -1f;
         private Gradient _alphaGradient;
-        private float _alphaLife = -1f;
-        private float _alphaHold = -1f;
-        private float _alphaDecay = -1f;
 
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
 
@@ -111,8 +111,7 @@ namespace TurboTurbo
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            float holdEnd = Mathf.Clamp01(shimmerHoldTime / lifetime);
-            float decayEnd = Mathf.Clamp01((shimmerHoldTime + ShimmerDecayTime) / lifetime);
+            float holdEnd = Mathf.Clamp01(shimmerHoldTime);
             _alphaGradient = new Gradient();
             _alphaGradient.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
@@ -120,13 +119,9 @@ namespace TurboTurbo
                 {
                     new GradientAlphaKey(1f, 0f),
                     new GradientAlphaKey(1f, holdEnd),
-                    new GradientAlphaKey(0f, decayEnd),
                     new GradientAlphaKey(0f, 1f),
                 });
-            _alphaLife = lifetime;
-            _alphaHold = shimmerHoldTime;
-            _alphaDecay = ShimmerDecayTime;
-            
+
             var col = _ps.colorOverLifetime;
             col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(_alphaGradient);
@@ -180,14 +175,14 @@ namespace TurboTurbo
             }
         }
 
-        public void SetFlow(float newFlow)
+        public void SetFlow(float newHeat)
         {
-            flow = Mathf.Clamp01(newFlow);
+            heat = Mathf.Clamp01(newHeat);
         }
 
         private void Update()
         {
-            float rate = Mathf.Lerp(idleRate, fullRate, flow);
+            float rate = Mathf.Lerp(idleRate, fullRate, heat);
             _emitAccumulator += rate * Time.deltaTime;
             int n = (int)_emitAccumulator;
             if (n > 0)
@@ -195,7 +190,7 @@ namespace TurboTurbo
                 _emitAccumulator -= n;
                 n = Mathf.Min(n, 30); // burst cap after long frames
 
-                float upSpeed = ExhaustVelocity.Calculate(flow);
+                float upSpeed = ExhaustVelocity.Calculate(heat);
                 Vector3 coneDir = transform.forward; // cone aims along local +Z (rotated up)
 
                 for (int i = 0; i < n; i++)
@@ -216,12 +211,12 @@ namespace TurboTurbo
 
             if (_material != null)
             {
-                float speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, flow) * speedMultiplier;
+                float speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat) * speedMultiplier;
                 _animTime += Time.deltaTime * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
-                _material.SetFloat("_Strength", flow * strength);
-                _material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, flow));
+                _material.SetFloat("_Strength", Mathf.Lerp(baseStrength, 1f, heat) * strength);
+                _material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, heat));
                 _material.SetFloat("_AnimTime", _animTime);
                 _material.SetFloat("_Freq", freq);
                 _material.SetFloat("_Outline", outline ? 1f : 0f);

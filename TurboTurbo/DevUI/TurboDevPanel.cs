@@ -509,8 +509,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 3f, true, () => f.drag, v => { foreach (ShimmerParticles s in shimmers) s.drag = v; });
             AddFloat(section, "buoyancy", "Constant upward drift [m/s].",
                 0f, 2f, true, () => f.buoyancy, v => { foreach (ShimmerParticles s in shimmers) s.buoyancy = v; });
-            AddFloat(section, "strength", "Max shimmer displacement (scaled by heat).",
+            AddFloat(section, "strength", "Max shimmer displacement at full heat.",
                 0f, 0.05f, false, () => f.strength, v => { foreach (ShimmerParticles s in shimmers) s.strength = v; });
+            AddFloat(section, "baseStrength", "Displacement multiplier at zero heat (lerps to 1 at full heat).",
+                0f, 1f, false, () => f.baseStrength, v => { foreach (ShimmerParticles s in shimmers) s.baseStrength = v; });
             AddFloat(section, "freq", "Noise frequency of the shimmer field.",
                 1f, 20f, false, () => f.freq, v => { foreach (ShimmerParticles s in shimmers) s.freq = v; });
             AddFloat(section, "idleRadius", "Displacement radius at zero heat.",
@@ -523,7 +525,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 5f, false, () => f.fullAnimSpeed, v => { foreach (ShimmerParticles s in shimmers) s.fullAnimSpeed = v; });
             AddFloat(section, "speedMultiplier", "Multiplier on the noise scroll speed.",
                 0f, 4f, false, () => f.speedMultiplier, v => { foreach (ShimmerParticles s in shimmers) s.speedMultiplier = v; });
-            AddFloat(section, "shimmerHoldTime", "Proportion at full strength before decay starts.",
+            AddFloat(section, "shimmerHoldTime", "Fraction of the particle's lifetime held at full strength; decays linearly to zero at death.",
                 0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (ShimmerParticles s in shimmers) s.shimmerHoldTime = v; });
             AddBool(section, "outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (ShimmerParticles s in shimmers) s.outline = v; });
@@ -633,7 +635,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         TurboModel m = host.TurboModel;
         GUILayout.Label($"{host.CarId}   engineOn: {host.EngineOn}");
-        GUILayout.Label($"boost {m.Boost:0.000}   effDemand {m.EffectiveDemand:0.000}");
+        GUILayout.Label($"boost {m.Boost:0.000}   charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   demand {m.Demand:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}   surge {m.SurgeThisTick}");
 

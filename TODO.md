@@ -6,6 +6,104 @@
   adjust the new exhaust's position slightly. The add method should just
   resolve a transform.
 
+- [ ] **Dev panel: time-series chart for telemetry values (e.g. lambda
+  through throttle maneuvers)**
+  Design is settled, implementation deferred. Sketch:
+  - *Renderer:* rect-strip lines — one tinted `GUI.DrawTexture` quad per
+    sample pair (`Texture2D.whiteTexture`), drawn into a
+    `GUILayoutUtility.GetRect` area. Clips correctly in the window, no GL
+    or texture lifecycle; ~600-900 quads/repaint is fine. Texture2D
+    plotting is the upgrade path if this ever shows cost.
+  - *Sampling:* fixed-rate (20 Hz) ring buffers, decoupled from frame
+    rate; 30 s window (600 floats/channel). Tick from the panel's Update,
+    gated on `_visible`; buffers cleared on car rebind (same trigger as
+    BuildSections). Per-frame sampling would make the x-axis fps-dependent
+    and miss spikes at low fps.
+  - *Channels:* `ChartChannel` { name, color, Func<float> getter closed
+    over the bound host (like spec builders), enabled flag, ring buffer }.
+    View state only — deliberately OUTSIDE the spec framework (no
+    reset/YAML dump semantics).
+  - *Scale:* auto-range across enabled channels with 10% headroom + min/max
+    labels; known failure mode (one spike flattens the rest) → possible
+    "freeze range" toggle later.
+  - *Lambda bonus:* horizontal reference lines at
+    `ExhaustSmokeModel.SootOnsetLambda`/`SootOpaqueLambda` when the lambda
+    channel is enabled — shows exactly when a maneuver crosses the soot
+    thresholds; auto-updates with panel retuning.
+  - *Deferred:* adjustable window/rate, per-channel normalization, stacked
+    charts, texture renderer.
+
+- [ ] **Light the smoke shader so plumes aren't bright at night (option A)**
+  Our smoke shader is unlit (constant per-particle color), so the plume
+  keeps daytime brightness at night. Investigation findings, ready to
+  work from:
+  - *What vanilla does:* the exhaust material (`ExhaustSmokeBlack.mat`,
+    main texture = Cloud01_8x8 — the atlas we already lift) uses the
+    built-in **Legacy Shaders/Diffuse**, **opaque** (`_SrcBlend: 1,
+    _DstBlend: 0, _ZWrite: 1`), **no vertex color, no alpha fade** — lit
+    solid quads. Being lit is the whole reason vanilla reads correctly at
+    night. DV also ships a custom smoke shader family
+    (`FAKE_LIGHTING`, `SOFT_CLIPPING`, `VOLUMETRIC_LIGHTING` keywords)
+    for explosion/white smoke — the game's own VFX use fake lighting,
+    not real normals.
+  - *What the lighting environment exposes:* the sun is a single
+    directional driven by the Time of Day asset
+    (`LightingCoordinator` gets it via `TOD_Components.LightSource`,
+    intensity roughly 0.3-1 per its `SunlightIntensity01`
+    InverseLerp). In **shader space** (built-in forward) any shader can
+    read `_WorldSpaceLightPos0` + `_LightColor0` (main directional),
+    `unity_AmbientSky/Equator/Ground` or `ShadeSH9()` (ambient), and
+    `unity_Fog*` — regardless of "Lighting Off". In **C#**:
+    `RenderSettings.sun`, `sun.color * sun.intensity`,
+    `RenderSettings.ambientLight`.
+  - *Plan (option A — custom shader lighting):* extend `TurboTurbo/Smoke`
+    keeping vertex color x atlas x envelope, and add
+    `albedo x (ambient + sunColor x facingFactor)` with a fixed UP normal
+    (billboards have no real normal; top-lit smoke, same approach as
+    DV's FAKE_LIGHTING), facing factor ~0.6 to avoid full-black when the
+    sun is behind. Optionally `UNITY_APPLY_FOG` for distance
+    integration. Per-particle soot/haze/straw colors and blending all
+    survive. ~20 lines of HLSL.
+  - *Trap to avoid (option C):* cloning the vanilla lit material is lit
+    for free but Legacy/Diffuse ignores vertex color AND alpha - kills
+    the per-particle model colors, the fade envelope and soft blending.
+  - *Stopgap (option B), if shader iteration is unwanted:* per frame in
+    C#, compute `sun.color * intensity + ambientLight` and multiply into
+    `ExhaustSmokeModel.Color` before baking. Uniform tint only, baked at
+    emission (fine over a 2 s life), no fog, no directional feel.
+  - *Runtime verification (log from BindEffects, decompiled source can't
+    answer these):* the vanilla PS renderer's actual runtime shader name
+    and `lightProbeUsage`; confirm TOD ambient mode (trilight vs flat).
+
+- [ ] **Speed-based smoke dispersion (shorten trail with speed, keep
+  dense plume at standstill)**
+  Design is settled, implementation deferred (pending another
+  investigation). Sketch:
+  - *Signal:* `TrainCar.GetAbsSpeed()` (TrainCar.cs:1133) - scalar m/s
+    along the car's forward axis, sign-independent (reversing reads
+    positive), robust against derailment tumbling (unlike
+    `velocity.magnitude`). Fed per frame by the host:
+    `smoke.speed = _trainCar.GetAbsSpeed()` in UpdateEffects.
+  - *Why:* trail length ≈ speed x particle lifetime (world-sim puffs are
+    left behind where emitted) - at 54 km/h with 1.5 s life that's a 20+ m
+    trail. Real plumes are torn apart by relative wind, which grows with
+    speed; heavy-dense smoke while lugging from standstill must survive
+    (speed ≈ 0 → speedNorm ≈ 0 → full life, soot-driven rate untouched).
+  - *Knobs (all emission-time EmitParams - NO per-frame Configure, module
+    properties like drag are structural and stay out of the per-frame
+    path):*
+    - lifetime shortening: `startLifetime = lifetime x Lerp(1,
+      speedLifetimeScale, speedNorm)`, speedLifetimeScale ≈ 0.4;
+    - dispersion jitter: `Random.insideUnitSphere x (baseJitter +
+      speedJitter x speedNorm)`, baseJitter = current 0.15,
+      speedJitter ≈ 0.5.
+  - *Normalization:* `speedNorm = Clamp01(absSpeed / speedNormMax)`,
+    speedNormMax ≈ 15 m/s (near DE6 top speed).
+  - *Dev panel:* three live specs (speedNormMax, speedLifetimeScale,
+    speedJitter) + `speed` in telemetry; knobs join the YAML dump
+    automatically. Shimmer unaffected (short-lived, hugs the stack).
+  - *Effort:* ~15 lines in SmokeParticles, 1 line in the host, 4 spec rows.
+
 ## Spikes (investigate, don't commit yet)
 
 - [ ] **Spike: slight gaussian blur in the shimmer.**
@@ -23,18 +121,6 @@
   reject/shrink offsets that cross a depth discontinuity; or dilate/
   edge-extend the foreground depth so protected regions are wider than the
   geometry itself.
-
-- [ ] **Spike: light the smoke shader so plumes aren't bright at night.**
-  Our smoke shader is unlit (constant per-particle color from the smoke
-  model), so the plume keeps its daytime brightness while the world
-  darkens. Investigate tying the shader to scene lighting — e.g. a simple
-  lambert against the dominant directional light + ambient probe, or
-  adopting vanilla-style lit particle rendering (the vanilla exhaust uses
-  the LIT Standard shader, which is why its smoke reads correctly at
-  night). Constraints: the per-particle model color (soot straw/haze
-  ladders) must survive the lighting term; soot should stay dark (lit
-  soot can't out-glow the scene). Verify at dusk/night against the
-  vanilla exhaust's brightness.
 
 - [ ] **Spike: integrate the turbo whine synth into the mod.**
   Port the whine from WhineBench (`shared/WhineSynthGemini.cs`) into the
@@ -76,4 +162,3 @@
     behind a small per-car whine component (same lifecycle as the effects
     emitters), verify in game against the WhineBench reference render,
     then A/B a LayeredAudio-based variant.
-

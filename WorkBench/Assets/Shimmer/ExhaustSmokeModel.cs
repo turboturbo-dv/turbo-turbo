@@ -4,27 +4,27 @@ namespace TurboTurbo.Modeling
 {
     public class ExhaustSmokeModel
     {
-        internal static readonly Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.51f, 0.22f);  // aged warm grey-tan (sulfurous idle gas)
+        internal static readonly Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 0.22f);  // aged warm grey-tan (sulfurous idle gas)
         internal static readonly Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 0.95f); // deep black charcoal
-        internal static readonly Color ColorWetStack = new Color(0.85f, 0.82f, 0.68f, 0.85f);  // straw vapor (unburned fuel droplets)
-        internal static readonly Color ColorOilBurn = new Color(0.44f, 0.52f, 0.7f, 0.50f);   // dull blue-grey oil burn
+        internal static readonly Color ColorWetStack = new Color(0.85f, 0.82f, 0.78f, 0.85f);  // white vapor (unburned fuel droplets)
+        internal static readonly Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 0.50f);   // dull blue-grey oil burn
 
         public static float WetStackIdleDemand = 0.1f;
-        public static float WetStackFillRate = 0.08f;
+        public static float WetStackFillRate = 0.005f;
         public static float WetStackBurnThreshold = 0.05f;
         public static float WetStackBurnDemand = 0.15f;
         public static float WetStackBurnRate = 0.75f;
         public static float WetStackBurnRampDemand = 0.5f;
         public static float OilBlowbyTintStrength = 0.25f;
         public static float SootCurveExponent = 1.1f;
-        public static float AlphaFloor = 0.05f;
+        public static float AlphaFloor = 0.02f;
         public static float AlphaCeiling = 0.95f;
         public static float WetStackAlphaScale = 0.8f;
 
         private float _wetStackAccumulator;
 
         public float SootOnsetLambda = 0.65f;
-        public float SootOpaqueLambda = 0.42f;
+        public float SootOpaqueLambda = 0.46f;
 
         public Color Color { get; private set; } = Color.clear;
 
