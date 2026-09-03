@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using DV.ThingTypes;
+
 using TurboTurbo.Setup;
+
 using UnityEngine;
-using UnityModManagerNet;
 
 namespace TurboTurbo;
 
 public static class Controller
 {
-    private static readonly Logger _log = Log.ForContext("controller");
+    private static readonly Logger Log = TurboTurbo.Log.ForContext("controller");
 
     internal static readonly Dictionary<TrainCarType, EngineConfiguration> Configurations = new();
 
@@ -22,7 +24,7 @@ public static class Controller
 
         Configurations.Add(trainCarType, configuration);
 
-        _log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
+        Log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)

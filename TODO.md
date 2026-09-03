@@ -1,7 +1,5 @@
 # TurboTurbo TODO
 
-- [ ] **Set up editorconfig rules and run dotnet format**
-
 - [ ] **Make dev panel state tracking resilient**
   If there are no tracked locos, and one appears, the panel tracks it only
   halfway: the telemetry appears, but the specs do not. We should investigate

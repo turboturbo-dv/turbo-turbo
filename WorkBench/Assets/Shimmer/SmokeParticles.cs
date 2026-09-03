@@ -1,16 +1,14 @@
 using System.Linq;
+
 using TurboTurbo.Modeling;
+
 using UnityEngine;
 
 namespace TurboTurbo.WorkBench
 {
     /// <summary>
-    /// Bench harness for a fully-owned exhaust smoke emitter: a fresh
-    /// ParticleSystem built from code (no cloning of the game's exhaust, so
-    /// no inherited DV modules can sabotage rendering), driven by the
-    /// ExhaustSmokeModel - color and density baked per particle at emission
-    /// time. Placement is owned by ShimmerBench; the component only
-    /// configures and simulates.
+    /// Exhaust smoke particle emitter.
+    /// Replaces the default to enable custom appearance and emission behaviour.
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class SmokeParticles : MonoBehaviour
@@ -149,12 +147,10 @@ namespace TurboTurbo.WorkBench
             // setting one, revisit this block.
 
             // growth: smoke expands as it disperses
-            if (_sizeCurve == null || _sizeCurveStart != sizeOverLifetimeStart || _sizeCurveEnd != sizeOverLifetimeEnd)
-            {
-                _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
-                _sizeCurveStart = sizeOverLifetimeStart;
-                _sizeCurveEnd = sizeOverLifetimeEnd;
-            }
+            _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
+            _sizeCurveStart = sizeOverLifetimeStart;
+            _sizeCurveEnd = sizeOverLifetimeEnd;
+
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);

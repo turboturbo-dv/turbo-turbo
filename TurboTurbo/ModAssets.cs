@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+
 using UnityEngine;
 
 namespace TurboTurbo;
@@ -13,8 +14,9 @@ internal static class ModAssets
     private const string HeatShimmerAssetPath = "Assets/Shimmer/HeatShimmer.shader";
     private const string SmokeAssetPath = "Assets/Shimmer/SmokeShader.shader";
 
+    private static readonly Logger Log = TurboTurbo.Log.ForContext("assets");
+
     private static string _modDirectory;
-    private static readonly Logger _log = Log.ForContext("assets");
     private static AssetBundle _bundle;
     private static bool _everLoaded;
 
@@ -30,7 +32,7 @@ internal static class ModAssets
     internal static void Initialize(string modDirectory)
     {
         _modDirectory = modDirectory;
-        
+
         // throwing here ensures our mod will fail to load, which is better than failing silently as it doesn't leave
         // the mod in a half-broken state
         EnsureLoaded(throwOnError: true);
@@ -85,11 +87,11 @@ internal static class ModAssets
             _everLoaded = true;
             if (reload)
             {
-                _log.Info("shaders lost, bundle reloaded");
+                Log.Info("shaders lost, bundle reloaded");
             }
             else
             {
-                _log.Info($"bundle loaded from '{bundlePath}'");
+                Log.Info($"bundle loaded from '{bundlePath}'");
             }
         }
         catch (Exception e)
@@ -100,9 +102,9 @@ internal static class ModAssets
             {
                 throw;
             }
-            
-            _log.Exception(e);
-            _log.Error($"failed to load asset bundle '{BundleName}': {e.Message}");
+
+            Log.Exception(e);
+            Log.Error($"failed to load asset bundle '{BundleName}': {e.Message}");
         }
     }
 }

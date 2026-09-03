@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+
 using UnityEngine;
 
 namespace TurboTurbo.DevUI;
@@ -24,38 +25,38 @@ internal interface ITweakSpec
 internal abstract class SpecBase<T>
 {
     private readonly string _key;
-    protected readonly Func<T> Get;
-    protected readonly Action<T> Set;
-    protected readonly T Initial;
+    protected readonly Func<T> _get;
+    protected readonly Action<T> _set;
+    protected readonly T _initial;
     private readonly Action _onStructural;
-    protected readonly bool Structural;
-    protected readonly GUIContent Label;
+    protected readonly bool _structural;
+    protected readonly GUIContent _label;
 
     protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onStructural)
     {
         _key = key;
-        Label = new GUIContent(key, tooltip);
-        Get = get;
-        Set = set;
-        Initial = get();
+        _label = new GUIContent(key, tooltip);
+        _get = get;
+        _set = set;
+        _initial = get();
         _onStructural = onStructural;
-        Structural = onStructural != null;
+        _structural = onStructural != null;
     }
 
     public string Key => _key;
 
-    public bool Changed => !EqualityComparer<T>.Default.Equals(Get(), Initial);
+    public bool Changed => !EqualityComparer<T>.Default.Equals(_get(), _initial);
 
     protected void Commit(T value)
     {
-        Set(value);
-        if (Structural) _onStructural();
+        _set(value);
+        if (_structural) _onStructural();
     }
 
     public void Reset()
     {
         if (!Changed) return;
-        Commit(Initial);
+        Commit(_initial);
     }
 }
 
@@ -75,9 +76,9 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
 
     public void Draw()
     {
-        int current = Get();
+        int current = _get();
         GUILayout.BeginHorizontal();
-        GUILayout.Label(Label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
         int sliderV = Mathf.RoundToInt(GUILayout.HorizontalSlider(current, _min, _max));
         if (sliderV != current)
         {
@@ -100,7 +101,7 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
         GUILayout.EndHorizontal();
     }
 
-    public string Export() => Changed ? $"  {Key}: {Get()}" : null;
+    public string Export() => Changed ? $"  {Key}: {_get()}" : null;
 }
 
 internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
@@ -119,9 +120,9 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
 
     public void Draw()
     {
-        float current = Get();
+        float current = _get();
         GUILayout.BeginHorizontal();
-        GUILayout.Label(Label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
         float sliderV = GUILayout.HorizontalSlider(current, _min, _max);
         if (sliderV != current)
         {
@@ -144,7 +145,7 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
         GUILayout.EndHorizontal();
     }
 
-    public string Export() => Changed ? $"  {Key}: {Format(Get())}" : null;
+    public string Export() => Changed ? $"  {Key}: {Format(_get())}" : null;
 
     private static string Format(float v) => v.ToString("0.#####", CultureInfo.InvariantCulture);
 }
@@ -158,9 +159,9 @@ internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
 
     public void Draw()
     {
-        bool value = GUILayout.Toggle(Get(), Label);
-        if (value != Get()) Commit(value);
+        bool value = GUILayout.Toggle(_get(), _label);
+        if (value != _get()) Commit(value);
     }
 
-    public string Export() => Changed ? $"  {Key}: {Get().ToString().ToLowerInvariant()}" : null;
+    public string Export() => Changed ? $"  {Key}: {_get().ToString().ToLowerInvariant()}" : null;
 }

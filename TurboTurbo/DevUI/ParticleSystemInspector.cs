@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+
 using UnityEngine;
 
 namespace TurboTurbo.DevUI;
 
 internal static class ParticleSystemInspector
 {
-    private static readonly Logger _log = Log.ForContext("ps-dump");
+    private static readonly Logger Log = TurboTurbo.Log.ForContext("ps-dump");
 
     public static void Dump(TrainCar car)
     {
@@ -15,10 +16,10 @@ internal static class ParticleSystemInspector
             .Where(ps => ps.transform.parent == null || ps.transform.parent.GetComponent<ParticleSystem>() == null)
             .ToList();
 
-        _log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
+        Log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
         foreach (ParticleSystem root in roots)
         {
-            _log.Info(Describe(root));
+            Log.Info(Describe(root));
         }
     }
 

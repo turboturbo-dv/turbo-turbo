@@ -1,12 +1,11 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace TurboTurbo
 {
     /// <summary>
-    /// Self-contained exhaust shimmer particle emitter.
-    /// Each particle is a billboard running the shimmer grab shader,
-    /// it draws the scene behind it, displaced by a noise field.
+    /// Exhaust shimmer particle emitter. Each particle is a billboard running the shimmer grab shader.
+    /// A particle draws the scene behind it, displaced by a noise field that varies over time, generating the
+    /// characteristic shimmering effect of hot air.
     /// </summary>
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour

@@ -13,7 +13,7 @@ internal sealed class TurboTooltipLayer : MonoBehaviour
         if (string.IsNullOrEmpty(Tooltip)) return;
 
         // draw above the main panel
-        GUI.depth = -1; 
+        GUI.depth = -1;
 
         if (_style == null)
         {

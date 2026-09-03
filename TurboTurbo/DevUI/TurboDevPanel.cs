@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using TurboTurbo.Modeling;
 using TurboTurbo.Runtime;
 using TurboTurbo.WorkBench;
+
 using UnityEngine;
 
 namespace TurboTurbo.DevUI;
@@ -17,7 +18,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private bool _visible;
     private int _selected;
     private bool _structuralDirty;
-    private static readonly Logger _log = Log.ForContext("devpanel");
+    private readonly Logger _log = Log.ForContext("devpanel");
 
     private EngineSimulationHost _boundHost;
     private readonly List<Section> _sections = new();

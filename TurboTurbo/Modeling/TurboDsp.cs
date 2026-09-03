@@ -66,7 +66,7 @@ public sealed class TurboDsp
     public TurboDsp(Settings p)
     {
         _p = p;
-        _rng = new Xorshift32((uint) p.Seed);
+        _rng = new Xorshift32((uint)p.Seed);
         _kJitter = 1.0 - Math.Exp(-2.0 * Math.PI * p.JitterHz / p.SampleRate);
         _svfQInv = 1.0 / Math.Max(0.5, p.DuctQ);
     }
@@ -113,7 +113,7 @@ public sealed class TurboDsp
         else
         {
             _rampPos = Math.Min(_rampPos + 1, _rampSamples);
-            double t = (double) _rampPos / _rampSamples;
+            double t = (double)_rampPos / _rampSamples;
             _turboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
             _boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
         }

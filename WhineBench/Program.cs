@@ -1,12 +1,15 @@
 using System.Diagnostics;
 using System.Runtime;
 using System.Text;
+
 using NAudio.Wave;
+
 using TurboTurbo.Modeling;
+
 using WhineBench;
 
-const double PitchMin = 0.11, PitchMax = 1.0;   // loop pitch range over boost
-const double SpoolTau = 0.8;                    // boost easing time constant
+const double pitchMin = 0.11, pitchMax = 1.0;   // loop pitch range over boost
+const double spoolTau = 0.8;                    // boost easing time constant
 
 GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
@@ -102,12 +105,12 @@ while (!quit)
     lastTick = now;
 
     double demand = engineOn ? throttleTarget : 0.0;
-    boost += (demand - boost) * (1.0 - Math.Exp(-dt / SpoolTau));
+    boost += (demand - boost) * (1.0 - Math.Exp(-dt / spoolTau));
 
     wobblePhase += dt * 2.0 * Math.PI * 0.5;
     double wobble = 1.0 + 0.003 * Math.Sin(wobblePhase);
 
-    double pitch = (PitchMin + (PitchMax - PitchMin) * boost) * wobble;
+    double pitch = (pitchMin + (pitchMax - pitchMin) * boost) * wobble;
     double boostDelta = Math.Min(1.0, boost * demand);
     double volume = masterVolume * Math.Pow(boost, 1.5) * (0.10 + 0.90 * boostDelta);
     provider.SetOutput(pitch, volume);
