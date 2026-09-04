@@ -146,7 +146,8 @@ namespace TurboTurbo.WorkBench
 
             // nothing really works perfectly here, but YoungestInFront is pretty good, as you generally want newer
             // particles to be more visible than older ones. When looking at a thick smoke trail from the back it
-            // can look a bit weird, but the other modes have their own issues.
+            // can look a bit weird, but sorting by distance is worse as it can make particles pop through each 
+            // other over time, which looks very unnatural.
             rend.sortMode = ParticleSystemSortMode.YoungestInFront;
             if (shader != null)
             {
