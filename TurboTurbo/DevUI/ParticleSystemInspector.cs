@@ -17,10 +17,30 @@ internal static class ParticleSystemInspector
             .ToList();
 
         Log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system root(s) ===");
+        Log.Info(DescribeLighting());
         foreach (var root in roots)
         {
             Log.Info(Describe(root));
         }
+    }
+
+    private static string DescribeLighting()
+    {
+        var sun = RenderSettings.sun;
+        var sunText = sun != null
+            ? $"'{sun.name}' color={sun.color} intensity={sun.intensity:0.###} dir={sun.transform.forward}"
+            : "none";
+
+        var ambient = $"mode={RenderSettings.ambientMode} intensity={RenderSettings.ambientIntensity:0.##} " +
+                      $"flat={RenderSettings.ambientLight} sky={RenderSettings.ambientSkyColor} " +
+                      $"equator={RenderSettings.ambientEquatorColor} ground={RenderSettings.ambientGroundColor}";
+
+        var fog = RenderSettings.fog
+            ? $"mode={RenderSettings.fogMode} color={RenderSettings.fogColor} " +
+              $"density={RenderSettings.fogDensity:0.###} linear={RenderSettings.fogStartDistance:0.#}..{RenderSettings.fogEndDistance:0.#}"
+            : "off";
+
+        return $"lighting: sun={sunText}\nambient: {ambient}\nfog: {fog}";
     }
 
     public static string Describe(ParticleSystem root)
@@ -139,7 +159,7 @@ internal static class ParticleSystemInspector
         if (rend != null)
         {
             sb.AppendLine($"{pad}  renderer: renderMode={rend.renderMode} sortMode={rend.sortMode} " +
-                          $"fudge={rend.sortingFudge:0.###} lengthScale={rend.lengthScale:0.###} velocityScale={rend.velocityScale:0.###}");
+                          $"probes={rend.lightProbeUsage} fudge={rend.sortingFudge:0.###} lengthScale={rend.lengthScale:0.###} velocityScale={rend.velocityScale:0.###}");
             var mat = rend.sharedMaterial;
             if (mat != null)
             {
