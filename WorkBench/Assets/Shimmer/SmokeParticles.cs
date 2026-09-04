@@ -42,8 +42,6 @@ namespace TurboTurbo.WorkBench
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
-        private float _sizeCurveStart = -1f;
-        private float _sizeCurveEnd = -1f;
 
         public int ParticleCount => _ps.particleCount;
 
@@ -84,8 +82,6 @@ namespace TurboTurbo.WorkBench
 
             // growth: smoke expands as it disperses
             _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
-            _sizeCurveStart = sizeOverLifetimeStart;
-            _sizeCurveEnd = sizeOverLifetimeEnd;
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
@@ -181,10 +177,9 @@ namespace TurboTurbo.WorkBench
                                      + Random.insideUnitSphere * 0.15f
                                      + locoVelocity),
                         startSize = Random.Range(startSizeMin, startSizeMax),
-                        startColor = _model.Color, // rgb+alpha baked per particle at emission
+                        startColor = _model.Color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
-                        // random orientation + slow spin so the atlas puffs
-                        // don't all read identically
+                        // random orientation + slow spin gives the appearance of a turbulent smoke column
                         rotation = Random.Range(0f, 360f),
                         angularVelocity = Random.Range(-angularVelocityMax, angularVelocityMax),
                     };

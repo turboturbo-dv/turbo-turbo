@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 using TurboTurbo.Modeling;
 
 using UnityEngine;
@@ -29,7 +32,7 @@ namespace TurboTurbo
         public Vector3 locoVelocity;
 
         [Header("Shimmer")]
-        public bool outline = false;
+        public bool outline;
         public int debug;
         public float strength = 0.014f;
         public float baseStrength = 0.1f;
@@ -40,8 +43,9 @@ namespace TurboTurbo
         public float fullAnimSpeed = 2f;
         public float speedMultiplier = 1f;
 
-        [Header("Shimmer envelope (fraction of lifetime)")]
-        [Range(0f, 1f)] public float shimmerHoldTime = 0.2f;
+        [Header("Shimmer envelope")]
+        [Range(0f, 1f)] public float shimmerHoldTime = 0.15f;
+        public float decayK = 4f;
 
         [Header("Engine signal (0..1)")]
         [Range(0f, 1f)] public float heat;
@@ -60,8 +64,6 @@ namespace TurboTurbo
         private float _animTime;
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
-        private float _sizeCurveStart = -1f;
-        private float _sizeCurveEnd = -1f;
         private Gradient _alphaGradient;
 
         public int ParticleCount => _ps != null ? _ps.particleCount : 0;
@@ -89,23 +91,12 @@ namespace TurboTurbo
             main.gravityModifier = gravity;
 
             _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
-            _sizeCurveStart = sizeOverLifetimeStart;
-            _sizeCurveEnd = sizeOverLifetimeEnd;
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            var holdEnd = Mathf.Clamp01(shimmerHoldTime);
-            _alphaGradient = new Gradient();
-            _alphaGradient.SetKeys(
-                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                new[]
-                {
-                    new GradientAlphaKey(1f, 0f),
-                    new GradientAlphaKey(1f, holdEnd),
-                    new GradientAlphaKey(0f, 1f),
-                });
+            _alphaGradient = BakeAlphaDecayFunction(shimmerHoldTime, t => DecayRational(decayK, t));
 
             var col = _ps.colorOverLifetime;
             col.enabled = true;
@@ -185,12 +176,12 @@ namespace TurboTurbo
                     {
                         position = simPos,
                         velocity = ParticleSimSpace.Direction(customSimulationSpace,
-                            coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                     + Random.insideUnitSphere * 0.15f
+                            coneDir * (upSpeed * UnityEngine.Random.Range(0.85f, 1.15f))
+                                     + UnityEngine.Random.insideUnitSphere * 0.15f
                                      + locoVelocity),
-                        startSize = Random.Range(startSizeMin, startSizeMax),
+                        startSize = UnityEngine.Random.Range(startSizeMin, startSizeMax),
                         startColor = color,
-                        startLifetime = lifetime * Random.Range(0.9f, 1.1f),
+                        startLifetime = lifetime * UnityEngine.Random.Range(0.9f, 1.1f),
                     };
                     _ps.Emit(ep, 1);
                 }
@@ -209,6 +200,47 @@ namespace TurboTurbo
                 _material.SetFloat("_Outline", outline ? 1f : 0f);
                 _material.SetFloat("_Debug", debug);
             }
+        }
+
+        /// <summary>
+        /// Bakes an alpha decay function to a <see cref="Gradient"/>.
+        /// Holds alpha at 1 for <paramref name="holdFraction"/>, then decays according to <see cref="decay"/>,
+        /// which is a function of t in [0,1] to alpha in [0,1].
+        /// </summary>
+        private static Gradient BakeAlphaDecayFunction(float holdFraction, Func<float, float> decay)
+        {
+            // hard limit enforced by Unity: up to 8 alpha keys, subtract 1 for the start key
+            var maxDecayKeys = 7;
+
+            holdFraction = Mathf.Clamp01(holdFraction);
+
+            var alphaKeys = new List<GradientAlphaKey> { new(1f, 0f) };
+            if (holdFraction > 0f)
+            {
+                alphaKeys.Add(new(1f, holdFraction));
+                maxDecayKeys--;
+            }
+
+            if (holdFraction < 1f)
+            {
+                for (var i = 1; i <= maxDecayKeys; i++)
+                {
+                    var t = (float)i / maxDecayKeys;
+                    alphaKeys.Add(new(decay(t), holdFraction + (1f - holdFraction) * t));
+                }
+            }
+
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                [new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f)],
+                alphaKeys.ToArray());
+            return gradient;
+        }
+
+        private static float DecayRational(float k, float t)
+        {
+            var d = 1f + k * t;
+            return (1f - t * t) / (d * d);
         }
     }
 }

@@ -349,8 +349,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 5f, false, () => f.fullAnimSpeed, v => { foreach (var s in shimmers) s.fullAnimSpeed = v; });
             section.AddFloat("speedMultiplier", "Multiplier on the noise scroll speed.",
                 0f, 4f, false, () => f.speedMultiplier, v => { foreach (var s in shimmers) s.speedMultiplier = v; });
-            section.AddFloat("shimmerHoldTime", "Fraction of the particle's lifetime held at full strength; decays linearly to zero at death.",
+            section.AddFloat("shimmerHoldTime", "Fraction of the particle's lifetime held at full strength before the decay function takes over.",
                 0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (var s in shimmers) s.shimmerHoldTime = v; });
+            section.AddFloat("decayK", "Rational decay tuning constant. Larger k gives a steeper initial drop after the hold time passes.",
+                0f, 8f, true, () => f.decayK, v => { foreach (var s in shimmers) s.decayK = v; });
             section.AddBool("outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (var s in shimmers) s.outline = v; });
             section.AddInt("debug", "Shader debug mode.",

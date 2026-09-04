@@ -164,6 +164,9 @@ Shader "TurboTurbo/HeatShimmer"
                 // (colorOverLifetime decay, via the color alpha stream),
                 // transparent where occluded by foreground geometry - so
                 // overlapping particles composite instead of overwriting
+                // note: offset stays at full amplitude; the decay only blends the
+                // displaced grab back over the original. Scaling offset by i.color.a
+                // as well would make the wobble shrink instead of dissolve.
                 half4 scene = tex2D(_TurboHeatGrab, suvBase + offset);
                 float a = edgeFade * i.color.a;
                 return half4(scene.rgb, a);
