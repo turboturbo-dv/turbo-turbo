@@ -26,17 +26,25 @@ internal sealed class DevPanelPresenter : MonoBehaviour
 
     private void Update()
     {
-        if (!Input.GetKeyDown(_settings.ToggleDevPanelKey)) return;
+        DevCommands.TryRegister(this);
 
+        if (Input.GetKeyDown(_settings.ToggleDevPanelKey)) Toggle();
+    }
+
+    /// <summary>
+    /// Creates or destroys the panel, returning the new state.
+    /// </summary>
+    internal bool Toggle()
+    {
         if (_panel == null)
         {
             _panel = TurboDevPanel.Create(_panelRect);
+            return true;
         }
-        else
-        {
-            _panelRect = _panel.WindowRect;
-            Destroy(_panel.gameObject);
-            _panel = null;
-        }
+
+        _panelRect = _panel.WindowRect;
+        Destroy(_panel.gameObject);
+        _panel = null;
+        return false;
     }
 }
