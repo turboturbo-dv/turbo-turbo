@@ -51,6 +51,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     public IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
     public bool Bound => _simBound && _turboModel != null;
     public bool EngineOn => _turboModel != null && _engineOn();
+    public float AbsSpeed => _trainCar.GetAbsSpeed();
     public string CarId => _trainCar.ID;
 
     private void OnDestroy()
@@ -249,6 +250,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private void UpdateEffects(bool engineOn)
     {
         var velocity = _trainCar.GetVelocity();
+        var absSpeed = _trainCar.GetAbsSpeed();
         var heat = _turboModel.ExhaustHeat;
 
         foreach (var e in _exhausts)
@@ -260,6 +262,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             smoke.heat = heat;
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;
+            smoke.absSpeed = absSpeed;
 
             var shimmer = e.Shimmer;
             shimmer.enabled = engineOn;
@@ -267,6 +270,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             {
                 shimmer.SetFlow(heat);
                 shimmer.locoVelocity = velocity;
+                shimmer.absSpeed = absSpeed;
             }
         }
     }

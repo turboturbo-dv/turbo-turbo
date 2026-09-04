@@ -306,6 +306,12 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 60f, false, () => f.cleanRate, v => { foreach (var s in smokes) s.cleanRate = v; });
             section.AddFloat("maxRate", "Extra emission rate [p/s] at full soot density.",
                 0f, 150f, false, () => f.maxRate, v => { foreach (var s in smokes) s.maxRate = v; });
+            section.AddFloat("speedNormMax", "Speed [m/s] at which speed-based dispersion reaches full strength.",
+                1f, 30f, false, () => f.speedNormMax, v => { foreach (var s in smokes) s.speedNormMax = v; });
+            section.AddFloat("speedLifetimeScale", "Particle lifetime multiplier at full dispersion.",
+                0f, 1f, false, () => f.speedLifetimeScale, v => { foreach (var s in smokes) s.speedLifetimeScale = v; });
+            section.AddFloat("speedJitter", "Extra emission jitter [m/s] at full dispersion.",
+                0f, 2f, false, () => f.speedJitter, v => { foreach (var s in smokes) s.speedJitter = v; });
             _sections.Add(section);
         }
 
@@ -353,6 +359,12 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (var s in shimmers) s.shimmerHoldTime = v; });
             section.AddFloat("decayK", "Rational decay tuning constant. Larger k gives a steeper initial drop after the hold time passes.",
                 0f, 8f, true, () => f.decayK, v => { foreach (var s in shimmers) s.decayK = v; });
+            section.AddFloat("speedNormMax", "Speed [m/s] at which speed-based dispersion reaches full strength.",
+                1f, 30f, false, () => f.speedNormMax, v => { foreach (var s in shimmers) s.speedNormMax = v; });
+            section.AddFloat("speedLifetimeScale", "Particle lifetime multiplier at full dispersion.",
+                0f, 1f, false, () => f.speedLifetimeScale, v => { foreach (var s in shimmers) s.speedLifetimeScale = v; });
+            section.AddFloat("speedJitter", "Extra emission jitter [m/s] at full dispersion.",
+                0f, 2f, false, () => f.speedJitter, v => { foreach (var s in shimmers) s.speedJitter = v; });
             section.AddBool("outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (var s in shimmers) s.outline = v; });
             section.AddInt("debug", "Shader debug mode.",
@@ -458,6 +470,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"boost {m.Boost:0.000}   charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   demand {m.Demand:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}");
+        GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * 3.6f:0.0} km/h)");
 
         for (var i = 0; i < host.Exhausts.Count; i++)
         {

@@ -32,6 +32,14 @@ namespace TurboTurbo.WorkBench
 
         public Vector3 locoVelocity;
 
+        /// <summary>Absolute speed of the vehicle carrying this emitter [m/s].</summary>
+        public float absSpeed;
+
+        [Header("Speed-based dispersion")]
+        public float speedNormMax = 15f;
+        public float speedLifetimeScale = 0.4f;
+        public float speedJitter = 0.5f;
+
         public Shader shader;
         public Texture atlas;
 
@@ -164,6 +172,9 @@ namespace TurboTurbo.WorkBench
                 var upSpeed = ExhaustVelocity.Calculate(heat);
                 var coneDir = transform.forward;
 
+                // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
+                var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
+
                 // custom emit requires us to apply the simulation space manually
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
 
@@ -174,11 +185,11 @@ namespace TurboTurbo.WorkBench
                         position = simPos,
                         velocity = ParticleSimSpace.Direction(customSimulationSpace,
                             coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                     + Random.insideUnitSphere * 0.15f
+                                     + Random.insideUnitSphere * (0.15f + speedJitter * speedNorm)
                                      + locoVelocity),
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = _model.Color,
-                        startLifetime = lifetime * Random.Range(0.9f, 1.1f),
+                        startLifetime = lifetime * Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, speedLifetimeScale, speedNorm),
                         // random orientation + slow spin gives the appearance of a turbulent smoke column
                         rotation = Random.Range(0f, 360f),
                         angularVelocity = Random.Range(-angularVelocityMax, angularVelocityMax),

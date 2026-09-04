@@ -31,6 +31,14 @@ namespace TurboTurbo
         /// Particles inherit this at emission, then drag decays it.</summary>
         public Vector3 locoVelocity;
 
+        /// <summary>Absolute speed of the vehicle carrying this emitter [m/s].</summary>
+        public float absSpeed;
+
+        [Header("Speed dispersion")]
+        public float speedNormMax = 15f;
+        public float speedLifetimeScale = 0.4f;
+        public float speedJitter = 0.5f;
+
         [Header("Shimmer")]
         public bool outline;
         public int debug;
@@ -167,6 +175,9 @@ namespace TurboTurbo
                 var upSpeed = ExhaustVelocity.Calculate(heat);
                 var coneDir = transform.forward;
 
+                // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
+                var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
+
                 // custom emit requires us to apply the simulation space manually
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
 
@@ -177,11 +188,11 @@ namespace TurboTurbo
                         position = simPos,
                         velocity = ParticleSimSpace.Direction(customSimulationSpace,
                             coneDir * (upSpeed * UnityEngine.Random.Range(0.85f, 1.15f))
-                                     + UnityEngine.Random.insideUnitSphere * 0.15f
+                                     + UnityEngine.Random.insideUnitSphere * (0.15f + speedJitter * speedNorm)
                                      + locoVelocity),
                         startSize = UnityEngine.Random.Range(startSizeMin, startSizeMax),
                         startColor = color,
-                        startLifetime = lifetime * UnityEngine.Random.Range(0.9f, 1.1f),
+                        startLifetime = lifetime * UnityEngine.Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, speedLifetimeScale, speedNorm),
                     };
                     _ps.Emit(ep, 1);
                 }
