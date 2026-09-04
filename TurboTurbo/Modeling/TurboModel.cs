@@ -1,5 +1,7 @@
 using System;
 
+using UnityEngine;
+
 namespace TurboTurbo.Modeling;
 
 /// <summary>
@@ -77,8 +79,8 @@ public sealed class TurboModel
     {
         var s = _settings;
 
-        var demand = Clamp(_throttle(), 0f, 1f);
-        var rpmNorm = Clamp(_rpmNorm(), 0f, 1f);
+        var demand = Mathf.Clamp(_throttle(), 0f, 1f);
+        var rpmNorm = Mathf.Clamp(_rpmNorm(), 0f, 1f);
         Demand = demand;
         RpmNorm = rpmNorm;
 
@@ -89,37 +91,29 @@ public sealed class TurboModel
         // full boost = NA + (1-NA) x (1 + BoostChargeMultiplier)
         Charge = s.AirNAFraction + (1f - s.AirNAFraction) * (1f + s.BoostChargeMultiplier * _boost);
 
-        Lambda = Charge / (s.LambdaCalibration * Math.Max(0.01f, fuelDemand));
+        Lambda = Charge / (s.LambdaCalibration * Mathf.Max(0.01f, fuelDemand));
 
-        // Capping torque by usable air charge. Extra fuel below TorqueLambdaFloor still 
+        // Capping torque by usable air charge. Extra fuel below TorqueLambdaFloor still
         // produces work rather than instant torque loss to keep lugging engines from stalling.
-        var rpmFactor = Clamp(rpmNorm, 0f, 1f);
-        rpmFactor = (float)Math.Pow(rpmFactor, s.RpmTorqueExponent);
+        var rpmFactor = Mathf.Pow(Mathf.Clamp(rpmNorm, 0f, 1f), s.RpmTorqueExponent);
         var fuelMaxTorque = rpmFactor * Charge
                             / (s.LambdaCalibration * s.TorqueLambdaFloor);
-        EffectiveDemand = Math.Min(fuelDemand, fuelMaxTorque);
+        EffectiveDemand = Mathf.Min(fuelDemand, fuelMaxTorque);
 
-        Overfuel = Math.Max(0f, fuelDemand - Charge / s.LambdaCalibration);
+        Overfuel = Mathf.Max(0f, fuelDemand - Charge / s.LambdaCalibration);
 
-        // Boost lag chases equilibrium set by exhaust mass flow. Spooling checks fuelDemand 
+        // Boost lag chases equilibrium set by exhaust mass flow. Spooling checks fuelDemand
         // directly so lug-driven target drops decay with turbine inertia.
-        var rpmMassFlow = (float)Math.Pow(Clamp(rpmNorm, 0f, 1f), s.RpmBoostExponent);
-        var target = Clamp(fuelDemand, 0f, 1f) * rpmMassFlow;
+        var rpmMassFlow = Mathf.Pow(Mathf.Clamp(rpmNorm, 0f, 1f), s.RpmBoostExponent);
+        var target = Mathf.Clamp(fuelDemand, 0f, 1f) * rpmMassFlow;
         ExhaustHeat = target;
         var tau = fuelDemand > _boost
-            ? Math.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * Overfuel))
+            ? Mathf.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * Overfuel))
             : s.TauDown;
-        _boost += (target - _boost) * (1f - (float)Math.Exp(-delta / tau));
+        _boost += (target - _boost) * (1f - Mathf.Exp(-delta / tau));
         Boost = _boost;
 
         SurgeThisTick = engineOn && _prevDemand - demand > 0.3f && _boost > 0.75f;
         _prevDemand = demand;
-    }
-
-    private static float Clamp(float value, float min, float max)
-    {
-        if (value < min) return min;
-        if (value > max) return max;
-        return value;
     }
 }
