@@ -3,10 +3,8 @@ bin/
 obj/
 dist/
 
-# Decompiled game reference sources (generated, not part of the mod)
+# Analysis / investigation
 decompiled/
-
-# Game log captures
 logs/
 
 # IDE / user files
@@ -31,8 +29,6 @@ desktop.ini
 [Mm]emoryCaptures/
 sysinfo.txt
 *.sysinfo
-WorkBench/*.csproj
-*.sln
 *.pidb
 *.booproj
 *.pdb

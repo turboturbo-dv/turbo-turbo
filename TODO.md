@@ -5,8 +5,16 @@
   needlessly defensive code. If we cannot envision a justification for a guard,
   it should be removed, as it just adds unnecessary noise and complexity.
 
-- [ ] **Style pass**
-  Use var.
+- [ ] **Particle emitter architecture refactor**
+  Currently, both the smoke and shimmer emitters are independent, but they share
+  a lot of common logic. It may be worth refactoring them into a common base
+  class, but we should also consider that the shimmer emitter will in the future
+  also be used for effects like the dynamic brake vents, so it should not be
+  tied to the idea that it always pairs up with a smoke emitter.
+
+- [ ] **Investigate transform logic**
+  It can probably be simplified, and we may need to create our own copy rather
+  than relying on the transform taken from the configuration.
 
 - [ ] **Dev UI activation tweaks**
   Make dev UI hotkey configurable. Independent of hotkey, it should also be

@@ -9,13 +9,9 @@ indent_size = 2
 [*.cs]
 
 #### File formatting ####
-
 indent_size = 4
 tab_width = 4
 insert_final_newline = false
-
-#### C# Coding Conventions ####
-[*.cs]
 
 # Organize usings
 dotnet_separate_import_directive_groups = true
