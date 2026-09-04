@@ -8,6 +8,8 @@ namespace TurboTurbo.DevUI;
 
 internal sealed class Section
 {
+    // currently, we can get away with having one action per section.
+    // if we encounter more complex situations, we might have to set it per spec
     private readonly Action _onRequiresReconfigure;
     private readonly List<ITweakSpec> _specs = new();
 
@@ -35,6 +37,11 @@ internal sealed class Section
     {
         _specs.Add(new BoolSpec(key, tooltip, get, set,
             requiresReconfigure ? _onRequiresReconfigure : null));
+    }
+
+    public void AddKey(string key, string tooltip, Func<KeyCode> get, Action<KeyCode> set)
+    {
+        _specs.Add(new KeyCodeSpec(key, tooltip, get, set));
     }
 
     public void AddInt(string key, string tooltip, int min, int max, bool requiresReconfigure,

@@ -1,28 +1,32 @@
+using TurboTurbo.Configuration;
+
 using UnityEngine;
 
 namespace TurboTurbo.DevUI;
 
 /// <summary>
-/// Owns the dev panel's lifecycle: F6 toggles its existence. The window position
-/// is the only piece of UI state that survives a close/open cycle.
+/// Owns the dev panel's lifecycle: F6 toggles its existence.
+/// Also tracks state across panel destruction (currently only window position).
 /// </summary>
 internal sealed class DevPanelPresenter : MonoBehaviour
 {
-    private const KeyCode ToggleKey = KeyCode.F6;
+    private Settings _settings;
 
     private Rect _panelRect = new(20f, 20f, 360f, 120f);
     private TurboDevPanel _panel;
 
-    public static DevPanelPresenter Create()
+    public static DevPanelPresenter Create(Settings settings)
     {
         var go = new GameObject("TurboTurbo.DevPanelPresenter");
         DontDestroyOnLoad(go);
-        return go.AddComponent<DevPanelPresenter>();
+        var presenter = go.AddComponent<DevPanelPresenter>();
+        presenter._settings = settings;
+        return presenter;
     }
 
     private void Update()
     {
-        if (!Input.GetKeyDown(ToggleKey)) return;
+        if (!Input.GetKeyDown(_settings.ToggleDevPanelKey)) return;
 
         if (_panel == null)
         {

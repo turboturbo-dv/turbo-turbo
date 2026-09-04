@@ -1,5 +1,7 @@
 using DV.ThingTypes;
 
+using TurboTurbo.Configuration;
+
 using UnityEngine;
 
 namespace TurboTurbo;
@@ -14,6 +16,9 @@ public static class Main
 
         ModAssets.Initialize(entry.Path);
 
+        var settings = UnityModManager.ModSettings.Load<Settings>(entry);
+        SettingsPanel.Initialize(settings);
+
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .AddTurbo()
             // TODO: Need to tune this
@@ -27,7 +32,10 @@ public static class Main
 
         Orchestrator.Create();
 
-        DevUI.DevPanelPresenter.Create();
+        DevUI.DevPanelPresenter.Create(settings);
+
+        entry.OnGUI = SettingsPanel.Draw;
+        entry.OnSaveGUI = saveEntry => settings.Save(saveEntry);
 
         Log.ForContext("main").Info("TurboTurbo ready!");
     }
