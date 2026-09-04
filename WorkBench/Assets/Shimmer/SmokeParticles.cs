@@ -155,9 +155,6 @@ namespace TurboTurbo.WorkBench
         {
             _model.Update(lambda, demand, rpmNorm, engineOn, Time.deltaTime);
 
-            // manual emission: exit velocity = shared ExhaustVelocity curve;
-            // particles inherit the vehicle's world velocity at emission,
-            // then drag (limitVelocityOverLifetime) decays it in sim
             var rate = rpmNorm * cleanRate + _model.Density * maxRate;
             _emitAccumulator += rate * Time.deltaTime;
             var n = (int)_emitAccumulator;
@@ -171,14 +168,18 @@ namespace TurboTurbo.WorkBench
                 var upSpeed = ExhaustVelocity.Calculate(heat);
                 var coneDir = transform.forward;
 
+                // custom emit requires us to apply the simulation space manually
+                var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
+
                 for (var i = 0; i < n; i++)
                 {
                     var ep = new ParticleSystem.EmitParams
                     {
-                        position = transform.position,
-                        velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                 + Random.insideUnitSphere * 0.15f
-                                 + locoVelocity,
+                        position = simPos,
+                        velocity = ParticleSimSpace.Direction(customSimulationSpace,
+                            coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
+                                     + Random.insideUnitSphere * 0.15f
+                                     + locoVelocity),
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = _model.Color, // rgb+alpha baked per particle at emission
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),

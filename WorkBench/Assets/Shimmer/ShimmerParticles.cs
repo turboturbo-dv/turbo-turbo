@@ -1,3 +1,5 @@
+using TurboTurbo.Modeling;
+
 using UnityEngine;
 
 namespace TurboTurbo
@@ -174,14 +176,18 @@ namespace TurboTurbo
                 var upSpeed = ExhaustVelocity.Calculate(heat);
                 var coneDir = transform.forward;
 
+                // custom emit requires us to apply the simulation space manually
+                var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
+
                 for (var i = 0; i < n; i++)
                 {
                     var ep = new ParticleSystem.EmitParams
                     {
-                        position = transform.position,
-                        velocity = coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                 + Random.insideUnitSphere * 0.15f
-                                 + locoVelocity,
+                        position = simPos,
+                        velocity = ParticleSimSpace.Direction(customSimulationSpace,
+                            coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
+                                     + Random.insideUnitSphere * 0.15f
+                                     + locoVelocity),
                         startSize = Random.Range(startSizeMin, startSizeMax),
                         startColor = color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
@@ -203,32 +209,6 @@ namespace TurboTurbo
                 _material.SetFloat("_Outline", outline ? 1f : 0f);
                 _material.SetFloat("_Debug", debug);
             }
-        }
-    }
-
-    public static class ExhaustVelocity
-    {
-        public const float Idle = 1.5f;
-        public const float FullLoad = 10f;
-
-        public static float Calculate(float heat)
-        {
-            return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
-        }
-    }
-
-    public static class ExhaustPlacement
-    {
-        public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, float offsetMeters)
-        {
-            // probably not the easiest way, but hey, it seems to work even under the heaviest of derailments.
-            // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
-            // boy have I got you covered
-            emitter.SetParent(parent, worldPositionStays: false);
-            var localMouth = parent.InverseTransformPoint(exhaustPosition);
-            var localUp = parent.InverseTransformDirection(Vector3.up);
-            emitter.localPosition = localMouth + localUp * offsetMeters;
-            emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
         }
     }
 }

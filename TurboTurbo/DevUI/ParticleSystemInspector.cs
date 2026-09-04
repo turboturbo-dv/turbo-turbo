@@ -44,8 +44,12 @@ internal static class ParticleSystemInspector
         var seed = ps.useAutoRandomSeed
             ? "autoRandomSeed=yes"
             : $"autoRandomSeed=no seed={ps.randomSeed}";
+        var simSpaceText = main.simulationSpace == ParticleSystemSimulationSpace.Custom
+            ? $"simSpace=Custom space='{(main.customSimulationSpace != null ? main.customSimulationSpace.name : "NULL")}' " +
+              $"spaceWorld={(main.customSimulationSpace != null ? main.customSimulationSpace.position.ToString() : "n/a")}"
+            : $"simSpace={main.simulationSpace}";
         sb.AppendLine($"{pad}  main: duration={main.duration} prewarm={main.prewarm} playOnAwake={main.playOnAwake} " +
-                      $"simSpace={main.simulationSpace} maxParticles={main.maxParticles} {seed}");
+                      $"{simSpaceText} maxParticles={main.maxParticles} {seed}");
         sb.AppendLine($"{pad}  main.startLifetime: {DescribeCurve(main.startLifetime)}");
         sb.AppendLine($"{pad}  main.startSpeed:    {DescribeCurve(main.startSpeed)}");
         sb.AppendLine($"{pad}  main.startSize:     {DescribeCurve(main.startSize)}");

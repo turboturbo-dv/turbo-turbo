@@ -79,4 +79,44 @@ namespace TurboTurbo.Modeling
             Density = Mathf.Max(sootFactor, wetBurn);
         }
     }
+
+    // TODO: this should be a tunable parameter
+    public static class ExhaustVelocity
+    {
+        public const float Idle = 1.5f;
+        public const float FullLoad = 10f;
+
+        public static float Calculate(float heat)
+        {
+            return Mathf.Lerp(Idle, FullLoad, Mathf.Clamp01(heat));
+        }
+    }
+
+    /// <summary>
+    /// Translates positions and directions into a custom simulation space,
+    /// if present (not null). Otherwise, returns the input unchanged.
+    /// </summary>
+    public static class ParticleSimSpace
+    {
+        public static Vector3 Position(Transform simSpace, Vector3 position)
+            => simSpace?.InverseTransformPoint(position) ?? position;
+
+        public static Vector3 Direction(Transform simSpace, Vector3 direction)
+            => simSpace?.InverseTransformDirection(direction) ?? direction;
+    }
+
+    public static class ExhaustPlacement
+    {
+        public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, float offsetMeters)
+        {
+            // probably not the easiest way, but hey, it seems to work even under the heaviest of derailments.
+            // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
+            // boy have I got you covered
+            emitter.SetParent(parent, worldPositionStays: false);
+            var localMouth = parent.InverseTransformPoint(exhaustPosition);
+            var localUp = parent.InverseTransformDirection(Vector3.up);
+            emitter.localPosition = localMouth + localUp * offsetMeters;
+            emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+        }
+    }
 }
