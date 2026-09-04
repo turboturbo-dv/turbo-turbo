@@ -180,25 +180,25 @@ internal sealed class TurboDevPanel : MonoBehaviour
         var section = new Section("turbo model", "turbo", MarkRequiresReconfigure) { Open = true, OnToggle = () => _needsShrink = true };
         var s = host.TurboModel.Tuning;
         section.AddFloat("airNAFraction",
-            "Per-stroke charge index of naturally-aspirated operation (zero boost).",
+            "Baseline weighting factor that scales down boost effectiveness. Charge at zero boost is always 1.0",
             0f, 1f, false, () => s.AirNAFraction, v => s.AirNAFraction = v);
         section.AddFloat("lambdaCalibration",
-            "Air-to-fuel calibration constant: full boost + full rack is exactly clean at 2.5.",
+            "Global air-to-fuel scaling factor. Higher values lower lambda across all operating points, making the engine run richer.",
             1f, 4f, false, () => s.LambdaCalibration, v => s.LambdaCalibration = v);
         section.AddFloat("boostChargeMultiplier",
-            "Boost multiplier on top of NA charge at full boost (charge = NA + (1-NA) x (1 + k x boost)).",
+            "Max boost charge multiplier. Peak extra charge at full boost equals (1 - AirNAFraction) * BoostChargeMultiplier.",
             0f, 5f, false, () => s.BoostChargeMultiplier, v => s.BoostChargeMultiplier = v);
         section.AddFloat("rpmTorqueExponent",
-            "0 = torque cap is pure per-stroke charge, 1 = strict airflow on top.",
+            "Scales max torque capacity with engine speed. 0 = torque cap depends purely on cylinder charge density; 1 = torque cap scales linearly with RPM.",
             0f, 3f, false, () => s.RpmTorqueExponent, v => s.RpmTorqueExponent = v);
         section.AddFloat("rpmBoostExponent",
-            "Exponent bounding the boost equilibrium: exhaust mass flow scales with engine speed.",
+            "RPM penalty exponent on target boost equilibrium (Target = Demand * RPM^exponent). Higher values restrict turbo spooling at low engine RPM.",
             0f, 3f, false, () => s.RpmBoostExponent, v => s.RpmBoostExponent = v);
         section.AddFloat("tauUp",
-            "Spool-up time constant in seconds (clean combustion).",
+            "Spool-up time constant in seconds.",
             0.25f, 8f, false, () => s.TauUp, v => s.TauUp = v);
         section.AddFloat("tauDown",
-            "Blow-down (boost release) time constant in seconds.",
+            "Blow-down time constant in seconds.",
             0.1f, 4f, false, () => s.TauDown, v => s.TauDown = v);
         section.AddFloat("minSpoolTau",
             "Floor for the spool-up time constant (stability under heavy overfuel).",
