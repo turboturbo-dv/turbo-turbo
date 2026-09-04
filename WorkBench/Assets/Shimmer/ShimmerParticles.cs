@@ -225,10 +225,10 @@ namespace TurboTurbo
 
             holdFraction = Mathf.Clamp01(holdFraction);
 
-            var alphaKeys = new List<GradientAlphaKey> { new(1f, 0f) };
+            var alphaKeys = new List<GradientAlphaKey> { new GradientAlphaKey(1f, 0f) };
             if (holdFraction > 0f)
             {
-                alphaKeys.Add(new(1f, holdFraction));
+                alphaKeys.Add(new GradientAlphaKey(1f, holdFraction));
                 maxDecayKeys--;
             }
 
@@ -237,13 +237,13 @@ namespace TurboTurbo
                 for (var i = 1; i <= maxDecayKeys; i++)
                 {
                     var t = (float)i / maxDecayKeys;
-                    alphaKeys.Add(new(decay(t), holdFraction + (1f - holdFraction) * t));
+                    alphaKeys.Add(new GradientAlphaKey(decay(t), holdFraction + (1f - holdFraction) * t));
                 }
             }
 
             var gradient = new Gradient();
             gradient.SetKeys(
-                [new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f)],
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                 alphaKeys.ToArray());
             return gradient;
         }
