@@ -35,10 +35,15 @@ namespace TurboTurbo.WorkBench
         /// <summary>Absolute speed of the vehicle carrying this emitter [m/s].</summary>
         public float absSpeed;
 
-        [Header("Speed-based dispersion")]
+        [Header("Speed-based dispersion and turbulence")]
         public float speedNormMax = 15f;
+
         public float speedLifetimeScale = 0.4f;
         public float speedJitter = 0.5f;
+
+        public float turbulenceStrength = 1.25f;
+        public float turbulenceFrequency = 0.5f;
+        public float turbulenceScrollSpeed = 0f;
 
         public Shader shader;
         public Texture atlas;
@@ -111,15 +116,31 @@ namespace TurboTurbo.WorkBench
 
             // no shape module currently, could introduce a small distribution here but for now a point source is fine
 
-            // models air resistance
             var lvol = _ps.limitVelocityOverLifetime;
             lvol.enabled = true;
             lvol.space = ParticleSystemSimulationSpace.World;
-            lvol.limit = 25f;
+
+            // we only apply drag, but we need to override the restrictive defaults on limit/dampen
+            lvol.limit = 1000f;
             lvol.dampen = 0f;
             lvol.drag = drag;
+
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
+
+            // vanilla turbulence: static noise field (scrollSpeed 0) traversed by
+            // the moving particles, with per-particle random offsets. strength is
+            // speed-modulated in Update; Configure bakes the peak so the bench
+            // edit-mode preview shows the full field
+            var noise = _ps.noise;
+            noise.enabled = true;
+            noise.quality = ParticleSystemNoiseQuality.High;
+            noise.frequency = turbulenceFrequency;
+            noise.strength = turbulenceStrength;
+            noise.damping = true;
+            noise.separateAxes = false;
+            noise.scrollSpeed = turbulenceScrollSpeed;
+            noise.remapEnabled = false;
 
             // some buoyancy to counteract the resistance
             var vol = _ps.velocityOverLifetime;
@@ -160,6 +181,12 @@ namespace TurboTurbo.WorkBench
         {
             _model.Update(lambda, demand, rpmNorm, engineOn, Time.deltaTime);
 
+            // smoke dispersion and turbulence scales with this
+            var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
+
+            var noise = _ps.noise;
+            noise.strength = turbulenceStrength * speedNorm;
+
             var rate = rpmNorm * cleanRate + _model.Density * maxRate;
             _emitAccumulator += rate * Time.deltaTime;
             var n = (int)_emitAccumulator;
@@ -172,9 +199,6 @@ namespace TurboTurbo.WorkBench
 
                 var upSpeed = ExhaustVelocity.Calculate(heat);
                 var coneDir = transform.forward;
-
-                // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
-                var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
 
                 // custom emit requires us to apply the simulation space manually
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);

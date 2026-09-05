@@ -312,6 +312,12 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 1f, false, () => f.speedLifetimeScale, v => { foreach (var s in smokes) s.speedLifetimeScale = v; });
             section.AddFloat("speedJitter", "Extra emission jitter [m/s] at full dispersion.",
                 0f, 2f, false, () => f.speedJitter, v => { foreach (var s in smokes) s.speedJitter = v; });
+            section.AddFloat("turbulenceStrength", "Turbulence noise field strength at full dispersion speed (zero at standstill).",
+                0f, 3f, false, () => f.turbulenceStrength, v => { foreach (var s in smokes) s.turbulenceStrength = v; });
+            section.AddFloat("turbulenceFrequency", "Turbulence noise field frequency (lower = larger cells).",
+                0.05f, 2f, true, () => f.turbulenceFrequency, v => { foreach (var s in smokes) s.turbulenceFrequency = v; });
+            section.AddFloat("turbulenceScrollSpeed", "Turbulence noise field scroll speed.",
+                0f, 3f, true, () => f.turbulenceScrollSpeed, v => { foreach (var s in smokes) s.turbulenceScrollSpeed = v; });
             _sections.Add(section);
         }
 
