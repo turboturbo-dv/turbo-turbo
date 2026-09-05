@@ -3,6 +3,9 @@ bin/
 obj/
 dist/
 
+# Generated configuration files
+GameDir.props
+
 # Analysis / investigation
 decompiled/
 logs/

@@ -4,9 +4,12 @@
     <TargetFramework>net472</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
 
-    <!-- Game install location. Override with: dotnet build -p:GameDir="C:\path\to\Derail Valley" -->
-    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Derail Valley</GameDir>
+  <Import Project="$(MSBuildThisFileDirectory)..\GameDir.props"
+          Condition="'$(GameDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\GameDir.props')" />
+
+  <PropertyGroup>
     <ManagedDir>$(GameDir)\DerailValley_Data\Managed</ManagedDir>
     <ModDir>$(GameDir)\Mods\TurboTurbo</ModDir>
   </PropertyGroup>
@@ -119,6 +122,10 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(GameDir)' == ''">
+    <Error Text="GameDir is not set. Run build.ps1 once, or set GameDir via an environment variable or build property." />
+  </Target>
 
   <Target Name="Deploy" AfterTargets="Build" Condition="'$(DeployMod)' != 'false'">
     <MakeDir Directories="$(ModDir)" />

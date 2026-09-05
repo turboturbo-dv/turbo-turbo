@@ -3,11 +3,36 @@
 # We don't build the asset bundle here because the `unity build` command doesn't
 # seem to detect the licence properly.
 param(
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [string]$GameDir = ""
 )
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
+
+# The projects read the game install path from GameDir.props (gitignored);
+# create it on first run so a fresh clone builds without manual setup.
+$propsPath = "$root\GameDir.props"
+if (-not (Test-Path -LiteralPath $propsPath)) {
+    if (-not $GameDir) {
+        $GameDir = & "$root\scripts\FindGameDir.ps1"
+    }
+
+    if (-not $GameDir -or -not (Test-Path -LiteralPath (Join-Path $GameDir "DerailValley_Data\Managed\Assembly-CSharp.dll"))) {
+        Write-Error "Could not locate Derail Valley. Pass the install path: .\build.ps1 -GameDir 'C:\path\to\Derail Valley'"
+        exit 1
+    }
+
+    @"
+<Project>
+  <PropertyGroup>
+    <GameDir>$GameDir</GameDir>
+  </PropertyGroup>
+</Project>
+"@ | Set-Content -LiteralPath $propsPath -Encoding UTF8
+
+    Write-Host "created GameDir.props: $GameDir"
+}
 
 dotnet build "$root\TurboTurbo\TurboTurbo.csproj" -c $Configuration -v minimal -p:DeployMod=false
 if ($LASTEXITCODE -ne 0) {
