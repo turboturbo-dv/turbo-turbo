@@ -8,10 +8,7 @@ namespace TurboTurbo.Setup;
 public class EngineOptions
 {
     private bool _hasTurbo = false;
-    private float _exhaustSpawnOffset = 0f;
-    private readonly List<Func<TrainCar, Transform>> _exhaustTransforms = new();
-    private readonly List<Func<TrainCar, Transform>> _tractionVentTransforms = new();
-    private readonly List<Func<TrainCar, Transform>> _dynamicBrakeVentTransforms = new();
+    private readonly List<ExhaustBinding> _exhausts = new();
 
     public EngineOptions AddTurbo()
     {
@@ -19,36 +16,26 @@ public class EngineOptions
         return this;
     }
 
-    /// <summary>Vertical offset [m] applied along each exhaust's own up
-    /// axis when placing the mod's emitters: the vanilla exhaust PS
-    /// transforms sit below the visible stack mouth. Locomotive-dependent
-    /// tuning value.</summary>
-    public EngineOptions WithExhaustSpawnOffset(float meters)
-    {
-        _exhaustSpawnOffset = meters;
-        return this;
-    }
-
+    /// <summary>Adds a new engine exhaust at the given position.</summary>
     public EngineOptions AddEngineExhaust(Func<TrainCar, Transform> transformSelector)
     {
-        _exhaustTransforms.Add(transformSelector);
+        _exhausts.Add(new ExhaustBinding(transformSelector, null, Vector3.zero));
         return this;
     }
 
-    public EngineOptions AddTractionMotorVent(Func<TrainCar, Transform> transformSelector)
+    /// <summary>
+    /// Takes over an existing exhaust ParticleSystem: its emission is disabled so that it is effectively replaced.
+    /// The optional offset, in car-local space, shifts the new emitters relative to the transform
+    /// of the existing particle system.
+    /// </summary>
+    public EngineOptions ReplaceEngineExhaust(Func<TrainCar, ParticleSystem> psSelector, Vector3? offset = null)
     {
-        _tractionVentTransforms.Add(transformSelector);
-        return this;
-    }
-
-    public EngineOptions AddDynamicBrakeVent(Func<TrainCar, Transform> transformSelector)
-    {
-        _dynamicBrakeVentTransforms.Add(transformSelector);
+        _exhausts.Add(new ExhaustBinding(null, psSelector, offset ?? Vector3.zero));
         return this;
     }
 
     internal EngineConfiguration Build()
     {
-        return new EngineConfiguration(_hasTurbo, _exhaustSpawnOffset, _exhaustTransforms);
+        return new EngineConfiguration(_hasTurbo, _exhausts);
     }
 }

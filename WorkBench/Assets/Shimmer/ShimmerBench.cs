@@ -14,8 +14,7 @@ namespace TurboTurbo.WorkBench
         public float backgroundScroll = 0.03f;
 
         [Header("Emitter placement")]
-        [Tooltip("World-up offset from the vanilla exhaust transform")]
-        public float exhaustSpawnOffset = 0.25f;
+        public Vector3 exhaustOffset = new Vector3(0f, 0.2f, -0.05f);
 
         [Header("Exhaust smoke emitter")]
         public bool smokeEnabled = true;
@@ -83,7 +82,7 @@ namespace TurboTurbo.WorkBench
             _particleEmitter.shader = Shader.Find("TurboTurbo/HeatShimmer");
             _particleEmitter.Configure();
             ExhaustPlacement.PlaceAt(go.transform, vanillaExhaust.transform.position,
-                _frame.transform, exhaustSpawnOffset);
+                _frame.transform, exhaustOffset);
 
             if (smokeEnabled)
             {
@@ -95,7 +94,7 @@ namespace TurboTurbo.WorkBench
                 _smokeBench.maxRate = maxRate;
                 _smokeBench.Configure();
                 ExhaustPlacement.PlaceAt(smokeGo.transform, vanillaExhaust.transform.position,
-                    _frame.transform, exhaustSpawnOffset);
+                    _frame.transform, exhaustOffset);
             }
         }
 

@@ -107,15 +107,13 @@ namespace TurboTurbo.Modeling
 
     public static class ExhaustPlacement
     {
-        public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, float offsetMeters)
+        public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, Vector3 offset)
         {
             // probably not the easiest way, but hey, it seems to work even under the heaviest of derailments.
             // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
             // boy have I got you covered
             emitter.SetParent(parent, worldPositionStays: false);
-            var localMouth = parent.InverseTransformPoint(exhaustPosition);
-            var localUp = parent.InverseTransformDirection(Vector3.up);
-            emitter.localPosition = localMouth + localUp * offsetMeters;
+            emitter.localPosition = parent.InverseTransformPoint(exhaustPosition) + offset;
             emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
         }
     }

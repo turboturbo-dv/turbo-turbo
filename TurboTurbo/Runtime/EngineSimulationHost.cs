@@ -27,24 +27,34 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     /// <summary>Pair of emitters sharing one exhaust position.</summary>
     internal sealed class ExhaustEmitters
     {
+        public Vector3 Mouth;
+        public Vector3 Offset;
         public SmokeParticles Smoke;
         public ShimmerParticles Shimmer;
-    }
 
-    private EngineConfiguration _configuration;
+        /// <summary>Repositions both emitters to Mouth + Offset.</summary>
+        public void Reposition()
+        {
+            var local = Mouth + Offset;
+            Smoke.transform.localPosition = local;
+            Shimmer.transform.localPosition = local;
+        }
+    }
     private Logger _log;
-    private SimController _simController;
     private bool _simBound;
     private bool _loggedNoSim;
+    private bool _effectsBound;
 
+    private EngineConfiguration _configuration;
+    private SimController _simController;
     private TurboModel _turboModel;
+
     private Port _throttlePort;
     private Func<float> _fuelNorm;
     private Func<bool> _engineOn;
 
     private TrainCar _trainCar;
     private readonly List<ExhaustEmitters> _exhausts = new();
-    private bool _effectsBound;
 
     public TurboModel TurboModel => _turboModel;
     public TrainCar TrainCar => _trainCar;
@@ -108,7 +118,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         _simBound = true;
         _log.Info($"sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
-                     $"{_configuration.ExhaustPositionSelectors.Count} exhaust selector(s))");
+                     $"{_configuration.Exhausts.Count} exhaust(s))");
 
         if (_configuration.HasTurbo)
         {
@@ -170,81 +180,83 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     }
 
     /// <summary>
-    /// Spawns the smoke + shimmer emitters on each configured exhaust
-    /// transform and takes over the vanilla exhaust smoke. Runs once, the
-    /// emitters live under the car root and /should/ survive pool cycles.
+    /// Spawns the smoke + shimmer emitters for each configured exhaust.
     /// </summary>
     private void TryBindEffects()
     {
         ModAssets.EnsureLoaded();
+        GameAssets.EnsureLoaded();
 
         _trainCar = GetComponent<TrainCar>();
         _exhausts.Clear();
 
-        for (var i = 0; i < _configuration.ExhaustPositionSelectors.Count; i++)
+        var exhausts = _configuration.Exhausts;
+        for (var i = 0; i < exhausts.Count; i++)
         {
-            var exhaust = _configuration.ExhaustPositionSelectors[i](_trainCar);
+            var binding = exhausts[i];
+
+            var exhaust = ResolveExhaustTransform(binding);
             if (exhaust == null)
             {
-                _log.Warn($"exhaust selector {i} resolved to null on '{name}' - skipping");
+                _log.Warn($"exhaust selector {i} resolved to null on '{name}', skipping");
                 continue;
             }
 
-            var vanillaPs = exhaust.GetComponent<ParticleSystem>();
-            if (vanillaPs != null)
+            var emitters = new ExhaustEmitters
             {
-                var vanillaEmission = vanillaPs.emission;
-                vanillaEmission.enabled = false;
-            }
-            else
-            {
-                _log.Warn($"exhaust selector {i} ('{exhaust.name}') has no ParticleSystem on '{name}'");
-            }
-
-            var atlas = vanillaPs != null
-                ? vanillaPs.GetComponent<ParticleSystemRenderer>()?.sharedMaterial?.mainTexture
-                : null;
-
-            var simSpace = WorldMover.OriginShiftParent;
-            _exhausts.Add(new ExhaustEmitters
-            {
-                Smoke = CreateSmokeEmitter(i, exhaust, atlas, simSpace),
-                Shimmer = CreateShimmerEmitter(i, exhaust, simSpace),
-            });
+                Mouth = _trainCar.transform.InverseTransformPoint(exhaust.position),
+                Offset = binding.Offset,
+            };
+            emitters.Smoke = CreateSmokeEmitter(i, exhaust.position, binding.Offset);
+            emitters.Shimmer = CreateShimmerEmitter(i, exhaust.position, binding.Offset);
+            _exhausts.Add(emitters);
         }
 
         _effectsBound = true;
         _log.Info($"effects bound on '{name}' ({_exhausts.Count} exhaust emitter(s))");
     }
 
-    private SmokeParticles CreateSmokeEmitter(int index, Transform exhaust, Texture atlas, Transform simSpace)
+    private Transform ResolveExhaustTransform(ExhaustBinding binding)
+    {
+        if (binding.ParticleSystemSelector != null)
+        {
+            var vanillaPs = binding.ParticleSystemSelector(_trainCar);
+            if (vanillaPs == null)
+            {
+                return null;
+            }
+
+            var vanillaEmission = vanillaPs.emission;
+            vanillaEmission.enabled = false;
+            return vanillaPs.transform;
+        }
+        else
+        {
+            return binding.TransformSelector(_trainCar);
+        }
+    }
+
+    private SmokeParticles CreateSmokeEmitter(int index, Vector3 exhaustPosition, Vector3 offset)
     {
         var go = new GameObject($"TurboTurbo.Smoke[{index}]");
-        PlaceAtExhaust(go.transform, exhaust);
+        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, _trainCar.transform, offset);
         var smoke = go.AddComponent<SmokeParticles>();
         smoke.shader = ModAssets.SmokeShader;
-        smoke.atlas = atlas;
-        smoke.customSimulationSpace = simSpace;
+        smoke.atlas = GameAssets.SmokeAtlas;
+        smoke.customSimulationSpace = WorldMover.OriginShiftParent;
         smoke.Configure();
         return smoke;
     }
 
-    private ShimmerParticles CreateShimmerEmitter(int index, Transform exhaust, Transform simSpace)
+    private ShimmerParticles CreateShimmerEmitter(int index, Vector3 exhaustPosition, Vector3 offset)
     {
         var go = new GameObject($"TurboTurbo.Shimmer[{index}]");
-        PlaceAtExhaust(go.transform, exhaust);
+        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, _trainCar.transform, offset);
         var shimmer = go.AddComponent<ShimmerParticles>();
         shimmer.shader = ModAssets.HeatShimmerShader;
-        shimmer.customSimulationSpace = simSpace;
+        shimmer.customSimulationSpace = WorldMover.OriginShiftParent;
         shimmer.Configure();
         return shimmer;
-    }
-
-    private void PlaceAtExhaust(Transform t, Transform exhaust)
-    {
-        // TODO: this needs some work
-        ExhaustPlacement.PlaceAt(t, exhaust.position, _trainCar.transform,
-            _configuration.ExhaustSpawnOffset);
     }
 
     private void UpdateEffects(bool engineOn)

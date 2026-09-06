@@ -21,14 +21,9 @@ public static class Main
 
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .AddTurbo()
-            // TODO: Need to tune this
-            .WithExhaustSpawnOffset(0.3f)
-            .AddEngineExhaust(c =>
-                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke")?.transform)
-            .AddTractionMotorVent(c =>
-                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "HighTempEngineSmoke")?.transform)
-            .AddTractionMotorVent(c =>
-                c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "DamagedEngineSmoke")?.transform));
+            .ReplaceEngineExhaust(
+                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
+                new Vector3(0f, 0.2f, -0.05f)));
 
         Orchestrator.Create();
 

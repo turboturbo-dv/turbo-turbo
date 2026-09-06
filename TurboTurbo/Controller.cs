@@ -24,7 +24,7 @@ public static class Controller
 
         Configurations.Add(trainCarType, configuration);
 
-        Log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.ExhaustPositionSelectors.Count} exhausts");
+        Log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)
@@ -40,5 +40,9 @@ public static class Controller
 
 internal record struct EngineConfiguration(
     bool HasTurbo,
-    float ExhaustSpawnOffset,
-    List<Func<TrainCar, Transform>> ExhaustPositionSelectors);
+    List<ExhaustBinding> Exhausts);
+
+internal record struct ExhaustBinding(
+    Func<TrainCar, Transform> TransformSelector,
+    Func<TrainCar, ParticleSystem> ParticleSystemSelector,
+    Vector3 Offset);

@@ -112,8 +112,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
         var self = Orchestrator.Instance == null
             ? "destroyed"
             : $"alive (id {Orchestrator.Instance.GetInstanceID()})";
-        var shaders = ModAssets.ShadersValid ? "ok" : "lost";
-        _diagLine = $"orchestrator: {self}; shaders: {shaders}\n{Orchestrator.Instance.DescribeDiagnostics()}";
+        var assets = ModAssets.ShadersValid && GameAssets.SmokeAtlas != null ? "ok" : "lost";
+        _diagLine = $"orchestrator: {self}; assets: {assets}\n{Orchestrator.Instance.DescribeDiagnostics()}";
     }
 
     private void DrawDiagnosticsButtons()
@@ -173,6 +173,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         BuildTurboSection(host);
         BuildSmokeModelSections(host);
         BuildEmitterSections(host);
+        BuildPlacementSection(host);
     }
 
     private void BuildTurboSection(EngineSimulationHost host)
@@ -379,6 +380,31 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 2000, 4000, true, () => f.renderQueue, v => { foreach (var s in shimmers) s.renderQueue = v; });
             _sections.Add(section);
         }
+    }
+
+    private void BuildPlacementSection(EngineSimulationHost host)
+    {
+        var exhausts = host.Exhausts;
+        if (exhausts.Count == 0) return;
+
+        var section = new Section("exhaust placement", "exhaustPlacement") { OnToggle = () => _needsShrink = true };
+        for (var i = 0; i < exhausts.Count; i++)
+        {
+            var e = exhausts[i];
+            section.AddFloat($"exhaust{i}OffsetX", "Exhaust placement offset [m], lateral.",
+                -1f, 1f, false,
+                () => e.Offset.x,
+                v => { e.Offset.x = v; e.Reposition(); });
+            section.AddFloat($"exhaust{i}OffsetY", "Exhaust placement offset [m], vertical.",
+                -1f, 2f, false,
+                () => e.Offset.y,
+                v => { e.Offset.y = v; e.Reposition(); });
+            section.AddFloat($"exhaust{i}OffsetZ", "Exhaust placement offset [m], fore/aft.",
+                -1f, 1f, false,
+                () => e.Offset.z,
+                v => { e.Offset.z = v; e.Reposition(); });
+        }
+        _sections.Add(section);
     }
 
     private void DrawDumpButtons()
