@@ -9,17 +9,17 @@ namespace TurboTurbo.Modeling
         public static Color ColorWetStack = new Color(0.85f, 0.82f, 0.78f, 0.85f);
         public static Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 0.50f);
 
-        public static float WetStackIdleDemand = 0.1f;
-        public static float WetStackFillRate = 0.005f;
-        public static float WetStackBurnThreshold = 0.05f;
-        public static float WetStackBurnDemand = 0.15f;
-        public static float WetStackBurnRate = 0.75f;
-        public static float WetStackBurnRampDemand = 0.5f;
-        public static float OilBlowbyTintStrength = 0.25f;
-        public static float SootCurveExponent = 1.1f;
-        public static float AlphaFloor = 0.02f;
-        public static float AlphaCeiling = 0.95f;
-        public static float WetStackAlphaScale = 0.8f;
+        public float WetStackIdleDemand = 0.1f;
+        public float WetStackFillRate = 0.005f;
+        public float WetStackBurnThreshold = 0.05f;
+        public float WetStackBurnDemand = 0.15f;
+        public float WetStackBurnRate = 0.75f;
+        public float WetStackBurnRampDemand = 0.5f;
+        public float OilBlowbyTintStrength = 0.25f;
+        public float SootCurveExponent = 1.1f;
+        public float AlphaFloor = 0.02f;
+        public float AlphaCeiling = 0.95f;
+        public float WetStackAlphaScale = 0.8f;
 
         private float _wetStackAccumulator;
 
@@ -80,11 +80,10 @@ namespace TurboTurbo.Modeling
         }
     }
 
-    // TODO: this should be a tunable parameter
     public static class ExhaustVelocity
     {
-        public const float Idle = 1.5f;
-        public const float FullLoad = 10f;
+        public static float Idle = 1.5f;
+        public static float FullLoad = 10f;
 
         public static float Calculate(float heat)
         {

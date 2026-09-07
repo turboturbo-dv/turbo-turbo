@@ -176,10 +176,21 @@ internal sealed class TurboDevPanel : MonoBehaviour
         if (host == null) return;
 
         BuildTurboSection(host);
-        BuildSmokeModelSections(host);
+        BuildSmokeModelSection(host);
+        BuildVelocitySection();
         BuildColorsSection();
         BuildEmitterSections(host);
         BuildPlacementSection(host);
+    }
+
+    private void BuildVelocitySection()
+    {
+        var section = new Section("exhaust velocity", "exhaustVelocity") { OnToggle = () => _needsShrink = true };
+        section.AddFloat("idleVelocity", "Exhaust plume speed [m/s] at idle heat.",
+            0f, 5f, false, () => ExhaustVelocity.Idle, v => ExhaustVelocity.Idle = v);
+        section.AddFloat("fullLoadVelocity", "Exhaust plume speed [m/s] at full heat.",
+            0f, 20f, false, () => ExhaustVelocity.FullLoad, v => ExhaustVelocity.FullLoad = v);
+        _sections.Add(section);
     }
 
     private void BuildColorsSection()
@@ -239,7 +250,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         _sections.Add(section);
     }
 
-    private void BuildSmokeModelSections(EngineSimulationHost host)
+    private void BuildSmokeModelSection(EngineSimulationHost host)
     {
         var models = new List<ExhaustSmokeModel>();
         foreach (var e in host.Exhausts)
@@ -247,56 +258,45 @@ internal sealed class TurboDevPanel : MonoBehaviour
             models.Add(e.Smoke.Model);
         }
 
-        if (models.Count > 0)
+        if (models.Count == 0) return;
+
+        var section = new Section("smoke model", "smokeModel", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
+        var first = models[0];
+
+        void Add(string key, string tooltip, float min, float max,
+            Func<ExhaustSmokeModel, float> get, Action<ExhaustSmokeModel, float> set)
         {
-            var section = new Section("smoke model (loco)", "smokeModel", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
-            var first = models[0];
-            section.AddFloat("sootOnsetLambda",
-                "Lambda where soot starts forming.",
-                0.3f, 1.5f, false,
-                () => first.SootOnsetLambda, v => { foreach (var m in models) m.SootOnsetLambda = v; });
-            section.AddFloat("sootOpaqueLambda",
-                "Lambda where soot reaches maximum opacity.",
-                0.1f, 1f, false,
-                () => first.SootOpaqueLambda, v => { foreach (var m in models) m.SootOpaqueLambda = v; });
-            _sections.Add(section);
+            section.AddFloat(key, tooltip, min, max, false,
+                () => get(first), v => { foreach (var m in models) set(m, v); });
         }
 
-        var global = new Section("smoke model (global)", "smokeModelGlobal", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
-        global.AddFloat("wetStackIdleDemand",
-            "Demand below which unburned fuel accumulates (wet stacking); also where the burn-off ramp begins.",
-            0f, 0.5f, false, () => ExhaustSmokeModel.WetStackIdleDemand, v => ExhaustSmokeModel.WetStackIdleDemand = v);
-        global.AddFloat("wetStackFillRate",
-            "Accumulator fill rate [1/s] while idling.",
-            0f, 0.1f, false, () => ExhaustSmokeModel.WetStackFillRate, v => ExhaustSmokeModel.WetStackFillRate = v);
-        global.AddFloat("wetStackBurnThreshold",
-            "The accumulator must exceed this before burn-off becomes visible.",
-            0f, 0.5f, false, () => ExhaustSmokeModel.WetStackBurnThreshold, v => ExhaustSmokeModel.WetStackBurnThreshold = v);
-        global.AddFloat("wetStackBurnDemand",
-            "Demand above which the wet-stack burn produces white smoke.",
-            0f, 0.6f, false, () => ExhaustSmokeModel.WetStackBurnDemand, v => ExhaustSmokeModel.WetStackBurnDemand = v);
-        global.AddFloat("wetStackBurnRate",
-            "Burn-off rate [1/s] per unit demand.",
-            0f, 3f, false, () => ExhaustSmokeModel.WetStackBurnRate, v => ExhaustSmokeModel.WetStackBurnRate = v);
-        global.AddFloat("wetStackBurnRampDemand",
-            "Demand at which the burn-off ramp reaches full strength (ramps up from wetStackIdleDemand).",
-            0.2f, 1f, false, () => ExhaustSmokeModel.WetStackBurnRampDemand, v => ExhaustSmokeModel.WetStackBurnRampDemand = v);
-        global.AddFloat("oilBlowbyTintStrength",
-            "Max blend toward the oil-burn color, reached at full rpm.",
-            0f, 1f, false, () => ExhaustSmokeModel.OilBlowbyTintStrength, v => ExhaustSmokeModel.OilBlowbyTintStrength = v);
-        global.AddFloat("sootCurveExponent",
-            "Gamma shaping the soot ladder over the lambda deficit.",
-            0.5f, 3f, false, () => ExhaustSmokeModel.SootCurveExponent, v => ExhaustSmokeModel.SootCurveExponent = v);
-        global.AddFloat("alphaFloor",
-            "Smoke opacity floor (clean haze).",
-            0f, 0.5f, false, () => ExhaustSmokeModel.AlphaFloor, v => ExhaustSmokeModel.AlphaFloor = v);
-        global.AddFloat("alphaCeiling",
-            "Smoke opacity ceiling (soot).",
-            0.5f, 1f, false, () => ExhaustSmokeModel.AlphaCeiling, v => ExhaustSmokeModel.AlphaCeiling = v);
-        global.AddFloat("wetStackAlphaScale",
-            "How strongly the wet-stack burn pushes opacity towards the ceiling.",
-            0f, 1f, false, () => ExhaustSmokeModel.WetStackAlphaScale, v => ExhaustSmokeModel.WetStackAlphaScale = v);
-        _sections.Add(global);
+        Add("sootOnsetLambda", "Lambda where soot starts forming.", 0.3f, 1.5f,
+            m => m.SootOnsetLambda, (m, v) => m.SootOnsetLambda = v);
+        Add("sootOpaqueLambda", "Lambda where soot reaches maximum opacity.", 0.1f, 1f,
+            m => m.SootOpaqueLambda, (m, v) => m.SootOpaqueLambda = v);
+        Add("wetStackIdleDemand", "Demand below which unburned fuel accumulates (wet stacking); also where the burn-off ramp begins.", 0f, 0.5f,
+            m => m.WetStackIdleDemand, (m, v) => m.WetStackIdleDemand = v);
+        Add("wetStackFillRate", "Accumulator fill rate [1/s] while idling.", 0f, 0.1f,
+            m => m.WetStackFillRate, (m, v) => m.WetStackFillRate = v);
+        Add("wetStackBurnThreshold", "The accumulator must exceed this before burn-off becomes visible.", 0f, 0.5f,
+            m => m.WetStackBurnThreshold, (m, v) => m.WetStackBurnThreshold = v);
+        Add("wetStackBurnDemand", "Demand above which the wet-stack burn produces white smoke.", 0f, 0.6f,
+            m => m.WetStackBurnDemand, (m, v) => m.WetStackBurnDemand = v);
+        Add("wetStackBurnRate", "Burn-off rate [1/s] per unit demand.", 0f, 3f,
+            m => m.WetStackBurnRate, (m, v) => m.WetStackBurnRate = v);
+        Add("wetStackBurnRampDemand", "Demand at which the burn-off ramp reaches full strength (ramps up from wetStackIdleDemand).", 0.2f, 1f,
+            m => m.WetStackBurnRampDemand, (m, v) => m.WetStackBurnRampDemand = v);
+        Add("oilBlowbyTintStrength", "Max blend toward the oil-burn color, reached at full rpm.", 0f, 1f,
+            m => m.OilBlowbyTintStrength, (m, v) => m.OilBlowbyTintStrength = v);
+        Add("sootCurveExponent", "Gamma shaping the soot ladder over the lambda deficit.", 0.5f, 3f,
+            m => m.SootCurveExponent, (m, v) => m.SootCurveExponent = v);
+        Add("alphaFloor", "Smoke opacity floor (clean haze).", 0f, 0.5f,
+            m => m.AlphaFloor, (m, v) => m.AlphaFloor = v);
+        Add("alphaCeiling", "Smoke opacity ceiling (soot).", 0.5f, 1f,
+            m => m.AlphaCeiling, (m, v) => m.AlphaCeiling = v);
+        Add("wetStackAlphaScale", "How strongly the wet-stack burn pushes opacity towards the ceiling.", 0f, 1f,
+            m => m.WetStackAlphaScale, (m, v) => m.WetStackAlphaScale = v);
+        _sections.Add(section);
     }
 
     private void BuildEmitterSections(EngineSimulationHost host)

@@ -20,8 +20,7 @@ namespace TurboTurboTests
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
 
         // enough 1s idle steps to fill the wet-stack accumulator (2x margin)
-        private static readonly int FillSteps =
-            Mathf.CeilToInt(2f / ExhaustSmokeModel.WetStackFillRate);
+        private int FillSteps => Mathf.CeilToInt(2f / _model.WetStackFillRate);
 
         // ------------------------------------------------------------
         // engine-off guard
@@ -47,7 +46,7 @@ namespace TurboTurboTests
             _model.Update(2f, 0.5f, 0f, engineOn: true, delta: 0.016f);
 
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
-            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaFloor, tolerance: 0.01f);
+            _model.Color.a.ShouldBe(_model.AlphaFloor, tolerance: 0.01f);
             _model.Color.r.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.r, tolerance: 0.01f);
             _model.Color.g.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.g, tolerance: 0.01f);
             _model.Color.b.ShouldBe(ExhaustSmokeModel.ColorIdleHaze.b, tolerance: 0.01f);
@@ -59,7 +58,7 @@ namespace TurboTurboTests
             _model.Update(_model.SootOpaqueLambda, 0.8f, 0.5f, engineOn: true, 0.016f);
 
             _model.Density.ShouldBe(1f, tolerance: 0.01f);
-            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaCeiling, tolerance: 0.01f);
+            _model.Color.a.ShouldBe(_model.AlphaCeiling, tolerance: 0.01f);
         }
 
         [Fact]
@@ -70,7 +69,7 @@ namespace TurboTurboTests
             _model.Update(midLambda, 0.8f, 0.5f, engineOn: true, 0.016f);
 
             _model.Density.ShouldBeInRange(0.2f, 0.9f);
-            _model.Color.a.ShouldBeLessThan(ExhaustSmokeModel.AlphaCeiling);
+            _model.Color.a.ShouldBeLessThan(_model.AlphaCeiling);
         }
 
         [Fact]
@@ -128,7 +127,7 @@ namespace TurboTurboTests
             _model.Color.r.ShouldBeGreaterThan(ExhaustSmokeModel.ColorIdleHaze.r,
                 "wet-stack burn should push red above the haze base");
             _model.Color.a.ShouldBeGreaterThanOrEqualTo(
-                ExhaustSmokeModel.AlphaFloor + (ExhaustSmokeModel.AlphaCeiling - ExhaustSmokeModel.AlphaFloor) * 0.5f,
+                _model.AlphaFloor + (_model.AlphaCeiling - _model.AlphaFloor) * 0.5f,
                 "the burn cloud should sit well above the haze floor");
             _model.Density.ShouldBeGreaterThan(0f);
         }
@@ -146,7 +145,7 @@ namespace TurboTurboTests
             // floor even with a fully filled accumulator (regression: the
             // opacity term used the raw accumulator instead of the
             // demand-gated burn)
-            _model.Color.a.ShouldBe(ExhaustSmokeModel.AlphaFloor, tolerance: 0.001f);
+            _model.Color.a.ShouldBe(_model.AlphaFloor, tolerance: 0.001f);
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
         }
 
@@ -160,7 +159,7 @@ namespace TurboTurboTests
             }
 
             // demand increase but still under the burn gate
-            var gatedDemand = ExhaustSmokeModel.WetStackBurnDemand * 0.8f;
+            var gatedDemand = _model.WetStackBurnDemand * 0.8f;
             _model.Update(1.2f, gatedDemand, 0.5f, engineOn: true, 1f);
 
             _model.Density.ShouldBe(0f, tolerance: 0.001f);
@@ -179,7 +178,7 @@ namespace TurboTurboTests
             // (0.1s steps, 2x the drain time at this demand)
             const float burnDemand = 0.8f;
             var burnSteps = 2 * Mathf.CeilToInt(
-                1f / (0.1f * burnDemand * ExhaustSmokeModel.WetStackBurnRate));
+                1f / (0.1f * burnDemand * _model.WetStackBurnRate));
             for (var i = 0; i < burnSteps; i++)
             {
                 _model.Update(1.2f, burnDemand, 0.6f, engineOn: true, 0.1f);
