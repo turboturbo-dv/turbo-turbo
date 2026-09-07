@@ -18,12 +18,12 @@ namespace TurboTurbo.WorkBench
 
         [Header("Particle look")]
         public float lifetime = 2f;
-        public float startSizeMin = 0.4f;
-        public float startSizeMax = 0.6f;
+        public float startSizeMin = 0.3f;
+        public float startSizeMax = 0.5f;
         public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 9f;
+        public float sizeOverLifetimeEnd = 9.5f;
         public float buoyancy = 0.3f;
-        public float drag = 0.8f;
+        public float drag = 0.5f;
         public float angularVelocityMax = 20f;
 
         [Range(0f, 1f)] public float heat;

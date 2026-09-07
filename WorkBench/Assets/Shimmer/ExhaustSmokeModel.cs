@@ -23,8 +23,8 @@ namespace TurboTurbo.Modeling
 
         private float _wetStackAccumulator;
 
-        public float SootOnsetLambda = 0.65f;
-        public float SootOpaqueLambda = 0.46f;
+        public float SootOnsetLambda = 1.1f;
+        public float SootOpaqueLambda = 0.8f;
 
         public Color Color { get; private set; } = Color.clear;
 

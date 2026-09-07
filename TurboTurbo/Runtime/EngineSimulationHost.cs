@@ -91,7 +91,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         if (_turboModel == null) return;
 
         var engineOn = _engineOn();
-        _turboModel.Tick(Time.deltaTime, _fuelNorm(), engineOn);
+        _turboModel.Tick(Time.deltaTime, engineOn);
 
         // write the torque-capped demand back to the engine's throttle port,
         // this ensures the engine's power is limited by available air

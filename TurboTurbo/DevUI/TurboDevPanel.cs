@@ -180,14 +180,11 @@ internal sealed class TurboDevPanel : MonoBehaviour
     {
         var section = new Section("turbo model", "turbo", MarkRequiresReconfigure) { Open = true, OnToggle = () => _needsShrink = true };
         var s = host.TurboModel.Tuning;
-        section.AddFloat("airNAFraction",
-            "Baseline weighting factor that scales down boost effectiveness. Charge at zero boost is always 1.0",
-            0f, 1f, false, () => s.AirNAFraction, v => s.AirNAFraction = v);
         section.AddFloat("lambdaCalibration",
             "Global air-to-fuel scaling factor. Higher values lower lambda across all operating points, making the engine run richer.",
             1f, 4f, false, () => s.LambdaCalibration, v => s.LambdaCalibration = v);
         section.AddFloat("boostChargeMultiplier",
-            "Max boost charge multiplier. Peak extra charge at full boost equals (1 - AirNAFraction) * BoostChargeMultiplier.",
+            "Charge gain per unit boost. Charge = 1 + BoostChargeMultiplier * Boost.",
             0f, 5f, false, () => s.BoostChargeMultiplier, v => s.BoostChargeMultiplier = v);
         section.AddFloat("rpmTorqueExponent",
             "Scales max torque capacity with engine speed. 0 = torque cap depends purely on cylinder charge density; 1 = torque cap scales linearly with RPM.",
@@ -210,6 +207,9 @@ internal sealed class TurboDevPanel : MonoBehaviour
         section.AddFloat("torqueLambdaFloor",
             "Lambda below which extra fuel contributes no torque.",
             0.3f, 1f, false, () => s.TorqueLambdaFloor, v => s.TorqueLambdaFloor = v);
+        section.AddFloat("surgeRateThreshold",
+            "Demand drop rate [1/s] that triggers a surge while boost is above 0.75.",
+            0f, 60f, false, () => s.SurgeRateThreshold, v => s.SurgeRateThreshold = v);
         _sections.Add(section);
     }
 
@@ -499,9 +499,9 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         var m = host.TurboModel;
         GUILayout.Label($"{host.CarId}   engineOn: {host.EngineOn}");
-        GUILayout.Label($"boost {m.Boost:0.000}   charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
+        GUILayout.Label($"charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   demand {m.Demand:0.000}   rpm {m.RpmNorm:0.000}");
-        GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}");
+        GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}   boost {m.Boost:0.000}");
         GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * 3.6f:0.0} km/h)");
 
         for (var i = 0; i < host.Exhausts.Count; i++)
