@@ -44,6 +44,13 @@ internal sealed class Section
         _specs.Add(new KeyCodeSpec(key, tooltip, get, set));
     }
 
+    public ColorSpec AddColor(string key, string tooltip, Func<Color> get, Action<Color> set)
+    {
+        var spec = new ColorSpec(key, tooltip, get, set);
+        _specs.Add(spec);
+        return spec;
+    }
+
     public void AddInt(string key, string tooltip, int min, int max, bool requiresReconfigure,
         Func<int> get, Action<int> set)
     {

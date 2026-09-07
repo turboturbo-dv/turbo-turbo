@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using TurboTurbo.Modeling;
@@ -24,6 +25,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private string _diagLine = "orchestrator: ?\nspawner: ?";
     private float _diagTimer;
 
+    private ColorPickerWindow _colorPicker;
+
     internal Rect WindowRect => _rect;
 
     public static TurboDevPanel Create(Rect initialRect)
@@ -32,6 +35,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();
+        panel._colorPicker = go.AddComponent<ColorPickerWindow>();
         panel._rect = initialRect;
         return panel;
     }
@@ -168,12 +172,34 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private void BuildSections(EngineSimulationHost host)
     {
         _sections.Clear();
+        _colorPicker.Close();
         if (host == null) return;
 
         BuildTurboSection(host);
         BuildSmokeModelSections(host);
+        BuildColorsSection();
         BuildEmitterSections(host);
         BuildPlacementSection(host);
+    }
+
+    private void BuildColorsSection()
+    {
+        var section = new Section("smoke colors", "smokeColors") { OnToggle = () => _needsShrink = true };
+        WireColor(section, "colorIdleHaze", "Haze tint at idle and low load.",
+            () => ExhaustSmokeModel.ColorIdleHaze, v => ExhaustSmokeModel.ColorIdleHaze = v);
+        WireColor(section, "colorHeavySoot", "Soot tint at full opacity.",
+            () => ExhaustSmokeModel.ColorHeavySoot, v => ExhaustSmokeModel.ColorHeavySoot = v);
+        WireColor(section, "colorWetStack", "Wet stack burn tint.",
+            () => ExhaustSmokeModel.ColorWetStack, v => ExhaustSmokeModel.ColorWetStack = v);
+        WireColor(section, "colorOilBurn", "Oil blowby tint.",
+            () => ExhaustSmokeModel.ColorOilBurn, v => ExhaustSmokeModel.ColorOilBurn = v);
+        _sections.Add(section);
+    }
+
+    private void WireColor(Section section, string key, string tooltip, Func<Color> get, Action<Color> set)
+    {
+        var spec = section.AddColor(key, tooltip, get, set);
+        spec.RequestEdit += () => _colorPicker.Open(spec);
     }
 
     private void BuildTurboSection(EngineSimulationHost host)

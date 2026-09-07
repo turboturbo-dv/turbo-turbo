@@ -166,6 +166,36 @@ internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
     public string Export() => Changed ? $"  {Key}: {_get().ToString().ToLowerInvariant()}" : null;
 }
 
+internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
+{
+    /// <summary>Raised when the swatch is clicked; the panel opens its shared picker for this spec.</summary>
+    public event Action RequestEdit;
+
+    public ColorSpec(string key, string tooltip, Func<Color> get, Action<Color> set)
+        : base(key, tooltip, get, set, null)
+    {
+    }
+
+    public Color Value => _get();
+
+    public void SetValue(Color value) => Commit(value);
+
+    public void Draw()
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        var prev = GUI.backgroundColor;
+        GUI.backgroundColor = _get();
+        if (GUILayout.Button(GUIContent.none, GUILayout.Width(120f), GUILayout.Height(18f))) RequestEdit?.Invoke();
+        GUI.backgroundColor = prev;
+        GUILayout.EndHorizontal();
+    }
+
+    public string Export() => Changed
+        ? $"  {Key}: #{ColorUtility.ToHtmlStringRGBA(_get())}"
+        : null;
+}
+
 internal sealed class KeyCodeSpec : SpecBase<KeyCode>, ITweakSpec
 {
     private bool _capturing;
