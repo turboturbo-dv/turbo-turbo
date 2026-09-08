@@ -24,7 +24,6 @@ internal interface ITweakSpec
 
 internal abstract class SpecBase<T>
 {
-    private readonly string _key;
     protected readonly Func<T> _get;
     protected readonly Action<T> _set;
     protected readonly T _initial;
@@ -32,9 +31,13 @@ internal abstract class SpecBase<T>
     protected readonly bool _requiresReconfigure;
     protected readonly GUIContent _label;
 
+    public string Key { get; }
+
+    public bool Changed => !EqualityComparer<T>.Default.Equals(_get(), _initial);
+
     protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onRequiresReconfigure)
     {
-        _key = key;
+        Key = key;
         _label = new GUIContent(key, tooltip);
         _get = get;
         _set = set;
@@ -42,10 +45,6 @@ internal abstract class SpecBase<T>
         _onRequiresReconfigure = onRequiresReconfigure;
         _requiresReconfigure = onRequiresReconfigure != null;
     }
-
-    public string Key => _key;
-
-    public bool Changed => !EqualityComparer<T>.Default.Equals(_get(), _initial);
 
     protected void Commit(T value)
     {
@@ -198,18 +197,17 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
 
 internal sealed class ButtonSpec : ITweakSpec
 {
-    private readonly string _key;
     private readonly string _tooltip;
     private readonly Action _action;
 
     public ButtonSpec(string key, string tooltip, Action action)
     {
-        _key = key;
+        Key = key;
         _tooltip = tooltip;
         _action = action;
     }
 
-    public string Key => _key;
+    public string Key { get; }
 
     public bool Changed => false;
 
@@ -219,7 +217,7 @@ internal sealed class ButtonSpec : ITweakSpec
 
     public void Draw()
     {
-        if (GUILayout.Button(new GUIContent(_key, _tooltip))) _action();
+        if (GUILayout.Button(new GUIContent(Key, _tooltip))) _action();
     }
 
     public string Export() => null;

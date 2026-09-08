@@ -44,13 +44,12 @@ public sealed class TurboModel
         }
     }
 
-    private readonly Settings _settings;
     private readonly Func<float> _throttle;
     private readonly Func<float> _rpmNorm;
 
-    internal Settings Tuning => _settings;
-
     private float _prevDemand;
+
+    public Settings Tuning { get; }
 
     /// <summary>Current turbo boost pressure ratio [0..1].</summary>
     public float Boost { get; private set; }
@@ -89,7 +88,7 @@ public sealed class TurboModel
 
     public TurboModel(Settings settings, Func<float> throttle, Func<float> rpmNorm)
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
         _throttle = throttle ?? throw new ArgumentNullException(nameof(throttle));
         _rpmNorm = rpmNorm ?? throw new ArgumentNullException(nameof(rpmNorm));
     }
@@ -99,7 +98,7 @@ public sealed class TurboModel
     /// </summary>
     public void Tick(float delta, bool engineOn)
     {
-        var s = _settings;
+        var s = Tuning;
 
         var demand = Mathf.Clamp01(_throttle());
         var rpmNorm = Mathf.Clamp01(_rpmNorm());

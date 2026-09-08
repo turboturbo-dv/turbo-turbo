@@ -48,27 +48,23 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private EngineConfiguration _configuration;
     private SimController _simController;
-    private TurboModel _turboModel;
 
     private Port _throttlePort;
     private Func<float> _fuelNorm;
     private Func<bool> _engineOn;
 
-    private TrainCar _trainCar;
-    private readonly List<ExhaustEmitters> _exhausts = new();
     private readonly List<ParticleSystem> _replacedExhausts = new();
-    private ExhaustVelocitySettings _velocity;
 
-    public TurboModel TurboModel => _turboModel;
-    public TrainCar TrainCar => _trainCar;
-    public IReadOnlyList<ExhaustEmitters> Exhausts => _exhausts;
+    public TurboModel TurboModel { get; private set; }
+    public TrainCar TrainCar { get; private set; }
+    public List<ExhaustEmitters> Exhausts { get; } = new();
 
     /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
-    public ExhaustVelocitySettings Velocity => _velocity;
-    public bool Bound => _simBound && _turboModel != null;
-    public bool EngineOn => _turboModel != null && _engineOn();
-    public float AbsSpeed => _trainCar.GetAbsSpeed();
-    public string CarId => _trainCar.ID;
+    public ExhaustVelocitySettings Velocity { get; private set; }
+    public bool Bound => _simBound && TurboModel != null;
+    public bool EngineOn => TurboModel != null && _engineOn();
+    public float AbsSpeed => TrainCar.GetAbsSpeed();
+    public string CarId => TrainCar.ID;
 
     private void OnDestroy()
     {
@@ -83,12 +79,12 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         // emitters are separate GameObjects under the car root, they do not
         // die with this component
-        foreach (var e in _exhausts)
+        foreach (var e in Exhausts)
         {
             if (e.Smoke != null) Destroy(e.Smoke.gameObject);
             if (e.Shimmer != null) Destroy(e.Shimmer.gameObject);
         }
-        _exhausts.Clear();
+        Exhausts.Clear();
 
         Orchestrator.Instance?.Forget(this);
     }
@@ -112,14 +108,14 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             return;
         }
 
-        if (_turboModel == null) return;
+        if (TurboModel == null) return;
 
         var engineOn = _engineOn();
-        _turboModel.Tick(Time.deltaTime, engineOn);
+        TurboModel.Tick(Time.deltaTime, engineOn);
 
         // write the torque-capped demand back to the engine's throttle port,
         // this ensures the engine's power is limited by available air
-        _throttlePort.Value = _turboModel.EffectiveDemand;
+        _throttlePort.Value = TurboModel.EffectiveDemand;
 
         if (_effectsBound)
         {
@@ -150,7 +146,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
             // effects are driven from the turbo model's signals, so only bind
             // them when binding the turbo model succeeds.
-            if (_turboModel != null)
+            if (TurboModel != null)
             {
                 TryBindEffects();
             }
@@ -195,7 +191,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             ? () => engineOnPort.Value > 0.5f
             : () => rpmPort.Value > 0.05f;
 
-        _turboModel = new TurboModel(new TurboModel.Settings(_configuration.Turbo),
+        TurboModel = new TurboModel(new TurboModel.Settings(_configuration.Turbo),
             () => _throttlePort.Value,
             () => rpmPort.Value);
 
@@ -211,10 +207,10 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         ModAssets.EnsureLoaded();
         GameAssets.EnsureLoaded();
 
-        _trainCar = GetComponent<TrainCar>();
-        _exhausts.Clear();
+        TrainCar = GetComponent<TrainCar>();
+        Exhausts.Clear();
 
-        _velocity = new ExhaustVelocitySettings(_configuration.Velocity);
+        Velocity = new ExhaustVelocitySettings(_configuration.Velocity);
 
         var exhausts = _configuration.Exhausts;
         for (var i = 0; i < exhausts.Count; i++)
@@ -230,7 +226,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
             var emitters = new ExhaustEmitters
             {
-                Mouth = _trainCar.transform.InverseTransformPoint(exhaust.position),
+                Mouth = TrainCar.transform.InverseTransformPoint(exhaust.position),
                 Offset = binding.Offset,
             };
             emitters.Smoke = CreateSmokeEmitter(i, exhaust.position, binding.Offset,
@@ -238,18 +234,18 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 new ExhaustSmokeModel.Settings(_configuration.Smoke));
             emitters.Shimmer = CreateShimmerEmitter(i, exhaust.position, binding.Offset,
                 new ShimmerParticles.Settings(_configuration.ShimmerEmitter));
-            _exhausts.Add(emitters);
+            Exhausts.Add(emitters);
         }
 
         _effectsBound = true;
-        _log.Info($"effects bound on '{name}' ({_exhausts.Count} exhaust emitter(s))");
+        _log.Info($"effects bound on '{name}' ({Exhausts.Count} exhaust emitter(s))");
     }
 
     private Transform ResolveExhaustTransform(ExhaustBinding binding)
     {
         if (binding.ParticleSystemSelector != null)
         {
-            var existingPs = binding.ParticleSystemSelector(_trainCar);
+            var existingPs = binding.ParticleSystemSelector(TrainCar);
             if (existingPs == null)
             {
                 return null;
@@ -262,7 +258,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
         else
         {
-            return binding.TransformSelector(_trainCar);
+            return binding.TransformSelector(TrainCar);
         }
     }
 
@@ -270,11 +266,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         SmokeParticles.Settings tuning, ExhaustSmokeModel.Settings smokeTuning)
     {
         var go = new GameObject($"TurboTurbo.Smoke[{index}]");
-        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, _trainCar.transform, offset);
+        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, TrainCar.transform, offset);
         var smoke = go.AddComponent<SmokeParticles>();
         smoke.tuning = tuning;
         smoke.Model.Tuning = smokeTuning;
-        smoke.velocity = _velocity;
+        smoke.velocity = Velocity;
         smoke.shader = ModAssets.SmokeShader;
         smoke.atlas = GameAssets.SmokeAtlas;
         smoke.customSimulationSpace = WorldMover.OriginShiftParent;
@@ -286,10 +282,10 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         ShimmerParticles.Settings tuning)
     {
         var go = new GameObject($"TurboTurbo.Shimmer[{index}]");
-        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, _trainCar.transform, offset);
+        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, TrainCar.transform, offset);
         var shimmer = go.AddComponent<ShimmerParticles>();
         shimmer.tuning = tuning;
-        shimmer.velocity = _velocity;
+        shimmer.velocity = Velocity;
         shimmer.shader = ModAssets.HeatShimmerShader;
         shimmer.customSimulationSpace = WorldMover.OriginShiftParent;
         shimmer.Configure();
@@ -298,15 +294,15 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void UpdateEffects(bool engineOn)
     {
-        var velocity = _trainCar.GetVelocity();
-        var absSpeed = _trainCar.GetAbsSpeed();
-        var heat = _turboModel.ExhaustHeat;
+        var velocity = TrainCar.GetVelocity();
+        var absSpeed = TrainCar.GetAbsSpeed();
+        var heat = TurboModel.ExhaustHeat;
 
-        foreach (var e in _exhausts)
+        foreach (var e in Exhausts)
         {
             var smoke = e.Smoke;
-            smoke.lambda = _turboModel.Lambda;
-            smoke.rpmNorm = _turboModel.RpmNorm;
+            smoke.lambda = TurboModel.Lambda;
+            smoke.rpmNorm = TurboModel.RpmNorm;
             smoke.heat = heat;
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;

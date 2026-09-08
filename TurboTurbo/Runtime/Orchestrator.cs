@@ -14,9 +14,7 @@ internal sealed class Orchestrator : MonoBehaviour
 {
     private readonly Logger _log = Log.ForContext("orchestrator");
 
-    private readonly List<Runtime.EngineSimulationHost> _hosts = [];
-
-    public IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
+    public List<Runtime.EngineSimulationHost> Hosts { get; } = [];
 
     public bool Enabled { get; private set; } = true;
 
@@ -24,7 +22,7 @@ internal sealed class Orchestrator : MonoBehaviour
     {
         var car = host.TrainCar;
         _log.Info($"forgetting about '{car.name}' ({car.carType}, id={car.ID})");
-        _hosts.Remove(host);
+        Hosts.Remove(host);
     }
 
     private CarSpawner _hookedSpawner;
@@ -124,7 +122,7 @@ internal sealed class Orchestrator : MonoBehaviour
     private void TeardownHosts()
     {
         // host OnDestroy restores vanilla exhausts and removes our emitters
-        foreach (var host in _hosts.ToArray())
+        foreach (var host in Hosts.ToArray())
         {
             Destroy(host);
         }
@@ -172,7 +170,7 @@ internal sealed class Orchestrator : MonoBehaviour
         // host is a component of the car so it dies along with it if the car is fully removed
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
         host.Configure(matchingConfiguration.Value);
-        _hosts.Add(host);
+        Hosts.Add(host);
     }
 
     /// <summary>
@@ -196,6 +194,6 @@ internal sealed class Orchestrator : MonoBehaviour
             spawner = $"hooked to {hookedId}, current {currentId} ({verdict})";
         }
 
-        return $"enabled: {Enabled}\nhosts: {_hosts.Count}\nspawner: {spawner}";
+        return $"enabled: {Enabled}\nhosts: {Hosts.Count}\nspawner: {spawner}";
     }
 }

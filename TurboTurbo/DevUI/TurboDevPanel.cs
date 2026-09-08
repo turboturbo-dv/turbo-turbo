@@ -13,7 +13,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
 {
     public const float LabelWidth = 165f;
 
-    private Rect _rect = new(20f, 20f, 360f, 120f);
     private int _selected;
     private bool _requiresReconfigure;
     private readonly Logger _log = Log.ForContext("devpanel");
@@ -27,7 +26,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private ColorPickerWindow _colorPicker;
 
-    internal Rect WindowRect => _rect;
+    public Rect WindowRect { get; private set; } = new(20f, 20f, 360f, 120f);
 
     public static TurboDevPanel Create(Rect initialRect)
     {
@@ -36,7 +35,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();
         panel._colorPicker = go.AddComponent<ColorPickerWindow>();
-        panel._rect = initialRect;
+        panel.WindowRect = initialRect;
         return panel;
     }
 
@@ -68,11 +67,13 @@ internal sealed class TurboDevPanel : MonoBehaviour
         if (_needsShrink)
         {
             // not correct, but next draw will resize the window to fit the content
-            _rect.height = 10f;
+            var shrinkRect = WindowRect;
+            shrinkRect.height = 10f;
+            WindowRect = shrinkRect;
             _needsShrink = false;
         }
 
-        _rect = GUILayout.Window(GetInstanceID(), _rect, DrawWindow, "TurboTurbo Dev UI");
+        WindowRect = GUILayout.Window(GetInstanceID(), WindowRect, DrawWindow, "TurboTurbo Dev UI");
     }
 
     private void DrawWindow(int id)

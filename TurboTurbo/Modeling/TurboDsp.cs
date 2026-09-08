@@ -22,8 +22,6 @@ public sealed class TurboDsp
     private readonly Settings _p;
     private Xorshift32 _rng;
 
-    private double _turboRpm;
-    private double _boost = 1.0;
     private double _targetTurboRpm;
     private double _targetBoost = 1.0;
     private double _rampFromRpm;
@@ -54,8 +52,8 @@ public sealed class TurboDsp
     private double _svfLow;
     private double _svfBand;
 
-    public double TurboRpm => _turboRpm;
-    public double Boost => _boost;
+    public double TurboRpm { get; private set; }
+    public double Boost { get; private set; } = 1.0;
 
     /// <summary>
     /// When true, ProcessSample skips the internal lag physics and synthesizes
@@ -88,8 +86,8 @@ public sealed class TurboDsp
     /// </summary>
     public void BeginBuffer(int sampleCount)
     {
-        _rampFromRpm = _turboRpm;
-        _rampFromBoost = _boost;
+        _rampFromRpm = TurboRpm;
+        _rampFromBoost = Boost;
         _rampSamples = Math.Max(1, sampleCount);
         _rampPos = 0;
     }
@@ -106,19 +104,19 @@ public sealed class TurboDsp
         {
             // exhaust-energy target, scaled so N=1, L=1 reaches MaxTurboRpm
             var target = engineRpmNorm * engineRpmNorm * (9000.0 + 27000.0 * Math.Max(0.0, load));
-            var tau = target > _turboRpm ? p.TauSpool : p.TauDump;
-            _turboRpm += (target - _turboRpm) * Math.Min(1.0, dt / tau);
-            _boost = 1.0 + 2.5 * (_turboRpm / p.MaxTurboRpm) * Math.Max(0.0, load);
+            var tau = target > TurboRpm ? p.TauSpool : p.TauDump;
+            TurboRpm += (target - TurboRpm) * Math.Min(1.0, dt / tau);
+            Boost = 1.0 + 2.5 * (TurboRpm / p.MaxTurboRpm) * Math.Max(0.0, load);
         }
         else
         {
             _rampPos = Math.Min(_rampPos + 1, _rampSamples);
             var t = (double)_rampPos / _rampSamples;
-            _turboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
-            _boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
+            TurboRpm = _rampFromRpm + (_targetTurboRpm - _rampFromRpm) * t;
+            Boost = _rampFromBoost + (_targetBoost - _rampFromBoost) * t;
         }
 
-        if (_hasPrevLoad && (load - _prevLoad) / dt < p.SurgeRateThreshold && _boost > 2.0 && _surgeEnvelope <= 0.001)
+        if (_hasPrevLoad && (load - _prevLoad) / dt < p.SurgeRateThreshold && Boost > 2.0 && _surgeEnvelope <= 0.001)
         {
             _surgeEnvelope = 1.0;
             _surgePhase = 0.0;
@@ -127,7 +125,7 @@ public sealed class TurboDsp
         _prevLoad = load;
         _hasPrevLoad = true;
 
-        var bpf = (_turboRpm / 60.0) * p.BladeCount * p.BpfScale;
+        var bpf = (TurboRpm / 60.0) * p.BladeCount * p.BpfScale;
         if (bpf > 0.45 * sr) bpf = 0.45 * sr;
 
         // pitch jitter: xorshift noise, low-passed at JitterHz
@@ -147,16 +145,16 @@ public sealed class TurboDsp
         var taper = (foldBudget - bpf) / (0.35 * foldBudget);
         if (taper > 1.0) taper = 1.0;
         else if (taper < 0.0) taper = 0.0;
-        var drive = 1.0 + (_boost - 1.0) * taper;
+        var drive = 1.0 + (Boost - 1.0) * taper;
         var tonal = Math.Tanh(raw * drive) / Math.Tanh(drive);
 
-        var w = _turboRpm / p.MaxTurboRpm;
+        var w = TurboRpm / p.MaxTurboRpm;
 
         // acoustic loading: sound power tracks boost pressure differential,
         // not shaft speed alone. Right after a load drop the blade loading
         // collapses even while shaft inertia keeps w high (0.1 floor = faint
         // high-rpm overrun whistle)
-        var boostDeltaNorm = Clamp01((_boost - 1.0) / 2.5);
+        var boostDeltaNorm = Clamp01((Boost - 1.0) / 2.5);
         var pressureFactor = 0.10 + 0.90 * boostDeltaNorm;
 
         var whineGain = Math.Pow(w, p.WhineGainExponent) * pressureFactor * p.WhineGain;

@@ -99,13 +99,11 @@ namespace TurboTurbo.Modeling
 
         public Settings Tuning { get; set; } = new Settings();
 
-        private float _wetStackAccumulator;
+        public float WetStackAccumulator { get; private set; }
 
         public Color Color { get; private set; } = Color.clear;
 
-        internal float WetStackAccumulator => _wetStackAccumulator;
-
-        public void FillWetStack() => _wetStackAccumulator = 1f;
+        public void FillWetStack() => WetStackAccumulator = 1f;
 
         public void Update(float lambda, float rpmNorm, float heat, bool engineOn, float delta)
         {
@@ -138,20 +136,20 @@ namespace TurboTurbo.Modeling
             {
                 var fillProgress = Mathf.InverseLerp(0f, s.WetStackFillHeat, heat);
                 var fillFactor = 1f - Mathf.SmoothStep(0f, 1f, fillProgress);
-                _wetStackAccumulator = Mathf.Min(
+                WetStackAccumulator = Mathf.Min(
                     1f,
-                    _wetStackAccumulator + s.WetStackFillRate * fillFactor * delta);
+                    WetStackAccumulator + s.WetStackFillRate * fillFactor * delta);
             }
             else if (heat > s.WetStackReleaseHeat)
             {
                 var releaseProgress = Mathf.InverseLerp(s.WetStackReleaseHeat, 1f, heat);
                 var releaseFactor = Mathf.SmoothStep(0f, 1f, releaseProgress);
                 wetFactor = Mathf.Clamp01(
-                    s.WetStackReleaseRate * _wetStackAccumulator * releaseFactor * s.WetStackMistStrength);
+                    s.WetStackReleaseRate * WetStackAccumulator * releaseFactor * s.WetStackMistStrength);
 
-                _wetStackAccumulator = Mathf.Max(
+                WetStackAccumulator = Mathf.Max(
                     0f,
-                    _wetStackAccumulator - s.WetStackReleaseRate * releaseFactor * delta);
+                    WetStackAccumulator - s.WetStackReleaseRate * releaseFactor * delta);
             }
 
             var wetAlpha = s.WetStackMaxAlpha * wetFactor;
