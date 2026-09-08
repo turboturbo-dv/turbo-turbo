@@ -127,6 +127,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
         {
             DumpParticleSystems();
         }
+        if (GUILayout.Button("dump player train to log"))
+        {
+            PlayerTrainInspector.DumpTarget();
+        }
     }
 
     private void DumpParticleSystems()
