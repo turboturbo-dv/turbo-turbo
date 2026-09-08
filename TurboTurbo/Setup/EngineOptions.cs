@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using TurboTurbo.Modeling;
+using TurboTurbo.WorkBench;
+
 using UnityEngine;
 
 namespace TurboTurbo.Setup;
@@ -9,6 +12,11 @@ public class EngineOptions
 {
     private bool _hasTurbo = false;
     private readonly List<ExhaustBinding> _exhausts = new();
+    private readonly TurboModel.Settings _turbo = new();
+    private readonly ExhaustSmokeModel.Settings _smoke = new();
+    private readonly SmokeParticles.Settings _smokeEmitter = new();
+    private readonly ShimmerParticles.Settings _shimmer = new();
+    private readonly ExhaustVelocitySettings _velocity = new();
 
     public EngineOptions AddTurbo()
     {
@@ -34,8 +42,49 @@ public class EngineOptions
         return this;
     }
 
+    /// <summary>Tunes the turbo model from its defaults.</summary>
+    public EngineOptions ConfigureTurbo(Action<TurboModel.Settings> configure)
+    {
+        configure(_turbo);
+        return this;
+    }
+
+    /// <summary>Tunes the smoke appearance model from its defaults.</summary>
+    public EngineOptions ConfigureSmoke(Action<ExhaustSmokeModel.Settings> configure)
+    {
+        configure(_smoke);
+        return this;
+    }
+
+    /// <summary>Tunes the smoke emitter from its defaults.</summary>
+    public EngineOptions ConfigureSmokeEmitter(Action<SmokeParticles.Settings> configure)
+    {
+        configure(_smokeEmitter);
+        return this;
+    }
+
+    /// <summary>Tunes the shimmer emitter from its defaults.</summary>
+    public EngineOptions ConfigureShimmerEmitter(Action<ShimmerParticles.Settings> configure)
+    {
+        configure(_shimmer);
+        return this;
+    }
+
+    /// <summary>Tunes the exhaust flow range shared by the smoke and shimmer emitters.</summary>
+    public EngineOptions ConfigureExhaustVelocity(Action<ExhaustVelocitySettings> configure)
+    {
+        configure(_velocity);
+        return this;
+    }
+
     internal EngineConfiguration Build()
     {
-        return new EngineConfiguration(_hasTurbo, _exhausts);
+        // clone so later edits to this options object cannot leak into an already built configuration
+        return new EngineConfiguration(_hasTurbo, _exhausts,
+            new TurboModel.Settings(_turbo),
+            new ExhaustSmokeModel.Settings(_smoke),
+            new SmokeParticles.Settings(_smokeEmitter),
+            new ShimmerParticles.Settings(_shimmer),
+            new ExhaustVelocitySettings(_velocity));
     }
 }

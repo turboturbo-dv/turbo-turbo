@@ -19,10 +19,9 @@ namespace TurboTurbo.WorkBench
         [Header("Exhaust smoke emitter")]
         public bool smokeEnabled = true;
         [Range(0.3f, 2f)] public float lambda = 1.2f;
-        [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
-        [Range(0f, 100f)] public float cleanRate = 20f;
-        [Range(0f, 300f)] public float maxRate = 40f;
+        [Range(0f, 100f)] public float idleEmissionRate = 15f;
+        [Range(0f, 300f)] public float fullEmissionRate = 75f;
 
         [Header("Draw order")]
         public bool shimmerOverSmoke = false;
@@ -90,8 +89,8 @@ namespace TurboTurbo.WorkBench
                 _smokeBench = smokeGo.AddComponent<SmokeParticles>();
                 _smokeBench.shader = Shader.Find("TurboTurbo/Smoke");
                 _smokeBench.atlas = vanillaAtlas;
-                _smokeBench.cleanRate = cleanRate;
-                _smokeBench.maxRate = maxRate;
+                _smokeBench.Tuning.idleEmissionRate = idleEmissionRate;
+                _smokeBench.Tuning.fullEmissionRate = fullEmissionRate;
                 _smokeBench.Configure();
                 ExhaustPlacement.PlaceAt(smokeGo.transform, vanillaExhaust.transform.position,
                     _frame.transform, exhaustOffset);
@@ -108,10 +107,9 @@ namespace TurboTurbo.WorkBench
             if (_smokeBench != null)
             {
                 _smokeBench.lambda = lambda;
-                _smokeBench.demand = demand;
                 _smokeBench.rpmNorm = rpmNorm;
-                _smokeBench.cleanRate = cleanRate;
-                _smokeBench.maxRate = maxRate;
+                _smokeBench.Tuning.idleEmissionRate = idleEmissionRate;
+                _smokeBench.Tuning.fullEmissionRate = fullEmissionRate;
                 _smokeBench.heat = heat;
             }
 

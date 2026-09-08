@@ -19,6 +19,17 @@ namespace TurboTurboTests
             return new TurboModel(_settings, () => _throttle, () => _rpmNorm);
         }
 
+        [Fact]
+        public void Settings_CopyConstructor_IsIndependent()
+        {
+            var template = new TurboModel.Settings();
+            var clone = new TurboModel.Settings(template);
+
+            clone.LambdaCalibration.ShouldBe(template.LambdaCalibration);
+            clone.LambdaCalibration = 0.5f;
+            template.LambdaCalibration.ShouldNotBe(0.5f);
+        }
+
         // ------------------------------------------------------------
         // charge
         // ------------------------------------------------------------

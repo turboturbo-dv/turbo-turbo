@@ -15,13 +15,21 @@ internal sealed class DevPanelPresenter : MonoBehaviour
     private Rect _panelRect = new(20f, 20f, 360f, 120f);
     private TurboDevPanel _panel;
 
+    public static DevPanelPresenter Instance { get; private set; }
+
     public static DevPanelPresenter Create(Settings settings)
     {
         var go = new GameObject("TurboTurbo.DevPanelPresenter");
         DontDestroyOnLoad(go);
         var presenter = go.AddComponent<DevPanelPresenter>();
         presenter._settings = settings;
+        Instance = presenter;
         return presenter;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     private void Update()

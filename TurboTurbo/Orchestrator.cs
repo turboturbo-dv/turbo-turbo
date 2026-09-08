@@ -18,6 +18,8 @@ internal sealed class Orchestrator : MonoBehaviour
 
     public IReadOnlyList<Runtime.EngineSimulationHost> Hosts => _hosts;
 
+    public bool Enabled { get; private set; } = true;
+
     public void Forget(Runtime.EngineSimulationHost host)
     {
         var car = host.TrainCar;
@@ -38,30 +40,6 @@ internal sealed class Orchestrator : MonoBehaviour
         var orchestrator = go.AddComponent<Orchestrator>();
         Instance = orchestrator;
         return orchestrator;
-    }
-
-    /// <summary>
-    /// Generate diagnostics, used in the <see cref="DevUI.TurboDevPanel"/>
-    /// </summary>
-    /// <returns></returns>
-    public string DescribeDiagnostics()
-    {
-        var current = CarSpawner.Instance;
-        var currentId = current != null ? current.GetInstanceID().ToString() : "none";
-        string spawner;
-        if (ReferenceEquals(_hookedSpawner, null))
-        {
-            spawner = $"not hooked (current spawner: {currentId})";
-        }
-        else
-        {
-            var alive = _hookedSpawner != null;
-            var hookedId = alive ? _hookedSpawner.GetInstanceID().ToString() : "<destroyed>";
-            var verdict = alive && current != null && current == _hookedSpawner ? "ok" : "mismatch";
-            spawner = $"hooked to {hookedId}, current {currentId} ({verdict})";
-        }
-
-        return $"hosts: {_hosts.Count}\nspawner: {spawner}";
     }
 
     private void Update()
@@ -111,6 +89,47 @@ internal sealed class Orchestrator : MonoBehaviour
         Track(car);
     }
 
+    public void SetActive(bool isOn)
+    {
+        if (Enabled == isOn) return;
+
+        Enabled = isOn;
+        _log.Info($"{(isOn ? "enabled" : "disabled")}");
+
+        if (isOn)
+        {
+            AttachToExistingCars();
+        }
+        else
+        {
+            TeardownHosts();
+        }
+    }
+
+    private void AttachToExistingCars()
+    {
+        var spawner = CarSpawner.Instance;
+        if (spawner == null)
+        {
+            _log.Info("no car spawner (yet), re-attach deferred to spawn events");
+            return;
+        }
+
+        foreach (var car in spawner.AllCars)
+        {
+            Track(car);
+        }
+    }
+
+    private void TeardownHosts()
+    {
+        // host OnDestroy restores vanilla exhausts and removes our emitters
+        foreach (var host in _hosts.ToArray())
+        {
+            Destroy(host);
+        }
+    }
+
     private void OnCarAboutToBeDeleted(TrainCar car)
     {
         // we really don't need to do anything on delete, if the car is revived from the pool
@@ -127,11 +146,17 @@ internal sealed class Orchestrator : MonoBehaviour
 
     private void Track(TrainCar car)
     {
+        if (!Enabled) return;
+
         var matchingConfiguration = Controller.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
         {
+#if DEBUG
+            _log.Info(
+                $"'{car.name}' ({car.carType}, id={car.ID}) not configured, skipping");
             return;
+#endif
         }
 
         // ensures revived cars don't receive another host
@@ -148,5 +173,29 @@ internal sealed class Orchestrator : MonoBehaviour
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
         host.Configure(matchingConfiguration.Value);
         _hosts.Add(host);
+    }
+
+    /// <summary>
+    /// Generate diagnostics, used in the <see cref="DevUI.TurboDevPanel"/>
+    /// </summary>
+    /// <returns></returns>
+    public string DescribeDiagnostics()
+    {
+        var current = CarSpawner.Instance;
+        var currentId = current != null ? current.GetInstanceID().ToString() : "none";
+        string spawner;
+        if (ReferenceEquals(_hookedSpawner, null))
+        {
+            spawner = $"not hooked (current spawner: {currentId})";
+        }
+        else
+        {
+            var alive = _hookedSpawner != null;
+            var hookedId = alive ? _hookedSpawner.GetInstanceID().ToString() : "<destroyed>";
+            var verdict = alive && current != null && current == _hookedSpawner ? "ok" : "mismatch";
+            spawner = $"hooked to {hookedId}, current {currentId} ({verdict})";
+        }
+
+        return $"enabled: {Enabled}\nhosts: {_hosts.Count}\nspawner: {spawner}";
     }
 }

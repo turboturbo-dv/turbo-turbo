@@ -3,7 +3,9 @@ using System.Collections.Generic;
 
 using DV.ThingTypes;
 
+using TurboTurbo.Modeling;
 using TurboTurbo.Setup;
+using TurboTurbo.WorkBench;
 
 using UnityEngine;
 
@@ -40,7 +42,12 @@ public static class Controller
 
 internal record struct EngineConfiguration(
     bool HasTurbo,
-    List<ExhaustBinding> Exhausts);
+    List<ExhaustBinding> Exhausts,
+    TurboModel.Settings Turbo,
+    ExhaustSmokeModel.Settings Smoke,
+    SmokeParticles.Settings SmokeEmitter,
+    ShimmerParticles.Settings ShimmerEmitter,
+    ExhaustVelocitySettings Velocity);
 
 internal record struct ExhaustBinding(
     Func<TrainCar, Transform> TransformSelector,

@@ -24,6 +24,24 @@ public sealed class TurboModel
 
         /// <summary>Demand drop rate [1/s] that triggers a surge while boost is high.</summary>
         public float SurgeRateThreshold { get; set; } = 15f;
+
+        public Settings()
+        {
+        }
+
+        public Settings(Settings other)
+        {
+            LambdaCalibration = other.LambdaCalibration;
+            BoostChargeMultiplier = other.BoostChargeMultiplier;
+            RpmTorqueExponent = other.RpmTorqueExponent;
+            RpmBoostExponent = other.RpmBoostExponent;
+            TauUp = other.TauUp;
+            TauDown = other.TauDown;
+            MinSpoolTau = other.MinSpoolTau;
+            ThermalK = other.ThermalK;
+            TorqueLambdaFloor = other.TorqueLambdaFloor;
+            SurgeRateThreshold = other.SurgeRateThreshold;
+        }
     }
 
     private readonly Settings _settings;

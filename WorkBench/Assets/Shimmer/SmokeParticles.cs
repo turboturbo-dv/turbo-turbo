@@ -1,4 +1,5 @@
 using TurboTurbo.Modeling;
+using TurboTurbo.Setup;
 
 using UnityEngine;
 
@@ -7,24 +8,56 @@ namespace TurboTurbo.WorkBench
     [RequireComponent(typeof(ParticleSystem))]
     public class SmokeParticles : MonoBehaviour
     {
+        public sealed class Settings
+        {
+            public float idleEmissionRate = 15f;
+            public float fullEmissionRate = 75f;
+
+            public float lifetime = 2f;
+            public float startSizeMin = 0.3f;
+            public float startSizeMax = 0.5f;
+            public float sizeOverLifetimeStart = 1f;
+            public float sizeOverLifetimeEnd = 9.5f;
+            public float buoyancy = 0.3f;
+            public float drag = 0.5f;
+            public float angularVelocityMax = 20f;
+
+            public float speedNormMax = 15f;
+            public float speedLifetimeScale = 0.4f;
+            public float speedJitter = 0.5f;
+
+            public float turbulenceStrength = 1.25f;
+            public float turbulenceFrequency = 0.5f;
+            public float turbulenceScrollSpeed = 0f;
+
+            public Settings()
+            {
+            }
+
+            public Settings(Settings other)
+            {
+                idleEmissionRate = other.idleEmissionRate;
+                fullEmissionRate = other.fullEmissionRate;
+                lifetime = other.lifetime;
+                startSizeMin = other.startSizeMin;
+                startSizeMax = other.startSizeMax;
+                sizeOverLifetimeStart = other.sizeOverLifetimeStart;
+                sizeOverLifetimeEnd = other.sizeOverLifetimeEnd;
+                buoyancy = other.buoyancy;
+                drag = other.drag;
+                angularVelocityMax = other.angularVelocityMax;
+                speedNormMax = other.speedNormMax;
+                speedLifetimeScale = other.speedLifetimeScale;
+                speedJitter = other.speedJitter;
+                turbulenceStrength = other.turbulenceStrength;
+                turbulenceFrequency = other.turbulenceFrequency;
+                turbulenceScrollSpeed = other.turbulenceScrollSpeed;
+            }
+        }
+
         [Header("Smoke model inputs")]
         public float lambda = 1.2f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
-
-        [Header("Emission")]
-        public float idleEmissionRate = 15f;
-        public float fullEmissionRate = 75f;
-
-        [Header("Particle look")]
-        public float lifetime = 2f;
-        public float startSizeMin = 0.3f;
-        public float startSizeMax = 0.5f;
-        public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 9.5f;
-        public float buoyancy = 0.3f;
-        public float drag = 0.5f;
-        public float angularVelocityMax = 20f;
-
         [Range(0f, 1f)] public float heat;
 
         public bool engineOn = true;
@@ -34,15 +67,11 @@ namespace TurboTurbo.WorkBench
         /// <summary>Absolute speed of the vehicle carrying this emitter [m/s].</summary>
         public float absSpeed;
 
-        [Header("Speed-based dispersion and turbulence")]
-        public float speedNormMax = 15f;
+        /// <summary>Per-engine emission and appearance tuning, cloned at bind.</summary>
+        public Settings tuning = new Settings();
 
-        public float speedLifetimeScale = 0.4f;
-        public float speedJitter = 0.5f;
-
-        public float turbulenceStrength = 1.25f;
-        public float turbulenceFrequency = 0.5f;
-        public float turbulenceScrollSpeed = 0f;
+        /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
+        public ExhaustVelocitySettings velocity = new ExhaustVelocitySettings();
 
         public Shader shader;
         public Texture atlas;
@@ -57,7 +86,7 @@ namespace TurboTurbo.WorkBench
 
         public int ParticleCount => _ps.particleCount;
 
-        /// <summary>The internal appearance model (dev panel edits its thresholds).</summary>
+        /// <summary>The internal appearance model (dev panel edits its settings).</summary>
         internal ExhaustSmokeModel Model => _model;
 
         private void OnValidate()
@@ -77,6 +106,8 @@ namespace TurboTurbo.WorkBench
                 Debug.LogWarning("[SmokeParticles] missing shader or atlas, smoke will not render");
             }
 
+            var s = tuning;
+
             // some properties are deliberately not set here; we only emit particles manually
             var main = _ps.main;
             if (customSimulationSpace != null)
@@ -93,7 +124,7 @@ namespace TurboTurbo.WorkBench
             main.gravityModifier = 0f;
 
             // growth: smoke expands as it disperses
-            _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
+            _sizeCurve = AnimationCurve.Linear(0f, s.sizeOverLifetimeStart, 1f, s.sizeOverLifetimeEnd);
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
@@ -122,7 +153,7 @@ namespace TurboTurbo.WorkBench
             // we only apply drag, but we need to override the restrictive defaults on limit/dampen
             lvol.limit = 1000f;
             lvol.dampen = 0f;
-            lvol.drag = drag;
+            lvol.drag = s.drag;
 
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
@@ -134,18 +165,18 @@ namespace TurboTurbo.WorkBench
             var noise = _ps.noise;
             noise.enabled = true;
             noise.quality = ParticleSystemNoiseQuality.High;
-            noise.frequency = turbulenceFrequency;
-            noise.strength = turbulenceStrength;
+            noise.frequency = s.turbulenceFrequency;
+            noise.strength = s.turbulenceStrength;
             noise.damping = true;
             noise.separateAxes = false;
-            noise.scrollSpeed = turbulenceScrollSpeed;
+            noise.scrollSpeed = s.turbulenceScrollSpeed;
             noise.remapEnabled = false;
 
             // some buoyancy to counteract the resistance
             var vol = _ps.velocityOverLifetime;
             vol.enabled = true;
             vol.space = ParticleSystemSimulationSpace.World;
-            vol.y = buoyancy;
+            vol.y = s.buoyancy;
             vol.x = 0f;
             vol.z = 0f;
 
@@ -180,15 +211,17 @@ namespace TurboTurbo.WorkBench
         {
             _model.Update(lambda, rpmNorm, heat, engineOn, Time.deltaTime);
 
+            var s = tuning;
+
             // smoke dispersion and turbulence scales with this
-            var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
+            var speedNorm = Mathf.Clamp01(absSpeed / s.speedNormMax);
 
             var noise = _ps.noise;
-            noise.strength = turbulenceStrength * speedNorm;
+            noise.strength = s.turbulenceStrength * speedNorm;
 
             if (engineOn)
             {
-                _emitAccumulator += Mathf.Lerp(idleEmissionRate, fullEmissionRate, heat) * Time.deltaTime;
+                _emitAccumulator += Mathf.Lerp(s.idleEmissionRate, s.fullEmissionRate, heat) * Time.deltaTime;
             }
 
             var n = (int)_emitAccumulator;
@@ -199,7 +232,7 @@ namespace TurboTurbo.WorkBench
                 // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
-                var upSpeed = ExhaustVelocity.Calculate(heat);
+                var upSpeed = Mathf.Lerp(velocity.Idle, velocity.FullLoad, Mathf.Clamp01(heat));
                 var coneDir = transform.forward;
 
                 // custom emit requires us to apply the simulation space manually
@@ -212,14 +245,14 @@ namespace TurboTurbo.WorkBench
                         position = simPos,
                         velocity = ParticleSimSpace.Direction(customSimulationSpace,
                             coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                     + Random.insideUnitSphere * (0.15f + speedJitter * speedNorm)
+                                     + Random.insideUnitSphere * (0.15f + s.speedJitter * speedNorm)
                                      + locoVelocity),
-                        startSize = Random.Range(startSizeMin, startSizeMax),
+                        startSize = Random.Range(s.startSizeMin, s.startSizeMax),
                         startColor = _model.Color,
-                        startLifetime = lifetime * Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, speedLifetimeScale, speedNorm),
+                        startLifetime = s.lifetime * Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm),
                         // random orientation + slow spin gives the appearance of a turbulent smoke column
                         rotation = Random.Range(0f, 360f),
-                        angularVelocity = Random.Range(-angularVelocityMax, angularVelocityMax),
+                        angularVelocity = Random.Range(-s.angularVelocityMax, s.angularVelocityMax),
                     };
                     _ps.Emit(ep, 1);
                 }

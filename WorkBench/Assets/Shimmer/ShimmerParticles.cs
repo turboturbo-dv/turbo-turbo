@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using TurboTurbo.Modeling;
+using TurboTurbo.Setup;
 
 using UnityEngine;
 
@@ -10,22 +11,78 @@ namespace TurboTurbo
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour
     {
-        [Header("Emission (particles/s)")]
-        public float idleRate = 5f;
-        public float fullRate = 10f;
+        public sealed class Settings
+        {
+            public float idleRate = 5f;
+            public float fullRate = 10f;
 
-        [Header("Particle look")]
-        public float lifetime = 1.5f;
-        public float startSizeMin = 0.8f;
-        public float startSizeMax = 0.8f;
-        public float sizeOverLifetimeStart = 1f;
-        public float sizeOverLifetimeEnd = 6f;
-        public float gravity = -0.05f;
-        public Color color = new Color(1f, 1f, 1f, 1f); // TODO: not actually used by the shader, figure out if we can remove this
+            public float lifetime = 1.5f;
+            public float startSizeMin = 0.8f;
+            public float startSizeMax = 0.8f;
+            public float sizeOverLifetimeStart = 1f;
+            public float sizeOverLifetimeEnd = 6f;
+            public float gravity = -0.05f;
 
-        [Header("Particle motion")]
-        public float drag = 0.8f;
-        public float buoyancy = 0.3f;
+            public float drag = 0.8f;
+            public float buoyancy = 0.3f;
+
+            public float speedNormMax = 15f;
+            public float speedLifetimeScale = 0.4f;
+            public float speedJitter = 0.5f;
+
+            public float strength = 0.014f;
+            public float baseStrength = 0.1f;
+            public float freq = 6f;
+            public float idleRadius = 0.8f;
+            public float fullRadius = 1f;
+            public float idleAnimSpeed = 0.5f;
+            public float fullAnimSpeed = 2f;
+            public float speedMultiplier = 1f;
+
+            public float shimmerHoldTime = 0.15f;
+            public float decayK = 4f;
+
+            public Settings()
+            {
+            }
+
+            public Settings(Settings other)
+            {
+                idleRate = other.idleRate;
+                fullRate = other.fullRate;
+                lifetime = other.lifetime;
+                startSizeMin = other.startSizeMin;
+                startSizeMax = other.startSizeMax;
+                sizeOverLifetimeStart = other.sizeOverLifetimeStart;
+                sizeOverLifetimeEnd = other.sizeOverLifetimeEnd;
+                gravity = other.gravity;
+                drag = other.drag;
+                buoyancy = other.buoyancy;
+                speedNormMax = other.speedNormMax;
+                speedLifetimeScale = other.speedLifetimeScale;
+                speedJitter = other.speedJitter;
+                strength = other.strength;
+                baseStrength = other.baseStrength;
+                freq = other.freq;
+                idleRadius = other.idleRadius;
+                fullRadius = other.fullRadius;
+                idleAnimSpeed = other.idleAnimSpeed;
+                fullAnimSpeed = other.fullAnimSpeed;
+                speedMultiplier = other.speedMultiplier;
+                shimmerHoldTime = other.shimmerHoldTime;
+                decayK = other.decayK;
+            }
+        }
+
+        [Header("Debug")]
+        public bool outline;
+        public int debug;
+
+        // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
+        public int renderQueue = 3010;
+
+        [Header("Engine signal (0..1)")]
+        [Range(0f, 1f)] public float heat;
 
         /// <summary>World velocity of the vehicle carrying this emitter.
         /// Particles inherit this at emission, then drag decays it.</summary>
@@ -34,32 +91,11 @@ namespace TurboTurbo
         /// <summary>Absolute speed of the vehicle carrying this emitter [m/s].</summary>
         public float absSpeed;
 
-        [Header("Speed dispersion")]
-        public float speedNormMax = 15f;
-        public float speedLifetimeScale = 0.4f;
-        public float speedJitter = 0.5f;
+        /// <summary>Per-engine emission and appearance tuning, cloned at bind.</summary>
+        public Settings tuning = new Settings();
 
-        [Header("Shimmer")]
-        public bool outline;
-        public int debug;
-        public float strength = 0.014f;
-        public float baseStrength = 0.1f;
-        public float freq = 6f;
-        public float idleRadius = 0.8f;
-        public float fullRadius = 1f;
-        public float idleAnimSpeed = 0.5f;
-        public float fullAnimSpeed = 2f;
-        public float speedMultiplier = 1f;
-
-        [Header("Shimmer envelope")]
-        [Range(0f, 1f)] public float shimmerHoldTime = 0.15f;
-        public float decayK = 4f;
-
-        [Header("Engine signal (0..1)")]
-        [Range(0f, 1f)] public float heat;
-
-        // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
-        public int renderQueue = 3010;
+        /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
+        public ExhaustVelocitySettings velocity = new ExhaustVelocitySettings();
 
         public Shader shader;
 
@@ -84,6 +120,8 @@ namespace TurboTurbo
             if (_ps == null) _ps = GetComponent<ParticleSystem>();
             if (_renderer == null) _renderer = GetComponent<ParticleSystemRenderer>();
 
+            var s = tuning;
+
             // some properties are deliberately not set here; we only emit particles manually
             var main = _ps.main;
             if (customSimulationSpace != null)
@@ -96,15 +134,15 @@ namespace TurboTurbo
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
             }
             main.maxParticles = 200;
-            main.gravityModifier = gravity;
+            main.gravityModifier = s.gravity;
 
-            _sizeCurve = AnimationCurve.Linear(0f, sizeOverLifetimeStart, 1f, sizeOverLifetimeEnd);
+            _sizeCurve = AnimationCurve.Linear(0f, s.sizeOverLifetimeStart, 1f, s.sizeOverLifetimeEnd);
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            _alphaGradient = BakeAlphaDecayFunction(shimmerHoldTime, t => DecayRational(decayK, t));
+            _alphaGradient = BakeAlphaDecayFunction(s.shimmerHoldTime, t => DecayRational(s.decayK, t));
 
             var col = _ps.colorOverLifetime;
             col.enabled = true;
@@ -116,7 +154,7 @@ namespace TurboTurbo
             lvol.space = ParticleSystemSimulationSpace.World;
             lvol.limit = 25f;
             lvol.dampen = 0f;
-            lvol.drag = drag;
+            lvol.drag = s.drag;
             lvol.multiplyDragByParticleSize = false;
             lvol.multiplyDragByParticleVelocity = true;
 
@@ -124,7 +162,7 @@ namespace TurboTurbo
             var vol = _ps.velocityOverLifetime;
             vol.enabled = true;
             vol.space = ParticleSystemSimulationSpace.World;
-            vol.y = buoyancy;
+            vol.y = s.buoyancy;
             vol.x = 0f;
             vol.z = 0f;
 
@@ -162,7 +200,9 @@ namespace TurboTurbo
 
         private void Update()
         {
-            var rate = Mathf.Lerp(idleRate, fullRate, heat);
+            var s = tuning;
+
+            var rate = Mathf.Lerp(s.idleRate, s.fullRate, heat);
             _emitAccumulator += rate * Time.deltaTime;
             var n = (int)_emitAccumulator;
             if (n > 0)
@@ -172,11 +212,11 @@ namespace TurboTurbo
                 // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
-                var upSpeed = ExhaustVelocity.Calculate(heat);
+                var upSpeed = Mathf.Lerp(velocity.Idle, velocity.FullLoad, Mathf.Clamp01(heat));
                 var coneDir = transform.forward;
 
                 // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
-                var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
+                var speedNorm = Mathf.Clamp01(absSpeed / s.speedNormMax);
 
                 // custom emit requires us to apply the simulation space manually
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
@@ -188,11 +228,11 @@ namespace TurboTurbo
                         position = simPos,
                         velocity = ParticleSimSpace.Direction(customSimulationSpace,
                             coneDir * (upSpeed * UnityEngine.Random.Range(0.85f, 1.15f))
-                                     + UnityEngine.Random.insideUnitSphere * (0.15f + speedJitter * speedNorm)
+                                     + UnityEngine.Random.insideUnitSphere * (0.15f + s.speedJitter * speedNorm)
                                      + locoVelocity),
-                        startSize = UnityEngine.Random.Range(startSizeMin, startSizeMax),
-                        startColor = color,
-                        startLifetime = lifetime * UnityEngine.Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, speedLifetimeScale, speedNorm),
+                        startSize = UnityEngine.Random.Range(s.startSizeMin, s.startSizeMax),
+                        startColor = Color.white,
+                        startLifetime = s.lifetime * UnityEngine.Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm),
                     };
                     _ps.Emit(ep, 1);
                 }
@@ -200,14 +240,14 @@ namespace TurboTurbo
 
             if (_material != null)
             {
-                var speed = Mathf.Lerp(idleAnimSpeed, fullAnimSpeed, heat) * speedMultiplier;
+                var speed = Mathf.Lerp(s.idleAnimSpeed, s.fullAnimSpeed, heat) * s.speedMultiplier;
                 _animTime += Time.deltaTime * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
-                _material.SetFloat("_Strength", Mathf.Lerp(baseStrength, 1f, heat) * strength);
-                _material.SetFloat("_EffectRadius", Mathf.Lerp(idleRadius, fullRadius, heat));
+                _material.SetFloat("_Strength", Mathf.Lerp(s.baseStrength, 1f, heat) * s.strength);
+                _material.SetFloat("_EffectRadius", Mathf.Lerp(s.idleRadius, s.fullRadius, heat));
                 _material.SetFloat("_AnimTime", _animTime);
-                _material.SetFloat("_Freq", freq);
+                _material.SetFloat("_Freq", s.freq);
                 _material.SetFloat("_Outline", outline ? 1f : 0f);
                 _material.SetFloat("_Debug", debug);
             }

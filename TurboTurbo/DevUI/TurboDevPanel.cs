@@ -177,35 +177,44 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         BuildTurboSection(host);
         BuildSmokeModelSection(host);
-        BuildVelocitySection();
-        BuildColorsSection();
+        BuildVelocitySection(host);
+        BuildColorsSection(host);
         BuildEmitterSections(host);
         BuildPlacementSection(host);
     }
 
-    private void BuildVelocitySection()
+    private void BuildVelocitySection(EngineSimulationHost host)
     {
         var section = new Section("exhaust velocity", "exhaustVelocity") { OnToggle = () => _needsShrink = true };
         section.AddFloat("idleVelocity", "Exhaust plume speed [m/s] at idle heat.",
-            0f, 5f, false, () => ExhaustVelocity.Idle, v => ExhaustVelocity.Idle = v);
+            0f, 5f, false, () => host.Velocity.Idle, v => host.Velocity.Idle = v);
         section.AddFloat("fullLoadVelocity", "Exhaust plume speed [m/s] at full heat.",
-            0f, 20f, false, () => ExhaustVelocity.FullLoad, v => ExhaustVelocity.FullLoad = v);
+            0f, 20f, false, () => host.Velocity.FullLoad, v => host.Velocity.FullLoad = v);
         _sections.Add(section);
     }
 
-    private void BuildColorsSection()
+    private void BuildColorsSection(EngineSimulationHost host)
     {
+        var models = new List<ExhaustSmokeModel>();
+        foreach (var e in host.Exhausts)
+        {
+            models.Add(e.Smoke.Model);
+        }
+
+        if (models.Count == 0) return;
+
+        var first = models[0];
         var section = new Section("smoke colors", "smokeColors") { OnToggle = () => _needsShrink = true };
         WireColor(section, "colorIdleHaze", "Haze tint at idle and low load.",
-            () => ExhaustSmokeModel.ColorIdleHaze, v => ExhaustSmokeModel.ColorIdleHaze = v);
+            () => first.Tuning.ColorIdleHaze, v => { foreach (var m in models) m.Tuning.ColorIdleHaze = v; });
         WireColor(section, "colorCleanBurn", "Clean burn tint.",
-            () => ExhaustSmokeModel.ColorCleanBurn, v => ExhaustSmokeModel.ColorCleanBurn = v);
+            () => first.Tuning.ColorCleanBurn, v => { foreach (var m in models) m.Tuning.ColorCleanBurn = v; });
         WireColor(section, "colorHeavySoot", "Soot tint.",
-            () => ExhaustSmokeModel.ColorHeavySoot, v => ExhaustSmokeModel.ColorHeavySoot = v);
+            () => first.Tuning.ColorHeavySoot, v => { foreach (var m in models) m.Tuning.ColorHeavySoot = v; });
         WireColor(section, "colorWetStack", "Wet stack burn tint.",
-            () => ExhaustSmokeModel.ColorWetStack, v => ExhaustSmokeModel.ColorWetStack = v);
+            () => first.Tuning.ColorWetStack, v => { foreach (var m in models) m.Tuning.ColorWetStack = v; });
         WireColor(section, "colorOilBurn", "Oil burn tint.",
-            () => ExhaustSmokeModel.ColorOilBurn, v => ExhaustSmokeModel.ColorOilBurn = v);
+            () => first.Tuning.ColorOilBurn, v => { foreach (var m in models) m.Tuning.ColorOilBurn = v; });
         _sections.Add(section);
     }
 
@@ -274,43 +283,43 @@ internal sealed class TurboDevPanel : MonoBehaviour
                     foreach (var m in models)
                     {
                         set(m, v);
-                        m.Validate();
+                        m.Tuning.Validate();
                     }
                 });
         }
 
         Add("hazeAlpha", "Idle haze opacity.", 0f, 0.5f,
-            m => m.HazeAlpha, (m, v) => m.HazeAlpha = v);
+            m => m.Tuning.HazeAlpha, (m, v) => m.Tuning.HazeAlpha = v);
         Add("cleanBurnHeat", "Heat at which the idle haze is fully gone.", 0.05f, 1f,
-            m => m.CleanBurnHeat, (m, v) => m.CleanBurnHeat = v);
+            m => m.Tuning.CleanBurnHeat, (m, v) => m.Tuning.CleanBurnHeat = v);
         Add("cleanExhaustLambda", "Lambda at which the exhaust is fully clean.", 1f, 4f,
-            m => m.CleanExhaustLambda, (m, v) => m.CleanExhaustLambda = v);
+            m => m.Tuning.CleanExhaustLambda, (m, v) => m.Tuning.CleanExhaustLambda = v);
         Add("cleanExhaustAlpha", "Opacity of clean exhaust.", 0f, 0.2f,
-            m => m.CleanExhaustAlpha, (m, v) => m.CleanExhaustAlpha = v);
+            m => m.Tuning.CleanExhaustAlpha, (m, v) => m.Tuning.CleanExhaustAlpha = v);
         Add("sootOnsetLambda", "Lambda where soot starts forming.", 0.3f, 1.5f,
-            m => m.SootOnsetLambda, (m, v) => m.SootOnsetLambda = v);
+            m => m.Tuning.SootOnsetLambda, (m, v) => m.Tuning.SootOnsetLambda = v);
         Add("sootOpaqueLambda", "Lambda where soot reaches maximum opacity.", 0.1f, 1f,
-            m => m.SootOpaqueLambda, (m, v) => m.SootOpaqueLambda = v);
+            m => m.Tuning.SootOpaqueLambda, (m, v) => m.Tuning.SootOpaqueLambda = v);
         Add("sootCurveExponent", "Gamma shaping the soot ladder over the lambda deficit.", 0.5f, 3f,
-            m => m.SootCurveExponent, (m, v) => m.SootCurveExponent = v);
+            m => m.Tuning.SootCurveExponent, (m, v) => m.Tuning.SootCurveExponent = v);
         Add("sootMaxAlpha", "Opacity contribution of fully developed soot.", 0f, 1f,
-            m => m.SootMaxAlpha, (m, v) => m.SootMaxAlpha = v);
+            m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v);
         Add("wetStackFillHeat", "Heat below which wet stacking starts to occur.", 0f, 1f,
-            m => m.WetStackFillHeat, (m, v) => m.WetStackFillHeat = v);
+            m => m.Tuning.WetStackFillHeat, (m, v) => m.Tuning.WetStackFillHeat = v);
         Add("wetStackReleaseHeat", "Heat above which the wet stack starts to release.", 0f, 1f,
-            m => m.WetStackReleaseHeat, (m, v) => m.WetStackReleaseHeat = v);
+            m => m.Tuning.WetStackReleaseHeat, (m, v) => m.Tuning.WetStackReleaseHeat = v);
         Add("wetStackFillRate", "Accumulator fill rate [1/s] at zero heat.", 0f, 0.1f,
-            m => m.WetStackFillRate, (m, v) => m.WetStackFillRate = v);
+            m => m.Tuning.WetStackFillRate, (m, v) => m.Tuning.WetStackFillRate = v);
         Add("wetStackReleaseRate", "Release rate [1/s] at full heat.", 0f, 3f,
-            m => m.WetStackReleaseRate, (m, v) => m.WetStackReleaseRate = v);
+            m => m.Tuning.WetStackReleaseRate, (m, v) => m.Tuning.WetStackReleaseRate = v);
         Add("wetStackMistStrength", "How strongly the release rate converts into visible mist.", 0f, 5f,
-            m => m.WetStackMistStrength, (m, v) => m.WetStackMistStrength = v);
+            m => m.Tuning.WetStackMistStrength, (m, v) => m.Tuning.WetStackMistStrength = v);
         Add("wetStackMaxAlpha", "Opacity contribution of the wet-stack mist.", 0f, 1f,
-            m => m.WetStackMaxAlpha, (m, v) => m.WetStackMaxAlpha = v);
+            m => m.Tuning.WetStackMaxAlpha, (m, v) => m.Tuning.WetStackMaxAlpha = v);
         Add("oilTintStrength", "Max blend toward the oil-burn color, reached at high rpm.", 0f, 1f,
-            m => m.OilTintStrength, (m, v) => m.OilTintStrength = v);
+            m => m.Tuning.OilTintStrength, (m, v) => m.Tuning.OilTintStrength = v);
         Add("oilRpmExponent", "RPM exponent on the oil tint. Higher keeps oil coloration out of the low RPM range.", 0.5f, 5f,
-            m => m.OilRpmExponent, (m, v) => m.OilRpmExponent = v);
+            m => m.Tuning.OilRpmExponent, (m, v) => m.Tuning.OilRpmExponent = v);
         section.AddButton("fillWetStack", "Fill the wet-stack accumulator to 1.",
             () => { foreach (var m in models) m.FillWetStack(); });
         _sections.Add(section);
@@ -331,37 +340,37 @@ internal sealed class TurboDevPanel : MonoBehaviour
             var section = new Section("smoke emitter", "smokeEmitter", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
             var f = smokes[0];
             section.AddFloat("lifetime", "Particle lifetime in seconds.",
-                0.5f, 6f, false, () => f.lifetime, v => { foreach (var s in smokes) s.lifetime = v; });
+                0.5f, 6f, false, () => f.tuning.lifetime, v => { foreach (var s in smokes) s.tuning.lifetime = v; });
             section.AddFloat("startSizeMin", "Particle size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (var s in smokes) s.startSizeMin = v; });
+                0.1f, 3f, false, () => f.tuning.startSizeMin, v => { foreach (var s in smokes) s.tuning.startSizeMin = v; });
             section.AddFloat("startSizeMax", "Particle size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (var s in smokes) s.startSizeMax = v; });
+                0.1f, 3f, false, () => f.tuning.startSizeMax, v => { foreach (var s in smokes) s.tuning.startSizeMax = v; });
             section.AddFloat("sizeOverLifetimeStart", "Growth factor at emission.",
-                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (var s in smokes) s.sizeOverLifetimeStart = v; });
+                0.1f, 3f, true, () => f.tuning.sizeOverLifetimeStart, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeStart = v; });
             section.AddFloat("sizeOverLifetimeEnd", "Growth factor at end of lifetime.",
-                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.sizeOverLifetimeEnd = v; });
+                1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; });
             section.AddFloat("buoyancy", "Constant upward drift [m/s].",
-                -1f, 2f, true, () => f.buoyancy, v => { foreach (var s in smokes) s.buoyancy = v; });
+                -1f, 2f, true, () => f.tuning.buoyancy, v => { foreach (var s in smokes) s.tuning.buoyancy = v; });
             section.AddFloat("drag", "Air resistance decaying the inherited train velocity.",
-                0f, 3f, true, () => f.drag, v => { foreach (var s in smokes) s.drag = v; });
+                0f, 3f, true, () => f.tuning.drag, v => { foreach (var s in smokes) s.tuning.drag = v; });
             section.AddFloat("angularVelocityMax", "Max random spin speed [deg/s], sign-randomized per particle.",
-                0f, 90f, false, () => f.angularVelocityMax, v => { foreach (var s in smokes) s.angularVelocityMax = v; });
+                0f, 90f, false, () => f.tuning.angularVelocityMax, v => { foreach (var s in smokes) s.tuning.angularVelocityMax = v; });
             section.AddFloat("idleEmissionRate", "Emission rate [p/s] at idle heat.",
-                0f, 60f, false, () => f.idleEmissionRate, v => { foreach (var s in smokes) s.idleEmissionRate = v; });
+                0f, 60f, false, () => f.tuning.idleEmissionRate, v => { foreach (var s in smokes) s.tuning.idleEmissionRate = v; });
             section.AddFloat("fullEmissionRate", "Emission rate [p/s] at full heat.",
-                0f, 150f, false, () => f.fullEmissionRate, v => { foreach (var s in smokes) s.fullEmissionRate = v; });
+                0f, 150f, false, () => f.tuning.fullEmissionRate, v => { foreach (var s in smokes) s.tuning.fullEmissionRate = v; });
             section.AddFloat("speedNormMax", "Speed [m/s] at which speed-based dispersion reaches full strength.",
-                1f, 30f, false, () => f.speedNormMax, v => { foreach (var s in smokes) s.speedNormMax = v; });
+                1f, 30f, false, () => f.tuning.speedNormMax, v => { foreach (var s in smokes) s.tuning.speedNormMax = v; });
             section.AddFloat("speedLifetimeScale", "Particle lifetime multiplier at full dispersion.",
-                0f, 1f, false, () => f.speedLifetimeScale, v => { foreach (var s in smokes) s.speedLifetimeScale = v; });
+                0f, 1f, false, () => f.tuning.speedLifetimeScale, v => { foreach (var s in smokes) s.tuning.speedLifetimeScale = v; });
             section.AddFloat("speedJitter", "Extra emission jitter [m/s] at full dispersion.",
-                0f, 2f, false, () => f.speedJitter, v => { foreach (var s in smokes) s.speedJitter = v; });
+                0f, 2f, false, () => f.tuning.speedJitter, v => { foreach (var s in smokes) s.tuning.speedJitter = v; });
             section.AddFloat("turbulenceStrength", "Turbulence noise field strength at full dispersion speed (zero at standstill).",
-                0f, 3f, false, () => f.turbulenceStrength, v => { foreach (var s in smokes) s.turbulenceStrength = v; });
+                0f, 3f, false, () => f.tuning.turbulenceStrength, v => { foreach (var s in smokes) s.tuning.turbulenceStrength = v; });
             section.AddFloat("turbulenceFrequency", "Turbulence noise field frequency (lower = larger cells).",
-                0.05f, 2f, true, () => f.turbulenceFrequency, v => { foreach (var s in smokes) s.turbulenceFrequency = v; });
+                0.05f, 2f, true, () => f.tuning.turbulenceFrequency, v => { foreach (var s in smokes) s.tuning.turbulenceFrequency = v; });
             section.AddFloat("turbulenceScrollSpeed", "Turbulence noise field scroll speed.",
-                0f, 3f, true, () => f.turbulenceScrollSpeed, v => { foreach (var s in smokes) s.turbulenceScrollSpeed = v; });
+                0f, 3f, true, () => f.tuning.turbulenceScrollSpeed, v => { foreach (var s in smokes) s.tuning.turbulenceScrollSpeed = v; });
             _sections.Add(section);
         }
 
@@ -370,51 +379,51 @@ internal sealed class TurboDevPanel : MonoBehaviour
             var section = new Section("shimmer emitter", "shimmerEmitter", MarkRequiresReconfigure) { OnToggle = () => _needsShrink = true };
             var f = shimmers[0];
             section.AddFloat("idleRate", "Emission rate [p/s] at zero heat.",
-                0f, 20f, false, () => f.idleRate, v => { foreach (var s in shimmers) s.idleRate = v; });
+                0f, 20f, false, () => f.tuning.idleRate, v => { foreach (var s in shimmers) s.tuning.idleRate = v; });
             section.AddFloat("fullRate", "Emission rate [p/s] at full heat.",
-                0f, 40f, false, () => f.fullRate, v => { foreach (var s in shimmers) s.fullRate = v; });
+                0f, 40f, false, () => f.tuning.fullRate, v => { foreach (var s in shimmers) s.tuning.fullRate = v; });
             section.AddFloat("lifetime", "Particle lifetime in seconds.",
-                0.5f, 6f, true, () => f.lifetime, v => { foreach (var s in shimmers) s.lifetime = v; });
+                0.5f, 6f, true, () => f.tuning.lifetime, v => { foreach (var s in shimmers) s.tuning.lifetime = v; });
             section.AddFloat("startSizeMin", "Billboard size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMin, v => { foreach (var s in shimmers) s.startSizeMin = v; });
+                0.1f, 3f, false, () => f.tuning.startSizeMin, v => { foreach (var s in shimmers) s.tuning.startSizeMin = v; });
             section.AddFloat("startSizeMax", "Billboard size range at emission [m].",
-                0.1f, 3f, false, () => f.startSizeMax, v => { foreach (var s in shimmers) s.startSizeMax = v; });
+                0.1f, 3f, false, () => f.tuning.startSizeMax, v => { foreach (var s in shimmers) s.tuning.startSizeMax = v; });
             section.AddFloat("sizeOverLifetimeStart", "Growth factor at emission.",
-                0.1f, 3f, true, () => f.sizeOverLifetimeStart, v => { foreach (var s in shimmers) s.sizeOverLifetimeStart = v; });
+                0.1f, 3f, true, () => f.tuning.sizeOverLifetimeStart, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeStart = v; });
             section.AddFloat("sizeOverLifetimeEnd", "Growth factor at end of lifetime.",
-                1f, 10f, true, () => f.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.sizeOverLifetimeEnd = v; });
+                1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeEnd = v; });
             section.AddFloat("gravity", "Gravity modifier (negative = buoyant).",
-                -1f, 0.5f, true, () => f.gravity, v => { foreach (var s in shimmers) s.gravity = v; });
+                -1f, 0.5f, true, () => f.tuning.gravity, v => { foreach (var s in shimmers) s.tuning.gravity = v; });
             section.AddFloat("drag", "Air resistance decaying the inherited train velocity.",
-                0f, 3f, true, () => f.drag, v => { foreach (var s in shimmers) s.drag = v; });
+                0f, 3f, true, () => f.tuning.drag, v => { foreach (var s in shimmers) s.tuning.drag = v; });
             section.AddFloat("buoyancy", "Constant upward drift [m/s].",
-                0f, 2f, true, () => f.buoyancy, v => { foreach (var s in shimmers) s.buoyancy = v; });
+                0f, 2f, true, () => f.tuning.buoyancy, v => { foreach (var s in shimmers) s.tuning.buoyancy = v; });
             section.AddFloat("strength", "Max shimmer displacement at full heat.",
-                0f, 0.05f, false, () => f.strength, v => { foreach (var s in shimmers) s.strength = v; });
+                0f, 0.05f, false, () => f.tuning.strength, v => { foreach (var s in shimmers) s.tuning.strength = v; });
             section.AddFloat("baseStrength", "Displacement multiplier at zero heat (lerps to 1 at full heat).",
-                0f, 1f, false, () => f.baseStrength, v => { foreach (var s in shimmers) s.baseStrength = v; });
+                0f, 1f, false, () => f.tuning.baseStrength, v => { foreach (var s in shimmers) s.tuning.baseStrength = v; });
             section.AddFloat("freq", "Noise frequency of the shimmer field.",
-                1f, 20f, false, () => f.freq, v => { foreach (var s in shimmers) s.freq = v; });
+                1f, 20f, false, () => f.tuning.freq, v => { foreach (var s in shimmers) s.tuning.freq = v; });
             section.AddFloat("idleRadius", "Displacement radius at zero heat.",
-                0.2f, 2f, false, () => f.idleRadius, v => { foreach (var s in shimmers) s.idleRadius = v; });
+                0.2f, 2f, false, () => f.tuning.idleRadius, v => { foreach (var s in shimmers) s.tuning.idleRadius = v; });
             section.AddFloat("fullRadius", "Displacement radius at full heat.",
-                0.2f, 2f, false, () => f.fullRadius, v => { foreach (var s in shimmers) s.fullRadius = v; });
+                0.2f, 2f, false, () => f.tuning.fullRadius, v => { foreach (var s in shimmers) s.tuning.fullRadius = v; });
             section.AddFloat("idleAnimSpeed", "Noise scroll speed at zero heat.",
-                0f, 3f, false, () => f.idleAnimSpeed, v => { foreach (var s in shimmers) s.idleAnimSpeed = v; });
+                0f, 3f, false, () => f.tuning.idleAnimSpeed, v => { foreach (var s in shimmers) s.tuning.idleAnimSpeed = v; });
             section.AddFloat("fullAnimSpeed", "Noise scroll speed at full heat.",
-                0f, 5f, false, () => f.fullAnimSpeed, v => { foreach (var s in shimmers) s.fullAnimSpeed = v; });
+                0f, 5f, false, () => f.tuning.fullAnimSpeed, v => { foreach (var s in shimmers) s.tuning.fullAnimSpeed = v; });
             section.AddFloat("speedMultiplier", "Multiplier on the noise scroll speed.",
-                0f, 4f, false, () => f.speedMultiplier, v => { foreach (var s in shimmers) s.speedMultiplier = v; });
+                0f, 4f, false, () => f.tuning.speedMultiplier, v => { foreach (var s in shimmers) s.tuning.speedMultiplier = v; });
             section.AddFloat("shimmerHoldTime", "Fraction of the particle's lifetime held at full strength before the decay function takes over.",
-                0f, 1f, true, () => f.shimmerHoldTime, v => { foreach (var s in shimmers) s.shimmerHoldTime = v; });
+                0f, 1f, true, () => f.tuning.shimmerHoldTime, v => { foreach (var s in shimmers) s.tuning.shimmerHoldTime = v; });
             section.AddFloat("decayK", "Rational decay tuning constant. Larger k gives a steeper initial drop after the hold time passes.",
-                0f, 8f, true, () => f.decayK, v => { foreach (var s in shimmers) s.decayK = v; });
+                0f, 8f, true, () => f.tuning.decayK, v => { foreach (var s in shimmers) s.tuning.decayK = v; });
             section.AddFloat("speedNormMax", "Speed [m/s] at which speed-based dispersion reaches full strength.",
-                1f, 30f, false, () => f.speedNormMax, v => { foreach (var s in shimmers) s.speedNormMax = v; });
+                1f, 30f, false, () => f.tuning.speedNormMax, v => { foreach (var s in shimmers) s.tuning.speedNormMax = v; });
             section.AddFloat("speedLifetimeScale", "Particle lifetime multiplier at full dispersion.",
-                0f, 1f, false, () => f.speedLifetimeScale, v => { foreach (var s in shimmers) s.speedLifetimeScale = v; });
+                0f, 1f, false, () => f.tuning.speedLifetimeScale, v => { foreach (var s in shimmers) s.tuning.speedLifetimeScale = v; });
             section.AddFloat("speedJitter", "Extra emission jitter [m/s] at full dispersion.",
-                0f, 2f, false, () => f.speedJitter, v => { foreach (var s in shimmers) s.speedJitter = v; });
+                0f, 2f, false, () => f.tuning.speedJitter, v => { foreach (var s in shimmers) s.tuning.speedJitter = v; });
             section.AddBool("outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (var s in shimmers) s.outline = v; });
             section.AddInt("debug", "Shader debug mode.",
