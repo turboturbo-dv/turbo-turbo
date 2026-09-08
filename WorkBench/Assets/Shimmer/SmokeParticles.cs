@@ -9,12 +9,11 @@ namespace TurboTurbo.WorkBench
     {
         [Header("Smoke model inputs")]
         public float lambda = 1.2f;
-        [Range(0f, 1f)] public float demand = 0.3f;
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
 
         [Header("Emission")]
-        public float cleanRate = 20f;
-        public float maxRate = 40f;
+        public float idleEmissionRate = 15f;
+        public float fullEmissionRate = 75f;
 
         [Header("Particle look")]
         public float lifetime = 2f;
@@ -106,7 +105,7 @@ namespace TurboTurbo.WorkBench
                 new[]
                 {
                     new GradientAlphaKey(0f, 0f),
-                    new GradientAlphaKey(1f, 0.05f),
+                    new GradientAlphaKey(1f, 0.025f),
                     new GradientAlphaKey(1f, 0.4f),
                     new GradientAlphaKey(0f, 1f),
                 });
@@ -179,7 +178,7 @@ namespace TurboTurbo.WorkBench
 
         private void Update()
         {
-            _model.Update(lambda, demand, rpmNorm, engineOn, Time.deltaTime);
+            _model.Update(lambda, rpmNorm, heat, engineOn, Time.deltaTime);
 
             // smoke dispersion and turbulence scales with this
             var speedNorm = Mathf.Clamp01(absSpeed / speedNormMax);
@@ -187,8 +186,11 @@ namespace TurboTurbo.WorkBench
             var noise = _ps.noise;
             noise.strength = turbulenceStrength * speedNorm;
 
-            var rate = rpmNorm * cleanRate + _model.Density * maxRate;
-            _emitAccumulator += rate * Time.deltaTime;
+            if (engineOn)
+            {
+                _emitAccumulator += Mathf.Lerp(idleEmissionRate, fullEmissionRate, heat) * Time.deltaTime;
+            }
+
             var n = (int)_emitAccumulator;
             if (n > 0)
             {

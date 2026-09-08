@@ -269,7 +269,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         {
             var smoke = e.Smoke;
             smoke.lambda = _turboModel.Lambda;
-            smoke.demand = _turboModel.Demand;
             smoke.rpmNorm = _turboModel.RpmNorm;
             smoke.heat = heat;
             smoke.engineOn = engineOn;

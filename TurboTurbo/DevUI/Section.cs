@@ -51,6 +51,11 @@ internal sealed class Section
         return spec;
     }
 
+    public void AddButton(string key, string tooltip, Action action)
+    {
+        _specs.Add(new ButtonSpec(key, tooltip, action));
+    }
+
     public void AddInt(string key, string tooltip, int min, int max, bool requiresReconfigure,
         Func<int> get, Action<int> set)
     {

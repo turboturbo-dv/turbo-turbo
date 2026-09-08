@@ -12,7 +12,7 @@ public sealed class TurboModel
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
     public sealed class Settings
     {
-        public float LambdaCalibration { get; set; } = 1.65f;
+        public float LambdaCalibration { get; set; } = 1.74f;
         public float BoostChargeMultiplier { get; set; } = 1.125f;
         public float RpmTorqueExponent { get; set; } = 0f;
         public float RpmBoostExponent { get; set; } = 1.2f;

@@ -196,6 +196,35 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
         : null;
 }
 
+internal sealed class ButtonSpec : ITweakSpec
+{
+    private readonly string _key;
+    private readonly string _tooltip;
+    private readonly Action _action;
+
+    public ButtonSpec(string key, string tooltip, Action action)
+    {
+        _key = key;
+        _tooltip = tooltip;
+        _action = action;
+    }
+
+    public string Key => _key;
+
+    public bool Changed => false;
+
+    public void Reset()
+    {
+    }
+
+    public void Draw()
+    {
+        if (GUILayout.Button(new GUIContent(_key, _tooltip))) _action();
+    }
+
+    public string Export() => null;
+}
+
 internal sealed class KeyCodeSpec : SpecBase<KeyCode>, ITweakSpec
 {
     private bool _capturing;

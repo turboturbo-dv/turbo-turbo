@@ -4,86 +4,132 @@ namespace TurboTurbo.Modeling
 {
     public class ExhaustSmokeModel
     {
-        public static Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 0.22f);
-        public static Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 0.95f);
-        public static Color ColorWetStack = new Color(0.85f, 0.82f, 0.78f, 0.85f);
-        public static Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 0.50f);
+        public static Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 1f);
+        public static Color ColorCleanBurn = new Color(0.45f, 0.45f, 0.45f, 1f);
+        public static Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 1f);
+        public static Color ColorWetStack = new Color(0.93f, 0.93f, 0.93f, 1f);
+        public static Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 1f);
 
-        public float WetStackIdleDemand = 0.1f;
-        public float WetStackFillRate = 0.005f;
-        public float WetStackBurnThreshold = 0.05f;
-        public float WetStackBurnDemand = 0.15f;
-        public float WetStackBurnRate = 0.75f;
-        public float WetStackBurnRampDemand = 0.5f;
-        public float OilBlowbyTintStrength = 0.25f;
+        public float CleanExhaustLambda = 1.7f;
+        public float CleanExhaustAlpha = 0.015f;
+        public float HazeAlpha = 0.08f;
+        public float CleanBurnHeat = 0.2f;
+
+        public float SootOnsetLambda = 1.05f;
+        public float SootOpaqueLambda = 0.8f;
         public float SootCurveExponent = 1.1f;
-        public float AlphaFloor = 0.02f;
-        public float AlphaCeiling = 0.95f;
-        public float WetStackAlphaScale = 0.8f;
+        public float SootMaxAlpha = 0.95f;
+
+        public float WetStackFillHeat = 0.1f;
+        public float WetStackReleaseHeat = 0.15f;
+        public float WetStackFillRate = 0.005f;
+        public float WetStackReleaseRate = 0.75f;
+        public float WetStackMistStrength = 4f;
+        public float WetStackMaxAlpha = 0.95f;
+
+        public float OilTintStrength = 0.3f;
+        public float OilRpmExponent = 2.5f;
 
         private float _wetStackAccumulator;
 
-        public float SootOnsetLambda = 1.1f;
-        public float SootOpaqueLambda = 0.8f;
-
         public Color Color { get; private set; } = Color.clear;
-
-        // used for determining emission rate; basically a slightly more pure view over the alpha channel
-        public float Density { get; private set; }
 
         internal float WetStackAccumulator => _wetStackAccumulator;
 
-        public void Update(float lambda, float demand, float rpmNorm, bool engineOn, float delta)
+        public void FillWetStack() => _wetStackAccumulator = 1f;
+
+        /// <summary>
+        /// Restores the documented invariants after tuning. Runs when settings
+        /// change, not inside Update.
+        /// </summary>
+        public void Validate()
+        {
+            const float epsilon = 0.01f;
+
+            CleanExhaustAlpha = Mathf.Clamp01(CleanExhaustAlpha);
+            HazeAlpha = Mathf.Clamp01(HazeAlpha);
+            SootMaxAlpha = Mathf.Clamp01(SootMaxAlpha);
+            WetStackMaxAlpha = Mathf.Clamp01(WetStackMaxAlpha);
+            WetStackMistStrength = Mathf.Max(0f, WetStackMistStrength);
+            OilTintStrength = Mathf.Clamp01(OilTintStrength);
+
+            WetStackFillRate = Mathf.Max(0f, WetStackFillRate);
+            WetStackReleaseRate = Mathf.Max(0f, WetStackReleaseRate);
+            CleanBurnHeat = Mathf.Max(epsilon, CleanBurnHeat);
+            SootCurveExponent = Mathf.Max(epsilon, SootCurveExponent);
+            OilRpmExponent = Mathf.Max(epsilon, OilRpmExponent);
+
+            WetStackFillHeat = Mathf.Clamp01(WetStackFillHeat);
+            WetStackReleaseHeat = Mathf.Clamp(
+                WetStackReleaseHeat, Mathf.Min(WetStackFillHeat + epsilon, 1f), 1f);
+            WetStackFillHeat = Mathf.Min(WetStackFillHeat, WetStackReleaseHeat - epsilon);
+
+            SootOnsetLambda = Mathf.Clamp(
+                SootOnsetLambda, SootOpaqueLambda + epsilon, CleanExhaustLambda - epsilon);
+            SootOpaqueLambda = Mathf.Min(SootOpaqueLambda, SootOnsetLambda - epsilon);
+            CleanExhaustLambda = Mathf.Max(CleanExhaustLambda, SootOnsetLambda + epsilon);
+        }
+
+        public void Update(float lambda, float rpmNorm, float heat, bool engineOn, float delta)
         {
             if (!engineOn)
             {
                 Color = Color.clear;
-                Density = 0f;
                 return;
             }
 
-            // wet stacking: unburned fuel accumulates at idle, burns off under load
-            if (demand < WetStackIdleDemand)
-            {
-                _wetStackAccumulator = Mathf.Min(1f, _wetStackAccumulator + delta * WetStackFillRate);
-            }
-            else
-            {
-                _wetStackAccumulator = Mathf.Max(0f, _wetStackAccumulator - delta * demand * WetStackBurnRate);
-            }
+            rpmNorm = Mathf.Clamp01(rpmNorm);
+            heat = Mathf.Clamp01(heat);
 
-            var current = ColorIdleHaze;
+            var flowColorFactor = Mathf.InverseLerp(0f, CleanBurnHeat, heat);
+            var baseColor = Color.Lerp(ColorIdleHaze, ColorCleanBurn, flowColorFactor);
 
-            // oil blowby layer
-            current = Color.Lerp(current, ColorOilBurn, OilBlowbyTintStrength * rpmNorm);
+            var cleanliness = Mathf.InverseLerp(SootOnsetLambda, CleanExhaustLambda, lambda);
+            var baseAlpha = Mathf.Lerp(HazeAlpha, CleanExhaustAlpha, cleanliness);
 
-            // soot layer
-            var sootFactor = Mathf.Clamp01(
-                (SootOnsetLambda - lambda) / (SootOnsetLambda - SootOpaqueLambda));
+            var oilFactor = Mathf.Clamp01(OilTintStrength * Mathf.Pow(rpmNorm, OilRpmExponent));
+            baseColor = Color.Lerp(baseColor, ColorOilBurn, oilFactor);
+
+            var sootFactor = Mathf.InverseLerp(SootOnsetLambda, SootOpaqueLambda, lambda);
             sootFactor = Mathf.Pow(sootFactor, SootCurveExponent);
-            current = Color.Lerp(current, ColorHeavySoot, sootFactor);
+            var sootAlpha = SootMaxAlpha * sootFactor;
 
-            // wet-stack layer
-            var wetBurn = 0f;
-            if (_wetStackAccumulator > WetStackBurnThreshold && demand > WetStackBurnDemand)
+            var wetFactor = 0f;
+            if (heat < WetStackFillHeat)
             {
-                var ramp = Mathf.Clamp01(
-                    (demand - WetStackIdleDemand) / (WetStackBurnRampDemand - WetStackIdleDemand));
-                wetBurn = _wetStackAccumulator * ramp;
-                current = Color.Lerp(current, ColorWetStack, wetBurn);
+                var fillProgress = Mathf.InverseLerp(0f, WetStackFillHeat, heat);
+                var fillFactor = 1f - Mathf.SmoothStep(0f, 1f, fillProgress);
+                _wetStackAccumulator = Mathf.Min(
+                    1f,
+                    _wetStackAccumulator + WetStackFillRate * fillFactor * delta);
+            }
+            else if (heat > WetStackReleaseHeat)
+            {
+                var releaseProgress = Mathf.InverseLerp(WetStackReleaseHeat, 1f, heat);
+                var releaseFactor = Mathf.SmoothStep(0f, 1f, releaseProgress);
+                wetFactor = Mathf.Clamp01(
+                    WetStackReleaseRate * _wetStackAccumulator * releaseFactor * WetStackMistStrength);
+
+                _wetStackAccumulator = Mathf.Max(
+                    0f,
+                    _wetStackAccumulator - WetStackReleaseRate * releaseFactor * delta);
             }
 
-            current.a = Mathf.Lerp(AlphaFloor, AlphaCeiling, Mathf.Max(sootFactor, wetBurn * WetStackAlphaScale));
-            Color = current;
+            var wetAlpha = WetStackMaxAlpha * wetFactor;
+            var totalWeight = baseAlpha + wetAlpha + sootAlpha;
+            var finalColor = (baseColor * baseAlpha
+                              + ColorWetStack * wetAlpha
+                              + ColorHeavySoot * sootAlpha) / totalWeight;
+            finalColor.a = 1f - (1f - baseAlpha) * (1f - wetAlpha) * (1f - sootAlpha);
 
-            Density = Mathf.Max(sootFactor, wetBurn);
+            Color = finalColor;
         }
     }
 
     public static class ExhaustVelocity
     {
         public static float Idle = 1.5f;
-        public static float FullLoad = 10f;
+        public static float FullLoad = 15f;
 
         public static float Calculate(float heat)
         {

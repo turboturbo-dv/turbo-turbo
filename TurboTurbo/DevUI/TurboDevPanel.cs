@@ -198,11 +198,13 @@ internal sealed class TurboDevPanel : MonoBehaviour
         var section = new Section("smoke colors", "smokeColors") { OnToggle = () => _needsShrink = true };
         WireColor(section, "colorIdleHaze", "Haze tint at idle and low load.",
             () => ExhaustSmokeModel.ColorIdleHaze, v => ExhaustSmokeModel.ColorIdleHaze = v);
-        WireColor(section, "colorHeavySoot", "Soot tint at full opacity.",
+        WireColor(section, "colorCleanBurn", "Clean burn tint.",
+            () => ExhaustSmokeModel.ColorCleanBurn, v => ExhaustSmokeModel.ColorCleanBurn = v);
+        WireColor(section, "colorHeavySoot", "Soot tint.",
             () => ExhaustSmokeModel.ColorHeavySoot, v => ExhaustSmokeModel.ColorHeavySoot = v);
         WireColor(section, "colorWetStack", "Wet stack burn tint.",
             () => ExhaustSmokeModel.ColorWetStack, v => ExhaustSmokeModel.ColorWetStack = v);
-        WireColor(section, "colorOilBurn", "Oil blowby tint.",
+        WireColor(section, "colorOilBurn", "Oil burn tint.",
             () => ExhaustSmokeModel.ColorOilBurn, v => ExhaustSmokeModel.ColorOilBurn = v);
         _sections.Add(section);
     }
@@ -267,35 +269,50 @@ internal sealed class TurboDevPanel : MonoBehaviour
             Func<ExhaustSmokeModel, float> get, Action<ExhaustSmokeModel, float> set)
         {
             section.AddFloat(key, tooltip, min, max, false,
-                () => get(first), v => { foreach (var m in models) set(m, v); });
+                () => get(first), v =>
+                {
+                    foreach (var m in models)
+                    {
+                        set(m, v);
+                        m.Validate();
+                    }
+                });
         }
 
+        Add("hazeAlpha", "Idle haze opacity.", 0f, 0.5f,
+            m => m.HazeAlpha, (m, v) => m.HazeAlpha = v);
+        Add("cleanBurnHeat", "Heat at which the idle haze is fully gone.", 0.05f, 1f,
+            m => m.CleanBurnHeat, (m, v) => m.CleanBurnHeat = v);
+        Add("cleanExhaustLambda", "Lambda at which the exhaust is fully clean.", 1f, 4f,
+            m => m.CleanExhaustLambda, (m, v) => m.CleanExhaustLambda = v);
+        Add("cleanExhaustAlpha", "Opacity of clean exhaust.", 0f, 0.2f,
+            m => m.CleanExhaustAlpha, (m, v) => m.CleanExhaustAlpha = v);
         Add("sootOnsetLambda", "Lambda where soot starts forming.", 0.3f, 1.5f,
             m => m.SootOnsetLambda, (m, v) => m.SootOnsetLambda = v);
         Add("sootOpaqueLambda", "Lambda where soot reaches maximum opacity.", 0.1f, 1f,
             m => m.SootOpaqueLambda, (m, v) => m.SootOpaqueLambda = v);
-        Add("wetStackIdleDemand", "Demand below which unburned fuel accumulates (wet stacking); also where the burn-off ramp begins.", 0f, 0.5f,
-            m => m.WetStackIdleDemand, (m, v) => m.WetStackIdleDemand = v);
-        Add("wetStackFillRate", "Accumulator fill rate [1/s] while idling.", 0f, 0.1f,
-            m => m.WetStackFillRate, (m, v) => m.WetStackFillRate = v);
-        Add("wetStackBurnThreshold", "The accumulator must exceed this before burn-off becomes visible.", 0f, 0.5f,
-            m => m.WetStackBurnThreshold, (m, v) => m.WetStackBurnThreshold = v);
-        Add("wetStackBurnDemand", "Demand above which the wet-stack burn produces white smoke.", 0f, 0.6f,
-            m => m.WetStackBurnDemand, (m, v) => m.WetStackBurnDemand = v);
-        Add("wetStackBurnRate", "Burn-off rate [1/s] per unit demand.", 0f, 3f,
-            m => m.WetStackBurnRate, (m, v) => m.WetStackBurnRate = v);
-        Add("wetStackBurnRampDemand", "Demand at which the burn-off ramp reaches full strength (ramps up from wetStackIdleDemand).", 0.2f, 1f,
-            m => m.WetStackBurnRampDemand, (m, v) => m.WetStackBurnRampDemand = v);
-        Add("oilBlowbyTintStrength", "Max blend toward the oil-burn color, reached at full rpm.", 0f, 1f,
-            m => m.OilBlowbyTintStrength, (m, v) => m.OilBlowbyTintStrength = v);
         Add("sootCurveExponent", "Gamma shaping the soot ladder over the lambda deficit.", 0.5f, 3f,
             m => m.SootCurveExponent, (m, v) => m.SootCurveExponent = v);
-        Add("alphaFloor", "Smoke opacity floor (clean haze).", 0f, 0.5f,
-            m => m.AlphaFloor, (m, v) => m.AlphaFloor = v);
-        Add("alphaCeiling", "Smoke opacity ceiling (soot).", 0.5f, 1f,
-            m => m.AlphaCeiling, (m, v) => m.AlphaCeiling = v);
-        Add("wetStackAlphaScale", "How strongly the wet-stack burn pushes opacity towards the ceiling.", 0f, 1f,
-            m => m.WetStackAlphaScale, (m, v) => m.WetStackAlphaScale = v);
+        Add("sootMaxAlpha", "Opacity contribution of fully developed soot.", 0f, 1f,
+            m => m.SootMaxAlpha, (m, v) => m.SootMaxAlpha = v);
+        Add("wetStackFillHeat", "Heat below which wet stacking starts to occur.", 0f, 1f,
+            m => m.WetStackFillHeat, (m, v) => m.WetStackFillHeat = v);
+        Add("wetStackReleaseHeat", "Heat above which the wet stack starts to release.", 0f, 1f,
+            m => m.WetStackReleaseHeat, (m, v) => m.WetStackReleaseHeat = v);
+        Add("wetStackFillRate", "Accumulator fill rate [1/s] at zero heat.", 0f, 0.1f,
+            m => m.WetStackFillRate, (m, v) => m.WetStackFillRate = v);
+        Add("wetStackReleaseRate", "Release rate [1/s] at full heat.", 0f, 3f,
+            m => m.WetStackReleaseRate, (m, v) => m.WetStackReleaseRate = v);
+        Add("wetStackMistStrength", "How strongly the release rate converts into visible mist.", 0f, 5f,
+            m => m.WetStackMistStrength, (m, v) => m.WetStackMistStrength = v);
+        Add("wetStackMaxAlpha", "Opacity contribution of the wet-stack mist.", 0f, 1f,
+            m => m.WetStackMaxAlpha, (m, v) => m.WetStackMaxAlpha = v);
+        Add("oilTintStrength", "Max blend toward the oil-burn color, reached at high rpm.", 0f, 1f,
+            m => m.OilTintStrength, (m, v) => m.OilTintStrength = v);
+        Add("oilRpmExponent", "RPM exponent on the oil tint. Higher keeps oil coloration out of the low RPM range.", 0.5f, 5f,
+            m => m.OilRpmExponent, (m, v) => m.OilRpmExponent = v);
+        section.AddButton("fillWetStack", "Fill the wet-stack accumulator to 1.",
+            () => { foreach (var m in models) m.FillWetStack(); });
         _sections.Add(section);
     }
 
@@ -329,10 +346,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 3f, true, () => f.drag, v => { foreach (var s in smokes) s.drag = v; });
             section.AddFloat("angularVelocityMax", "Max random spin speed [deg/s], sign-randomized per particle.",
                 0f, 90f, false, () => f.angularVelocityMax, v => { foreach (var s in smokes) s.angularVelocityMax = v; });
-            section.AddFloat("cleanRate", "Base emission rate [p/s] scaled by rpm.",
-                0f, 60f, false, () => f.cleanRate, v => { foreach (var s in smokes) s.cleanRate = v; });
-            section.AddFloat("maxRate", "Extra emission rate [p/s] at full soot density.",
-                0f, 150f, false, () => f.maxRate, v => { foreach (var s in smokes) s.maxRate = v; });
+            section.AddFloat("idleEmissionRate", "Emission rate [p/s] at idle heat.",
+                0f, 60f, false, () => f.idleEmissionRate, v => { foreach (var s in smokes) s.idleEmissionRate = v; });
+            section.AddFloat("fullEmissionRate", "Emission rate [p/s] at full heat.",
+                0f, 150f, false, () => f.fullEmissionRate, v => { foreach (var s in smokes) s.fullEmissionRate = v; });
             section.AddFloat("speedNormMax", "Speed [m/s] at which speed-based dispersion reaches full strength.",
                 1f, 30f, false, () => f.speedNormMax, v => { foreach (var s in smokes) s.speedNormMax = v; });
             section.AddFloat("speedLifetimeScale", "Particle lifetime multiplier at full dispersion.",

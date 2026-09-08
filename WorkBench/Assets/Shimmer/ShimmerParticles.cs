@@ -12,7 +12,7 @@ namespace TurboTurbo
     {
         [Header("Emission (particles/s)")]
         public float idleRate = 5f;
-        public float fullRate = 7f;
+        public float fullRate = 10f;
 
         [Header("Particle look")]
         public float lifetime = 1.5f;
