@@ -150,18 +150,19 @@ internal sealed class Orchestrator : MonoBehaviour
 
         if (matchingConfiguration == null)
         {
-#if DEBUG
-            _log.Info(
-                $"'{car.name}' ({car.carType}, id={car.ID}) not configured, skipping");
+            if (car.IsLoco)
+            {
+                _log.Info(
+                    $"'{car.name}' ({car.carType}, id={car.ID} liv={car.carLivery.name} livid={car.carLivery.id})) not configured, skipping");
+            }
             return;
-#endif
         }
 
         // ensures revived cars don't receive another host
         if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
         {
             _log.Info(
-                $"'{car.name}' ({car.carType}, id={car.ID}) already has a simulation host, skipping");
+                $"'{car.name}' ({car.carType}, id={car.ID}, already has a simulation host, skipping");
             return;
         }
 

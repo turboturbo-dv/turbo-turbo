@@ -15,7 +15,8 @@ public static class Controller
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("controller");
 
-    private static readonly Dictionary<TrainCarType, EngineConfiguration> Configurations = new();
+    private static readonly Dictionary<TrainCarType, EngineConfiguration> ConfigurationsByCarType = new();
+    private static readonly Dictionary<string, EngineConfiguration> ConfigurationsByLiveryId = new();
 
     public static void ConfigureEngine(TrainCarType trainCarType, Action<EngineOptions> configure)
     {
@@ -24,14 +25,31 @@ public static class Controller
 
         var configuration = configurator.Build();
 
-        Configurations.Add(trainCarType, configuration);
+        ConfigurationsByCarType.Add(trainCarType, configuration);
 
-        Log.Info($"configured {trainCarType} with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
+        Log.Info($"configured car type {trainCarType} with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
+    }
+
+    public static void ConfigureEngine(string liveryId, Action<EngineOptions> configure)
+    {
+        var configurator = new EngineOptions();
+        configure(configurator);
+
+        var configuration = configurator.Build();
+
+        ConfigurationsByLiveryId.Add(liveryId, configuration);
+
+        Log.Info($"configured livery id '{liveryId}' with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)
     {
-        if (Configurations.TryGetValue(car.carType, out var config))
+        EngineConfiguration config;
+        if (ConfigurationsByCarType.TryGetValue(car.carType, out config))
+        {
+            return config;
+        }
+        if (ConfigurationsByLiveryId.TryGetValue(car.carLivery.id, out config))
         {
             return config;
         }
