@@ -11,6 +11,13 @@ namespace TurboTurbo
     [RequireComponent(typeof(ParticleSystem))]
     public class ShimmerParticles : MonoBehaviour
     {
+        private static readonly int Strength = Shader.PropertyToID("_Strength");
+        private static readonly int EffectRadius = Shader.PropertyToID("_EffectRadius");
+        private static readonly int AnimTime = Shader.PropertyToID("_AnimTime");
+        private static readonly int Freq = Shader.PropertyToID("_Freq");
+        private static readonly int Outline = Shader.PropertyToID("_Outline");
+        private static readonly int Debug1 = Shader.PropertyToID("_Debug");
+
         public sealed class Settings
         {
             public float idleRate = 5f;
@@ -244,12 +251,12 @@ namespace TurboTurbo
                 _animTime += Time.deltaTime * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
-                _material.SetFloat("_Strength", Mathf.Lerp(s.baseStrength, 1f, heat) * s.strength);
-                _material.SetFloat("_EffectRadius", Mathf.Lerp(s.idleRadius, s.fullRadius, heat));
-                _material.SetFloat("_AnimTime", _animTime);
-                _material.SetFloat("_Freq", s.freq);
-                _material.SetFloat("_Outline", outline ? 1f : 0f);
-                _material.SetFloat("_Debug", debug);
+                _material.SetFloat(Strength, Mathf.Lerp(s.baseStrength, 1f, heat) * s.strength);
+                _material.SetFloat(EffectRadius, Mathf.Lerp(s.idleRadius, s.fullRadius, heat));
+                _material.SetFloat(AnimTime, _animTime);
+                _material.SetFloat(Freq, s.freq);
+                _material.SetFloat(Outline, outline ? 1f : 0f);
+                _material.SetFloat(Debug1, debug);
             }
         }
 
