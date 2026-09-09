@@ -89,8 +89,8 @@ namespace TurboTurbo.WorkBench
                 _smokeBench = smokeGo.AddComponent<SmokeParticles>();
                 _smokeBench.shader = Shader.Find("TurboTurbo/Smoke");
                 _smokeBench.atlas = vanillaAtlas;
-                _smokeBench.Tuning.idleEmissionRate = idleEmissionRate;
-                _smokeBench.Tuning.fullEmissionRate = fullEmissionRate;
+                _smokeBench.tuning.idleEmissionRate = idleEmissionRate;
+                _smokeBench.tuning.fullEmissionRate = fullEmissionRate;
                 _smokeBench.Configure();
                 ExhaustPlacement.PlaceAt(smokeGo.transform, vanillaExhaust.transform.position,
                     _frame.transform, exhaustOffset);
@@ -108,8 +108,8 @@ namespace TurboTurbo.WorkBench
             {
                 _smokeBench.lambda = lambda;
                 _smokeBench.rpmNorm = rpmNorm;
-                _smokeBench.Tuning.idleEmissionRate = idleEmissionRate;
-                _smokeBench.Tuning.fullEmissionRate = fullEmissionRate;
+                _smokeBench.tuning.idleEmissionRate = idleEmissionRate;
+                _smokeBench.tuning.fullEmissionRate = fullEmissionRate;
                 _smokeBench.heat = heat;
             }
 
