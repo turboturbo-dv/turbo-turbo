@@ -387,6 +387,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 20f, false, () => f.tuning.idleRate, v => { foreach (var s in shimmers) s.tuning.idleRate = v; });
             section.AddFloat("fullRate", "Emission rate [p/s] at full heat.",
                 0f, 40f, false, () => f.tuning.fullRate, v => { foreach (var s in shimmers) s.tuning.fullRate = v; });
+            section.AddFloat("yOffset", "Vertical offset [m] of the emission point relative to the exhaust.",
+                -2f, 2f, false, () => f.tuning.yOffset, v => { foreach (var s in shimmers) s.tuning.yOffset = v; });
             section.AddFloat("lifetime", "Particle lifetime in seconds.",
                 0.5f, 6f, true, () => f.tuning.lifetime, v => { foreach (var s in shimmers) s.tuning.lifetime = v; });
             section.AddFloat("startSizeMin", "Billboard size range at emission [m].",

@@ -48,6 +48,8 @@ namespace TurboTurbo
             public float shimmerHoldTime = 0.15f;
             public float decayK = 4f;
 
+            public float yOffset = 0.1f;
+
             public Settings()
             {
             }
@@ -77,6 +79,7 @@ namespace TurboTurbo
                 speedMultiplier = other.speedMultiplier;
                 shimmerHoldTime = other.shimmerHoldTime;
                 decayK = other.decayK;
+                yOffset = other.yOffset;
             }
         }
 
@@ -225,7 +228,8 @@ namespace TurboTurbo
                 var speedNorm = Mathf.Clamp01(absSpeed / s.speedNormMax);
 
                 // custom emit requires us to apply the simulation space manually
-                var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
+                var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position)
+                    + ParticleSimSpace.Direction(customSimulationSpace, Vector3.up * s.yOffset);
 
                 for (var i = 0; i < n; i++)
                 {
