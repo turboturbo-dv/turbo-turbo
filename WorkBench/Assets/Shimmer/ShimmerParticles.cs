@@ -209,10 +209,12 @@ namespace TurboTurbo
 
         private void Update()
         {
+            var dt = Time.deltaTime;
+
             var s = tuning;
 
             var rate = Mathf.Lerp(s.idleRate, s.fullRate, heat);
-            _emitAccumulator += rate * Time.deltaTime;
+            _emitAccumulator += rate * dt;
             var n = (int)_emitAccumulator;
             if (n > 0)
             {
@@ -222,7 +224,6 @@ namespace TurboTurbo
                 n = Mathf.Min(n, 30);
 
                 var upSpeed = Mathf.Lerp(velocity.Idle, velocity.FullLoad, Mathf.Clamp01(heat));
-                var coneDir = transform.forward;
 
                 // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
                 var speedNorm = Mathf.Clamp01(absSpeed / s.speedNormMax);
@@ -231,18 +232,27 @@ namespace TurboTurbo
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position)
                     + ParticleSimSpace.Direction(customSimulationSpace, Vector3.up * s.yOffset);
 
+                var baseEmitVelocity = transform.forward * upSpeed;
+                var jitterVelocity = speedNorm * s.speedJitter + 0.15f;
+
+                var lifetime = s.lifetime * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm);
+
                 for (var i = 0; i < n; i++)
                 {
+                    var emitVelocity = baseEmitVelocity * UnityEngine.Random.Range(0.85f, 1.15f);
+                    var worldVelocity = locoVelocity + emitVelocity + UnityEngine.Random.insideUnitSphere * jitterVelocity;
+
+                    var simSpaceVelocity = ParticleSimSpace.Direction(customSimulationSpace, worldVelocity);
+
                     var ep = new ParticleSystem.EmitParams
                     {
-                        position = simPos,
-                        velocity = ParticleSimSpace.Direction(customSimulationSpace,
-                            coneDir * (upSpeed * UnityEngine.Random.Range(0.85f, 1.15f))
-                                     + UnityEngine.Random.insideUnitSphere * (0.15f + s.speedJitter * speedNorm)
-                                     + locoVelocity),
+                        // unity will perform one velocity integration step before drawing the particle,
+                        // offsetting its spawn point at high speeds and/or low frame rates: back-date it
+                        position = simPos - simSpaceVelocity * dt,
+                        velocity = simSpaceVelocity,
                         startSize = UnityEngine.Random.Range(s.startSizeMin, s.startSizeMax),
                         startColor = Color.white,
-                        startLifetime = s.lifetime * UnityEngine.Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm),
+                        startLifetime = lifetime * UnityEngine.Random.Range(0.9f, 1.1f),
                     };
                     _ps.Emit(ep, 1);
                 }
@@ -251,7 +261,7 @@ namespace TurboTurbo
             if (_material != null)
             {
                 var speed = Mathf.Lerp(s.idleAnimSpeed, s.fullAnimSpeed, heat) * s.speedMultiplier;
-                _animTime += Time.deltaTime * speed;
+                _animTime += dt * speed;
                 if (_animTime > 10000f) _animTime -= 10000f;
 
                 _material.SetFloat(Strength, Mathf.Lerp(s.baseStrength, 1f, heat) * s.strength);

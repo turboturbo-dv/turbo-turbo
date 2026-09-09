@@ -208,7 +208,9 @@ namespace TurboTurbo.WorkBench
 
         private void Update()
         {
-            _model.Update(lambda, rpmNorm, heat, engineOn, Time.deltaTime);
+            var dt = Time.deltaTime;
+
+            _model.Update(lambda, rpmNorm, heat, engineOn, dt);
 
             var s = tuning;
 
@@ -220,7 +222,7 @@ namespace TurboTurbo.WorkBench
 
             if (engineOn)
             {
-                _emitAccumulator += Mathf.Lerp(s.idleEmissionRate, s.fullEmissionRate, heat) * Time.deltaTime;
+                _emitAccumulator += Mathf.Lerp(s.idleEmissionRate, s.fullEmissionRate, heat) * dt;
             }
 
             var n = (int)_emitAccumulator;
@@ -232,23 +234,31 @@ namespace TurboTurbo.WorkBench
                 n = Mathf.Min(n, 30);
 
                 var upSpeed = Mathf.Lerp(velocity.Idle, velocity.FullLoad, Mathf.Clamp01(heat));
-                var coneDir = transform.forward;
 
                 // custom emit requires us to apply the simulation space manually
                 var simPos = ParticleSimSpace.Position(customSimulationSpace, transform.position);
 
+                var baseEmitVelocity = transform.forward * upSpeed;
+                var jitterVelocity = (speedNorm * s.speedJitter + 0.15f);
+
+                var lifetime = s.lifetime * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm);
+
                 for (var i = 0; i < n; i++)
                 {
+                    var emitVelocity = baseEmitVelocity * Random.Range(0.85f, 1.15f);
+                    var worldVelocity = locoVelocity + emitVelocity + Random.insideUnitSphere * jitterVelocity;
+
+                    var simSpaceVelocity = ParticleSimSpace.Direction(customSimulationSpace, worldVelocity);
+
                     var ep = new ParticleSystem.EmitParams
                     {
-                        position = simPos,
-                        velocity = ParticleSimSpace.Direction(customSimulationSpace,
-                            coneDir * (upSpeed * Random.Range(0.85f, 1.15f))
-                                     + Random.insideUnitSphere * (0.15f + s.speedJitter * speedNorm)
-                                     + locoVelocity),
+                        // unity will perform one velocity integration step before drawing the particle,
+                        // offsetting its spawn point at high speeds and/or low frame rates: back-date it
+                        position = simPos - simSpaceVelocity * dt,
+                        velocity = simSpaceVelocity,
                         startSize = Random.Range(s.startSizeMin, s.startSizeMax),
                         startColor = _model.Color,
-                        startLifetime = s.lifetime * Random.Range(0.9f, 1.1f) * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm),
+                        startLifetime = lifetime * Random.Range(0.9f, 1.1f),
                         // random orientation + slow spin gives the appearance of a turbulent smoke column
                         rotation = Random.Range(0f, 360f),
                         angularVelocity = Random.Range(-s.angularVelocityMax, s.angularVelocityMax),
