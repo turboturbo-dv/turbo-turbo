@@ -3,7 +3,7 @@ using System.IO;
 
 using UnityEngine;
 
-namespace TurboTurbo;
+namespace TurboTurbo.Assets;
 
 /// <summary>
 /// Manages the mod's asset bundle, reloading when necessary and providing access to the assets contained.

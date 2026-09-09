@@ -8,6 +8,7 @@ using HarmonyLib;
 
 using LocoSim.Implementations;
 
+using TurboTurbo.Assets;
 using TurboTurbo.Modeling;
 using TurboTurbo.Setup;
 using TurboTurbo.WorkBench;

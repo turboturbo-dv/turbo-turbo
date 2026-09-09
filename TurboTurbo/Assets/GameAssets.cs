@@ -2,7 +2,7 @@ using System.Linq;
 
 using UnityEngine;
 
-namespace TurboTurbo;
+namespace TurboTurbo.Assets;
 
 /// <summary>
 /// Runtime access to vanilla assets we build on.
