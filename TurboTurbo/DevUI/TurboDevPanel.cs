@@ -410,9 +410,9 @@ internal sealed class TurboDevPanel : MonoBehaviour
             section.AddFloat("freq", "Noise frequency of the shimmer field.",
                 1f, 20f, false, () => f.tuning.freq, v => { foreach (var s in shimmers) s.tuning.freq = v; });
             section.AddFloat("idleRadius", "Displacement radius at zero heat.",
-                0.2f, 2f, false, () => f.tuning.idleRadius, v => { foreach (var s in shimmers) s.tuning.idleRadius = v; });
+                0.2f, 1f, false, () => f.tuning.idleRadius, v => { foreach (var s in shimmers) s.tuning.idleRadius = v; });
             section.AddFloat("fullRadius", "Displacement radius at full heat.",
-                0.2f, 2f, false, () => f.tuning.fullRadius, v => { foreach (var s in shimmers) s.tuning.fullRadius = v; });
+                0.2f, 1f, false, () => f.tuning.fullRadius, v => { foreach (var s in shimmers) s.tuning.fullRadius = v; });
             section.AddFloat("idleAnimSpeed", "Noise scroll speed at zero heat.",
                 0f, 3f, false, () => f.tuning.idleAnimSpeed, v => { foreach (var s in shimmers) s.tuning.idleAnimSpeed = v; });
             section.AddFloat("fullAnimSpeed", "Noise scroll speed at full heat.",
@@ -431,8 +431,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 2f, false, () => f.tuning.speedJitter, v => { foreach (var s in shimmers) s.tuning.speedJitter = v; });
             section.AddBool("outline", "Debug: outline the shimmer billboards.",
                 false, () => f.outline, v => { foreach (var s in shimmers) s.outline = v; });
-            section.AddInt("debug", "Shader debug mode.",
-                0, 5, false, () => f.debug, v => { foreach (var s in shimmers) s.debug = v; });
+            section.AddInt("debug", "Shader debug mode (0=off, 1=mask, 2=offset+mask).",
+                0, 2, false, () => f.debug, v => { foreach (var s in shimmers) s.debug = v; });
             section.AddInt("renderQueue", "Material render queue (3000 = smoke, 3010 = after the smoke).",
                 2000, 4000, true, () => f.renderQueue, v => { foreach (var s in shimmers) s.renderQueue = v; });
             _sections.Add(section);

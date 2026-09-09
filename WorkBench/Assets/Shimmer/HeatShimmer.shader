@@ -13,9 +13,7 @@ Shader "TurboTurbo/HeatShimmer"
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
-        // NAMED grab: captured once per frame at the first user - every
-        // shimmer effect (quad or particle renderer) samples that one
-        // capture, so N effects cost a single framebuffer copy.
+        // named grab, as multiple instances of the effect will be live at the same time
         GrabPass { "_TurboHeatGrab" }
 
         Pass
@@ -38,6 +36,8 @@ Shader "TurboTurbo/HeatShimmer"
             sampler2D _TurboHeatGrab;
             sampler2D_float _CameraDepthTexture;
 
+            static const float MinVisibleAlpha = 0.004;
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -54,6 +54,10 @@ Shader "TurboTurbo/HeatShimmer"
                 fixed4 color : TEXCOORD3;
             };
 
+            float fbm (float2 p);
+            float vnoise (float2 p);
+            float hash12 (float2 p);
+
             v2f vert (appdata v)
             {
                 v2f o;
@@ -65,25 +69,82 @@ Shader "TurboTurbo/HeatShimmer"
                 return o;
             }
 
-            // hash + value noise (Dave Hoskins style, no trig): stays stable
-            // at large coordinates so the animation time can run for hours
-            float hash12 (float2 p)
+            // we don't use `i.color.rgb` here, but we do use alpha for the
+            // decay envelope
+            half4 frag (v2f i) : SV_Target
             {
-                float3 p3 = frac(float3(p.xyx) * 0.1031);
-                p3 += dot(p3, p3.yzx + 33.33);
-                return frac((p3.x + p3.y) * p3.z);
-            }
+                // adds a debug outline to the quads
+                if (_Outline > 0.5)
+                {
+                    float2 e = min(i.uv, 1.0 - i.uv);
+                    if (e.x < 0.02 || e.y < 0.02)
+                    {
+                        return half4(1.0, 0.0, 1.0, 1.0);
+                    }
+                }
 
-            float vnoise (float2 p)
-            {
-                float2 i = floor(p);
-                float2 f = frac(p);
-                float2 u = f * f * (3.0 - 2.0 * f);
-                float a = hash12(i);
-                float b = hash12(i + float2(1.0, 0.0));
-                float c = hash12(i + float2(0.0, 1.0));
-                float d = hash12(i + float2(1.0, 1.0));
-                return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+                float2 suvBase = i.grabUV.xy / i.grabUV.w;
+
+                // experiment: effect area is an ellipse, EffectRadius sets the
+                // horizontal semi-axis: b = EffectRadius / 2
+                float rh = clamp(_EffectRadius, 0.05, 1.0) * 0.5;
+                float2 exy = float2(abs(i.uv.x - 0.5), abs(i.uv.y - 0.5));
+                float dn = length(float2(exy.x / rh, exy.y / 0.5));
+                float uvMask = 1.0 - smoothstep(0.55, 1.0, dn);
+
+                // early out on masked corners that fall outside the effect area
+                if (uvMask * i.color.a < MinVisibleAlpha)
+                {
+                    // the jury is still out on whether this is faster or slower
+                    // than return half4(0); probably insignificant anyway
+                    discard;
+                }
+
+                // when sampling at an offset, we need to perform the depth test
+                // manually. Makes sure we don't mix foreground objects into the
+                // effect
+                float rawZ = tex2D(_CameraDepthTexture, suvBase).r;
+                float sceneZ = LinearEyeDepth(rawZ);
+                float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - 0.05) ? 1.0 : 0.0;
+                float edgeFade = uvMask * (1.0 - occluded);
+
+                // debug 1: show effect area, transparent where faded
+                if (_Debug > 0.5 && _Debug < 1.5)
+                {
+                    return half4(edgeFade.xxx, edgeFade);
+                }
+
+                // decay envelope scales effect blend strength. Scaling shimmer
+                // intensity instead is an alternative worth looking into.
+                float a = edgeFade * i.color.a;
+
+                // early out on fragments that are completely faded or that
+                // sample an occluding object
+                if (a < MinVisibleAlpha)
+                {
+                    discard;
+                }
+
+                // sample the noise field to calculate shimmer offset.
+                // relatively expensive so it may be worth benchmarking this
+                // vs. lookup on a precomputed noise texture.
+                // overall shouldn't be too big of a deal though, as the shader
+                // effect takes up little screen space.
+                float2 np = i.uv * float2(4.0 * _Freq, 1.8 * _Freq)
+                          - float2(_AnimTime * 0.13, _AnimTime);
+                float n1 = fbm(np);
+                float n2 = fbm(np + float2(37.2, 17.9));
+                float2 offset = (float2(n1, n2) - 0.5) * _Strength;
+
+                // debug 2: show computed offset (RG = xy, B = mask)
+                if (_Debug > 1.5 && _Debug < 2.5)
+                {
+                    return half4(offset * 20.0 + 0.5, edgeFade, 1.0);
+                }
+
+                // this is where the magic happens
+                half4 scene = tex2D(_TurboHeatGrab, suvBase + offset);
+                return half4(scene.rgb, a);
             }
 
             // 3-octave fractal noise, normalized to ~0..1
@@ -100,77 +161,26 @@ Shader "TurboTurbo/HeatShimmer"
                 return v / 0.875;
             }
 
-            half4 frag (v2f i) : SV_Target
+            float vnoise (float2 p)
             {
-                // debug outline: bright border at the billboard's uv edges
-                if (_Outline > 0.5)
-                {
-                    float2 e = min(i.uv, 1.0 - i.uv);
-                    if (e.x < 0.02 || e.y < 0.02)
-                    {
-                        return half4(1.0, 0.0, 1.0, 1.0);
-                    }
-                }
-
-                float2 suvBase = i.grabUV.xy / i.grabUV.w;
-
-                // foreground bleed fix: opaque geometry nearer than the quad
-                // (handrails, other cars) is inside the grab - leave it
-                // undisplaced. Smoke/particles never write depth, so they
-                // stay displaceable. rawZ == 0/1 means no valid depth reading
-                // (depth texture unbound or sky), which never occludes.
-                float rawZ = tex2D(_CameraDepthTexture, suvBase).r;
-                float sceneZ = LinearEyeDepth(rawZ);
-                float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - 0.05) ? 1.0 : 0.0;
-
-                // centered on the billboard (not bottom-anchored): smoke puffs
-                // sit in the middle of each particle. Vertical factor keeps a
-                // slight flattening.
-                float2 d = float2(abs(i.uv.x - 0.5) * 2.0, abs(i.uv.y - 0.5) * 2.0 * 1.35);
-                float dn = length(d) / max(_EffectRadius, 0.05);
-                float edgeFade = (1.0 - smoothstep(0.55, 1.0, dn)) * (1.0 - occluded);
-
-                // rising turbulent field: vertically stretched cells, moving
-                // up at the flow-dependent speed, slow lateral evolution.
-                // Full amplitude - the alpha blend applies the edge fade.
-                float2 np = i.uv * float2(4.0 * _Freq, 1.8 * _Freq)
-                          - float2(_AnimTime * 0.13, _AnimTime);
-                float n1 = fbm(np);
-                float n2 = fbm(np + float2(37.2, 17.9));
-                float2 offset = (float2(n1, n2) - 0.5) * _Strength;
-
-                // debug 1: mask coverage
-                if (_Debug > 0.5 && _Debug < 1.5)
-                {
-                    return half4(edgeFade.xxx, 1.0);
-                }
-                // debug 2: raw grab, no offset - validates the grab path
-                if (_Debug > 1.5 && _Debug < 2.5)
-                {
-                    return tex2D(_TurboHeatGrab, suvBase);
-                }
-                // debug 3: computed offset (RG, +-0.05 = full swing) + mask (B)
-                if (_Debug > 2.5 && _Debug < 3.5)
-                {
-                    return half4(offset * 20.0 + 0.5, edgeFade, 1.0);
-                }
-                // debug 4: solid magenta - proves geometry + material render
-                if (_Debug > 3.5)
-                {
-                    return half4(1.0, 0.0, 1.0, 1.0);
-                }
-
-                // coverage: edge fade x per-particle shimmer envelope
-                // (colorOverLifetime decay, via the color alpha stream),
-                // transparent where occluded by foreground geometry - so
-                // overlapping particles composite instead of overwriting
-                // note: offset stays at full amplitude; the decay only blends the
-                // displaced grab back over the original. Scaling offset by i.color.a
-                // as well would make the wobble shrink instead of dissolve.
-                half4 scene = tex2D(_TurboHeatGrab, suvBase + offset);
-                float a = edgeFade * i.color.a;
-                return half4(scene.rgb, a);
+                float2 i = floor(p);
+                float2 f = frac(p);
+                float2 u = f * f * (3.0 - 2.0 * f);
+                float a = hash12(i);
+                float b = hash12(i + float2(1.0, 0.0));
+                float c = hash12(i + float2(0.0, 1.0));
+                float d = hash12(i + float2(1.0, 1.0));
+                return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
             }
+
+            // (c) David Hoskins: https://www.shadertoy.com/view/4djSRW (MIT)
+            float hash12 (float2 p)
+            {
+                float3 p3 = frac(float3(p.xyx) * 0.1031);
+                p3 += dot(p3, p3.yzx + 33.33);
+                return frac((p3.x + p3.y) * p3.z);
+            }
+
             ENDCG
         }
     }
