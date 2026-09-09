@@ -25,8 +25,7 @@ public static class Main
             .AddTurbo()
             .ReplaceEngineExhaust(
                 c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0.2f, -0.05f)));
-
+                new Vector3(0f, 0.15f, -0.05f)));
         Controller.ConfigureEngine(TrainCarType.LocoDH4, options => options
             .AddTurbo()
             .ReplaceEngineExhaust(

@@ -12,17 +12,17 @@ namespace TurboTurbo.WorkBench
             public float idleEmissionRate = 15f;
             public float fullEmissionRate = 75f;
 
-            public float lifetime = 2f;
+            public float lifetime = 3f;
             public float startSizeMin = 0.3f;
             public float startSizeMax = 0.5f;
             public float sizeOverLifetimeStart = 1f;
             public float sizeOverLifetimeEnd = 9.5f;
-            public float buoyancy = 0.3f;
-            public float drag = 0.5f;
+            public float buoyancy = 0.1f;
+            public float drag = 0.6f;
             public float angularVelocityMax = 20f;
 
             public float speedNormMax = 15f;
-            public float speedLifetimeScale = 0.4f;
+            public float speedLifetimeScale = 0.3f;
             public float speedJitter = 0.5f;
 
             public float turbulenceStrength = 1.25f;
