@@ -25,6 +25,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private float _diagTimer;
 
     private ColorPickerWindow _colorPicker;
+    private ExhaustOffsetDebugView _debugView;
+    private bool _showOffsetMarkers;
 
     public Rect WindowRect { get; private set; } = new(20f, 20f, 360f, 120f);
 
@@ -35,6 +37,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();
         panel._colorPicker = go.AddComponent<ColorPickerWindow>();
+        panel._debugView = go.AddComponent<ExhaustOffsetDebugView>();
         panel.WindowRect = initialRect;
         return panel;
     }
@@ -154,6 +157,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         {
             _boundHost = host;
             BuildSections(host);
+            _debugView.SetHost(host);
         }
 
         if (_sections.Count == 0)
@@ -463,6 +467,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 () => e.Offset.z,
                 v => { e.Offset.z = v; e.Reposition(); });
         }
+        section.AddBool("showMarkers", "Debug: show axis crosses at the modded emitter positions.",
+            false, () => _showOffsetMarkers, v => { _showOffsetMarkers = v; _debugView.SetVisible(v); });
         _sections.Add(section);
     }
 
