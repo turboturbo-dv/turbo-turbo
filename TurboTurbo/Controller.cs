@@ -27,7 +27,8 @@ public static class Controller
 
         ConfigurationsByCarType.Add(trainCarType, configuration);
 
-        Log.Info($"configured car type {trainCarType} with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
+        Log.Info(
+            $"configured car type {trainCarType} with charger={configuration.ChargerKind} and {configuration.Exhausts.Count} exhausts");
     }
 
     public static void ConfigureEngine(string liveryId, Action<EngineOptions> configure)
@@ -39,7 +40,8 @@ public static class Controller
 
         ConfigurationsByLiveryId.Add(liveryId, configuration);
 
-        Log.Info($"configured livery id '{liveryId}' with turbo={configuration.HasTurbo} and {configuration.Exhausts.Count} exhausts");
+        Log.Info(
+            $"configured livery id '{liveryId}' with charger={configuration.ChargerKind} and {configuration.Exhausts.Count} exhausts");
     }
 
     internal static EngineConfiguration? TryGetConfiguration(TrainCar car)
@@ -49,6 +51,7 @@ public static class Controller
         {
             return config;
         }
+
         if (ConfigurationsByLiveryId.TryGetValue(car.carLivery.id, out config))
         {
             return config;
@@ -59,13 +62,23 @@ public static class Controller
 }
 
 internal record struct EngineConfiguration(
-    bool HasTurbo,
     List<ExhaustBinding> Exhausts,
-    TurboModel.Settings Turbo,
+    CombustionModel.Settings Combustion,
+    ChargerKind ChargerKind,
+    TurboCharger.Settings TurboCharger,
+    AtmosphericCharger.Settings Atmospheric,
     ExhaustSmokeModel.Settings Smoke,
     SmokeParticles.Settings SmokeEmitter,
     ShimmerParticles.Settings ShimmerEmitter,
-    ExhaustVelocitySettings Velocity);
+    ExhaustVelocitySettings Velocity)
+{
+    public ICharger BuildCharger()
+    {
+        return ChargerKind == ChargerKind.Atmospheric
+            ? new AtmosphericCharger(new AtmosphericCharger.Settings(Atmospheric))
+            : new TurboCharger(new TurboCharger.Settings(TurboCharger));
+    }
+}
 
 internal record struct ExhaustBinding(
     Func<TrainCar, Transform> TransformSelector,

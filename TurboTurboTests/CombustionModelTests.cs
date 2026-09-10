@@ -8,22 +8,24 @@ using Xunit;
 
 namespace TurboTurboTests
 {
-    public class TurboModelTests
+    public class CombustionModelTests
     {
-        private readonly TurboModel.Settings _settings = new TurboModel.Settings();
+        private readonly CombustionModel.Settings _settings = new CombustionModel.Settings();
+        private readonly TurboCharger.Settings _chargerSettings = new TurboCharger.Settings();
         private float _throttle;
+        private float _fuelNorm;
         private float _rpmNorm = 1f;
 
-        private TurboModel CreateModel()
+        private CombustionModel CreateModel()
         {
-            return new TurboModel(_settings, () => _throttle, () => _rpmNorm);
+            return new CombustionModel(_settings, () => _throttle, () => _fuelNorm, () => _rpmNorm, new TurboCharger(_chargerSettings));
         }
 
         [Fact]
         public void Settings_CopyConstructor_IsIndependent()
         {
-            var template = new TurboModel.Settings();
-            var clone = new TurboModel.Settings(template);
+            var template = new TurboCharger.Settings();
+            var clone = new TurboCharger.Settings(template);
 
             clone.LambdaCalibration.ShouldBe(template.LambdaCalibration);
             clone.LambdaCalibration = 0.5f;
@@ -39,6 +41,7 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
             _throttle = 0.4f;
+            _fuelNorm = 0.4f;
             _rpmNorm = 1f;
             model.Tick(0.016f, engineOn: true);
 
@@ -53,6 +56,7 @@ namespace TurboTurboTests
 
             // hold full load long enough for boost to reach equilibrium
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 600; i++)
             {
@@ -60,7 +64,7 @@ namespace TurboTurboTests
             }
 
             model.Boost.ShouldBe(1f, tolerance: 0.01f);
-            model.Charge.ShouldBe(1f + _settings.BoostChargeMultiplier, tolerance: 0.01f);
+            model.Charge.ShouldBe(1f + _chargerSettings.BoostChargeMultiplier, tolerance: 0.01f);
         }
 
         // ------------------------------------------------------------
@@ -76,6 +80,7 @@ namespace TurboTurboTests
             // target 0.4, tau = TauUp = 3, delta 1s:
             // boost = 0.4 x (1 - e^(-1/3)) = 0.1134
             _throttle = 0.4f;
+            _fuelNorm = 0.4f;
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
 
@@ -91,6 +96,7 @@ namespace TurboTurboTests
             // tau = TauUp / (1 + ThermalK x Overfuel) = 3 / 1.340 = 2.238:
             // boost = 1 x (1 - e^(-1/2.238)) = 0.3603
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
 
@@ -102,6 +108,7 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
 
             var last = 0f;
@@ -120,6 +127,7 @@ namespace TurboTurboTests
 
             // spool up first
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 600; i++)
             {
@@ -129,6 +137,7 @@ namespace TurboTurboTests
 
             // cut the throttle: boost must bleed off through TauDown
             _throttle = 0f;
+            _fuelNorm = 0f;
             for (var i = 0; i < 5; i++)
             {
                 model.Tick(0.5f, engineOn: true);
@@ -147,6 +156,7 @@ namespace TurboTurboTests
 
             // boost 0 -> charge 1; cap = 1 / (calibration x floor) = 1 / 1.218 = 0.821
             _throttle = 0.9f;
+            _fuelNorm = 0.9f;
             _rpmNorm = 1f;
             model.Tick(0.016f, engineOn: true);
 
@@ -160,6 +170,7 @@ namespace TurboTurboTests
             var model = CreateModel();
 
             _throttle = 0.3f;
+            _fuelNorm = 0.3f;
             _rpmNorm = 1f;
             model.Tick(0.016f, engineOn: true);
 
@@ -175,6 +186,7 @@ namespace TurboTurboTests
             for (var throttle = 0f; throttle <= 1f; throttle += 0.05f)
             {
                 _throttle = throttle;
+                _fuelNorm = throttle;
                 model.Tick(0.016f, engineOn: true);
                 model.EffectiveDemand.ShouldBeLessThanOrEqualTo(throttle + 0.0001f);
             }
@@ -190,6 +202,8 @@ namespace TurboTurboTests
             var model = CreateModel();
             _throttle = 0.9f;
 
+            // combustion follows measured fuel; a stopped engine reads no fuel
+            _fuelNorm = 0f;
             model.Tick(0.016f, engineOn: false);
 
             model.EffectiveDemand.ShouldBe(0f, tolerance: 0.0001f);
@@ -206,6 +220,7 @@ namespace TurboTurboTests
 
             // spool boost above 0.75: 5 ticks of 1s at full load
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {
@@ -217,6 +232,7 @@ namespace TurboTurboTests
             // beats the 15/s threshold, and the 16ms decay leaves boost above
             // the 0.75 gate.
             _throttle = 0.69f;
+            _fuelNorm = 0.69f;
             model.Tick(0.016f, engineOn: true);
             model.SurgeThisTick.ShouldBeTrue();
         }
@@ -227,6 +243,7 @@ namespace TurboTurboTests
             var model = CreateModel();
 
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {
@@ -238,6 +255,7 @@ namespace TurboTurboTests
             for (var i = 0; i < 20; i++)
             {
                 _throttle = 1f - 0.31f * (i + 1) / 20f;
+                _fuelNorm = _throttle;
                 model.Tick(0.016f, engineOn: true);
                 model.SurgeThisTick.ShouldBeFalse();
             }
@@ -249,6 +267,7 @@ namespace TurboTurboTests
             var model = CreateModel();
 
             _throttle = 1f;
+            _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {

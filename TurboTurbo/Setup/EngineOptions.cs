@@ -10,19 +10,16 @@ namespace TurboTurbo.Setup;
 
 public class EngineOptions
 {
-    private bool _hasTurbo = false;
     private readonly List<ExhaustBinding> _exhausts = new();
-    private readonly TurboModel.Settings _turbo = new();
+    private readonly CombustionModel.Settings _combustion = new();
+    private readonly TurboCharger.Settings _turboCharger = new();
+    private readonly AtmosphericCharger.Settings _atmospheric = new();
     private readonly ExhaustSmokeModel.Settings _smoke = new();
     private readonly SmokeParticles.Settings _smokeEmitter = new();
     private readonly ShimmerParticles.Settings _shimmer = new();
     private readonly ExhaustVelocitySettings _velocity = new();
 
-    public EngineOptions AddTurbo()
-    {
-        _hasTurbo = true;
-        return this;
-    }
+    private ChargerKind _chargerKind = ChargerKind.Turbo;
 
     /// <summary>Adds a new engine exhaust at the given position.</summary>
     public EngineOptions AddEngineExhaust(Func<TrainCar, Transform> transformSelector)
@@ -42,10 +39,25 @@ public class EngineOptions
         return this;
     }
 
-    /// <summary>Tunes the turbo model from its defaults.</summary>
-    public EngineOptions ConfigureTurbo(Action<TurboModel.Settings> configure)
+    /// <summary>Tunes the combustion model from its defaults.</summary>
+    public EngineOptions ConfigureCombustion(Action<CombustionModel.Settings> configure)
     {
-        configure(_turbo);
+        configure(_combustion);
+        return this;
+    }
+
+    /// <summary>Tunes the turbocharger from its defaults.</summary>
+    public EngineOptions ConfigureTurboCharger(Action<TurboCharger.Settings> configure)
+    {
+        configure(_turboCharger);
+        return this;
+    }
+
+    /// <summary>Switches the engine to natural aspiration with a choke-model charger.</summary>
+    public EngineOptions UseAtmosphericCharger(Action<AtmosphericCharger.Settings> configure)
+    {
+        _chargerKind = ChargerKind.Atmospheric;
+        configure(_atmospheric);
         return this;
     }
 
@@ -80,8 +92,11 @@ public class EngineOptions
     internal EngineConfiguration Build()
     {
         // clone so later edits to this options object cannot leak into an already built configuration
-        return new EngineConfiguration(_hasTurbo, _exhausts,
-            new TurboModel.Settings(_turbo),
+        return new EngineConfiguration(_exhausts,
+            new CombustionModel.Settings(_combustion),
+            _chargerKind,
+            new TurboCharger.Settings(_turboCharger),
+            new AtmosphericCharger.Settings(_atmospheric),
             new ExhaustSmokeModel.Settings(_smoke),
             new SmokeParticles.Settings(_smokeEmitter),
             new ShimmerParticles.Settings(_shimmer),

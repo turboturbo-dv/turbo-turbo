@@ -32,7 +32,10 @@
     </Reference>
     <!-- model under test (owned by the WorkBench project) -->
     <Compile Include="..\WorkBench\Assets\Shimmer\ExhaustSmokeModel.cs" Link="ExhaustSmokeModel.cs" />
-    <Compile Include="..\TurboTurbo\Modeling\TurboModel.cs" Link="TurboModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TurboTurbo\TurboTurbo.csproj" />
   </ItemGroup>
 
   <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(GameDir)' == ''">

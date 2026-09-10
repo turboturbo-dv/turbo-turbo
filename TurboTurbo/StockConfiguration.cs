@@ -10,13 +10,15 @@ internal static class StockConfiguration
     {
         ConfigureDe6();
         ConfigureDh4();
+        ConfigureDe2();
+        ConfigureDm3();
+        ConfigureDm1U();
         ConfigureModdedLocos();
     }
 
     private static void ConfigureDe6()
     {
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
-            .AddTurbo()
             .ReplaceEngineExhaust(
                 c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
                 new Vector3(0.02f, 0.15f, -0.02f)));
@@ -25,11 +27,10 @@ internal static class StockConfiguration
     private static void ConfigureDh4()
     {
         Controller.ConfigureEngine(TrainCarType.LocoDH4, options => options
-            .AddTurbo()
             .ReplaceEngineExhaust(
                 c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
                 new Vector3(0f, 0.03f, 0f))
-            .ConfigureTurbo(t =>
+            .ConfigureTurboCharger(t =>
             {
                 // the DH4 runs slightly cleaner and has a lighter turbo that spins up faster
                 t.LambdaCalibration = 1.7f;
@@ -37,10 +38,11 @@ internal static class StockConfiguration
             })
             .ConfigureSmoke(s =>
             {
-                // a newer engine with better exhaust filters means that when smoke is generated, it is less dense.
-                // also adjusts for the fact that the exhaust opening is bigger, so smoke is spread out more
-                s.SootMaxAlpha = 0.30f;
-                s.WetStackMistStrength = 0.95f;
+                // The DH4 has a more modern engine with better filtration, generating less soot.
+                // also adjusts for the fact that the exhaust opening is bigger, so smoke particles start out bigger,
+                // and therefore less dense.
+                s.SootMaxAlpha = 0.33f;
+                s.WetStackMistStrength = 1.2f;
                 s.OilRpmExponent = 2.1f;
             })
             .ConfigureExhaustVelocity(v =>
@@ -59,8 +61,101 @@ internal static class StockConfiguration
             })
             .ConfigureShimmerEmitter(e =>
             {
-                // less engine power and bigger exhaust opening means less intense shimmer
+                e.startSizeMin = 0.6f;
+                e.startSizeMax = 0.6f;
+                // less engine power means less intense shimmer
                 e.strength = 0.01f;
+            }));
+    }
+
+    private static void ConfigureDm3()
+    {
+        Controller.ConfigureEngine(TrainCarType.LocoDM3, options => options
+            .ReplaceEngineExhaust(
+                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
+                new Vector3(0f, -0.02f, 0f))
+            .UseAtmosphericCharger(c =>
+            {
+                // with these parameters, the DM3 starts producing black smoke near the redline
+                c.EtaPeak = 0.83f;
+                c.ChokeK = 0.26f;
+                c.LambdaCalibration = 0.67f;
+            })
+            .ConfigureExhaustVelocity(s =>
+            {
+                // again slightly lower max exhaust velocity
+                s.FullLoad = 13f;
+            })
+            .ConfigureSmoke(s =>
+            {
+                // some oil burning gives the DM3 a distinctive blue-gray smoke
+                s.CleanExhaustAlpha = 0.04f;
+                s.OilTintStrength = 0.5f;
+                s.OilRpmExponent = 0.5f;
+            })
+            .ConfigureSmokeEmitter(e =>
+            {
+                // sized to match the exhaust pipe
+                e.startSizeMin = 0.25f;
+                e.startSizeMax = 0.4f;
+                e.sizeOverLifetimeEnd = 11;
+            })
+            .ConfigureShimmerEmitter(e =>
+            {
+                // slight down rating again to match engine power
+                e.lifetime = 1.2f;
+                e.startSizeMin = 0.4f;
+                e.startSizeMax = 0.4f;
+                e.sizeOverLifetimeEnd = 8;
+            }));
+    }
+
+    private static void ConfigureDe2()
+    {
+        Controller.ConfigureEngine(TrainCarType.LocoShunter, options => options
+            .ReplaceEngineExhaust(
+                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
+                new Vector3(0f, 0f, 0f))
+            .UseAtmosphericCharger(c =>
+            {
+                // a reasonably clean naturally aspirated engine, shouldn't really generate soot normally
+                c.EtaPeak = 0.86f;
+                c.ChokeK = 0.24f;
+                c.LambdaCalibration = 0.63f;
+
+            })
+            .ConfigureSmoke(s =>
+            {
+                // not much wet stacking occurs in a smaller engine
+                s.WetStackMistStrength = 1f;
+            })
+            .ConfigureExhaustVelocity(e =>
+            {
+                // lower power, so lower exhaust velocity
+                e.FullLoad = 12f;
+            })
+            .ConfigureShimmerEmitter(e =>
+            {
+                // exhaust pipe is quite thin, so shimmer starts out small and rapidly grows bigger
+                e.startSizeMin = 0.35f;
+                e.startSizeMax = 0.35f;
+                e.sizeOverLifetimeEnd = 9;
+
+                // lower power, so shimmer is less intense and short-lived
+                e.lifetime = 1f;
+                e.strength = 0.008f;
+            }));
+    }
+
+    private static void ConfigureDm1U()
+    {
+        Controller.ConfigureEngine(TrainCarType.LocoDM1U, options => options
+            .ReplaceEngineExhaust(
+                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
+                new Vector3(0f, 0f, 0f))
+            .UseAtmosphericCharger(_ =>
+            {
+                // starter calibration, tune in game
             }));
     }
 

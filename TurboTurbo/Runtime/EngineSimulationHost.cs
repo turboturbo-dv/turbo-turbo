@@ -56,14 +56,14 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private readonly List<ParticleSystem> _replacedExhausts = new();
 
-    public TurboModel TurboModel { get; private set; }
+    public CombustionModel CombustionModel { get; private set; }
     public TrainCar TrainCar { get; private set; }
     public List<ExhaustEmitters> Exhausts { get; } = new();
 
     /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
     public ExhaustVelocitySettings Velocity { get; private set; }
-    public bool Bound => _simBound && TurboModel != null;
-    public bool EngineOn => TurboModel != null && _engineOn();
+    public bool Bound => _simBound && CombustionModel != null;
+    public bool EngineOn => CombustionModel != null && _engineOn();
     public float AbsSpeed => TrainCar.GetAbsSpeed();
     public string CarId => TrainCar.ID;
 
@@ -109,14 +109,16 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             return;
         }
 
-        if (TurboModel == null) return;
+        if (CombustionModel == null) return;
 
         var engineOn = _engineOn();
-        TurboModel.Tick(Time.deltaTime, engineOn);
+        CombustionModel.Tick(Time.deltaTime, engineOn);
 
-        // write the torque-capped demand back to the engine's throttle port,
-        // this ensures the engine's power is limited by available air
-        _throttlePort.Value = TurboModel.EffectiveDemand;
+        // TODO: properly attach the combustion model to the simulation graph.
+        // then we can apply the combustion model's torque limit, but that
+        // will also involve tuning the engine torque curves, which has gameplay
+        // implications. For now, keep it purely visual.
+        // _throttlePort.Value = TurboModel.EffectiveDemand;
 
         if (_effectsBound)
         {
@@ -138,29 +140,26 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         _simBound = true;
-        _log.Info($"sim bound on '{name}' ({_configuration.HasTurbo} turbo, " +
+        _log.Info($"sim bound on '{name}' ({_configuration.ChargerKind} charger, " +
                      $"{_configuration.Exhausts.Count} exhaust(s))");
 
-        if (_configuration.HasTurbo)
-        {
-            TryBindTurbo();
+        TryBindCombustion();
 
-            // effects are driven from the turbo model's signals, so only bind
-            // them when binding the turbo model succeeds.
-            if (TurboModel != null)
-            {
-                TryBindEffects();
-            }
+        // effects are driven from the engine model's signals, so only bind
+        // them when binding the model succeeds.
+        if (CombustionModel != null)
+        {
+            TryBindEffects();
         }
     }
 
-    private void TryBindTurbo()
+    private void TryBindCombustion()
     {
         var flow = _simController.SimulationFlow;
         var engine = flow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
         if (engine == null)
         {
-            _log.Warn($"no DieselEngineDirect on '{name}' - turbo not bound");
+            _log.Warn($"no DieselEngineDirect on '{name}' - engine model not bound");
             return;
         }
 
@@ -180,7 +179,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         if (_throttlePort == null || rpmPort == null)
         {
-            _log.Warn($"could not resolve throttle/rpm ports on '{name}' - turbo not bound");
+            _log.Warn($"could not resolve throttle/rpm ports on '{name}' - engine model not bound");
             return;
         }
 
@@ -192,11 +191,13 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             ? () => engineOnPort.Value > 0.5f
             : () => rpmPort.Value > 0.05f;
 
-        TurboModel = new TurboModel(new TurboModel.Settings(_configuration.Turbo),
+        CombustionModel = new CombustionModel(new CombustionModel.Settings(_configuration.Combustion),
             () => _throttlePort.Value,
-            () => rpmPort.Value);
+            _fuelNorm,
+            () => rpmPort.Value,
+            _configuration.BuildCharger());
 
-        _log.Info($"turbo bound on '{name}' (throttle: {_throttlePort.id}, " +
+        _log.Info($"combustion bound on '{name}' (throttle: {_throttlePort.id}, " +
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
@@ -297,13 +298,13 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     {
         var velocity = TrainCar.GetVelocity();
         var absSpeed = TrainCar.GetAbsSpeed();
-        var heat = TurboModel.ExhaustHeat;
+        var heat = CombustionModel.ExhaustHeat;
 
         foreach (var e in Exhausts)
         {
             var smoke = e.Smoke;
-            smoke.lambda = TurboModel.Lambda;
-            smoke.rpmNorm = TurboModel.RpmNorm;
+            smoke.lambda = CombustionModel.Lambda;
+            smoke.rpmNorm = CombustionModel.RpmNorm;
             smoke.heat = heat;
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;
