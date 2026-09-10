@@ -22,32 +22,7 @@ public static class Main
         _settings = UnityModManager.ModSettings.Load<Settings>(entry);
         SettingsPanel.Initialize(_settings);
 
-        Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
-            .AddTurbo()
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0.15f, -0.05f)));
-        Controller.ConfigureEngine(TrainCarType.LocoDH4, options => options
-            .AddTurbo()
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0f, -0.05f))
-            .ConfigureTurbo(t => t.LambdaCalibration = 1.7f)
-            .ConfigureSmoke(s =>
-            {
-                s.WetStackMistStrength = 0.95f;
-                s.OilRpmExponent = 2.1f;
-            })
-            .ConfigureExhaustVelocity(v =>
-            {
-                v.Idle = 3.05f;
-                v.FullLoad = 13f;
-            })
-            .ConfigureSmokeEmitter(e =>
-            {
-                e.startSizeMin = 0.4f;
-                e.startSizeMax = 0.6f;
-            }));
+        StockConfiguration.Apply();
 
         Orchestrator.Create();
 
