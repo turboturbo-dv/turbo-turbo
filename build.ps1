@@ -40,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$stage = "$root\dist\stage\Mods\TurboTurbo"
+$stage = "$root\dist\stage\TurboTurbo"
 New-Item $stage -ItemType Directory -Force | Out-Null
 
 Copy-Item "$root\TurboTurbo\bin\$Configuration\TurboTurbo.dll" $stage
@@ -56,7 +56,7 @@ Copy-Item $bundle $stage
 $version = (Get-Content "$root\TurboTurbo\info.json" -Raw | ConvertFrom-Json).Version
 $zip = "$root\dist\TurboTurbo-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path "$root\dist\stage\Mods" -DestinationPath $zip
+Compress-Archive -Path "$root\dist\stage\TurboTurbo" -DestinationPath $zip
 Remove-Item "$root\dist\stage" -Recurse -Force
 
 Write-Host "packaged: $zip"
