@@ -30,8 +30,6 @@
       <HintPath>$(GameDir)\DerailValley_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>true</Private>
     </Reference>
-    <!-- model under test (owned by the WorkBench project) -->
-    <Compile Include="..\WorkBench\Assets\Shimmer\ExhaustSmokeModel.cs" Link="ExhaustSmokeModel.cs" />
   </ItemGroup>
 
   <ItemGroup>
