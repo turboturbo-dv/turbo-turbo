@@ -380,7 +380,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
             section.AddFloat("sizeOverLifetimeStart", "Growth factor at emission.",
                 0.1f, 3f, true, () => f.tuning.sizeOverLifetimeStart, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeStart = v; });
             section.AddFloat("sizeOverLifetimeEnd", "Growth factor at end of lifetime.",
-                1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; });
+                1f, 15f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; });
             section.AddFloat("buoyancy", "Constant upward drift [m/s].",
                 -1f, 2f, true, () => f.tuning.buoyancy, v => { foreach (var s in smokes) s.tuning.buoyancy = v; });
             section.AddFloat("drag", "Air resistance decaying the inherited train velocity.",

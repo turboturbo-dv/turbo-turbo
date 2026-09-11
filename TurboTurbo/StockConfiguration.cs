@@ -10,8 +10,8 @@ internal static class StockConfiguration
     {
         ConfigureDe6();
         ConfigureDh4();
-        ConfigureDe2();
         ConfigureDm3();
+        ConfigureDe2();
         ConfigureDm1U();
         ConfigureModdedLocos();
     }
@@ -149,13 +149,40 @@ internal static class StockConfiguration
 
     private static void ConfigureDm1U()
     {
+        // this model is generally similar to the DM3, but weaker and smaller
         Controller.ConfigureEngine(TrainCarType.LocoDM1U, options => options
             .ReplaceEngineExhaust(
                 c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
                 new Vector3(0f, 0f, 0f))
-            .UseAtmosphericCharger(_ =>
+            .UseAtmosphericCharger(c =>
             {
-                // starter calibration, tune in game
+                c.EtaPeak = 0.83f;
+                c.ChokeK = 0.26f;
+                c.LambdaCalibration = 0.67f;
+            })
+            .ConfigureExhaustVelocity(s =>
+            {
+                s.FullLoad = 11f;
+            })
+            .ConfigureSmoke(s =>
+            {
+                s.CleanExhaustAlpha = 0.03f;
+                s.OilTintStrength = 0.5f;
+                s.OilRpmExponent = 0.5f;
+            })
+            .ConfigureSmokeEmitter(e =>
+            {
+                e.startSizeMin = 0.25f;
+                e.startSizeMax = 0.35f;
+                e.sizeOverLifetimeEnd = 12;
+            })
+            .ConfigureShimmerEmitter(e =>
+            {
+                e.lifetime = 1.2f;
+                e.startSizeMin = 0.3f;
+                e.startSizeMax = 0.3f;
+                e.sizeOverLifetimeEnd = 8;
+                e.strength = 0.008f;
             }));
     }
 
