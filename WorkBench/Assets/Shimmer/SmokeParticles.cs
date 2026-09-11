@@ -7,6 +7,8 @@ namespace TurboTurbo.WorkBench
     [RequireComponent(typeof(ParticleSystem))]
     public class SmokeParticles : MonoBehaviour
     {
+        private static readonly int LightSaturation = Shader.PropertyToID("_Saturation");
+
         public sealed class Settings
         {
             public float idleEmissionRate = 15f;
@@ -28,6 +30,8 @@ namespace TurboTurbo.WorkBench
             public float turbulenceStrength = 1.25f;
             public float turbulenceFrequency = 0.5f;
             public float turbulenceScrollSpeed = 0f;
+
+            public float lightSaturation = 0.35f;
 
             public Settings()
             {
@@ -51,6 +55,7 @@ namespace TurboTurbo.WorkBench
                 turbulenceStrength = other.turbulenceStrength;
                 turbulenceFrequency = other.turbulenceFrequency;
                 turbulenceScrollSpeed = other.turbulenceScrollSpeed;
+                lightSaturation = other.lightSaturation;
             }
         }
 
@@ -79,6 +84,7 @@ namespace TurboTurbo.WorkBench
         public Transform customSimulationSpace;
 
         private ParticleSystem _ps;
+        private ParticleSystemRenderer _renderer;
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
@@ -193,6 +199,7 @@ namespace TurboTurbo.WorkBench
             tsa.startFrame = new ParticleSystem.MinMaxCurve(0f, 1f);
 
             var rend = GetComponent<ParticleSystemRenderer>();
+            _renderer = rend;
 
             // nothing really works perfectly here, but YoungestInFront is pretty good, as you generally want newer
             // particles to be more visible than older ones. When looking at a thick smoke trail from the back it
@@ -203,7 +210,14 @@ namespace TurboTurbo.WorkBench
             {
                 rend.material.shader = shader;
                 rend.material.mainTexture = atlas;
+                SetLightSaturation(s.lightSaturation);
             }
+        }
+
+        public void SetLightSaturation(float value)
+        {
+            tuning.lightSaturation = value;
+            if (_renderer != null) _renderer.material.SetFloat(LightSaturation, value);
         }
 
         private void Update()

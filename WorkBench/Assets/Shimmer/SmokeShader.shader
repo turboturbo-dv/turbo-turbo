@@ -5,6 +5,7 @@ Shader "TurboTurbo/Smoke"
         _MainTex ("Smoke Texture", 2D) = "white" {}
         // this deserves some testing to see if it's actually necessary
         _FacingFloor ("Facing Floor", Range(0, 1)) = 0.6
+        _Saturation ("Light Saturation", Range(0, 1)) = 0.35
     }
     SubShader
     {
@@ -28,6 +29,7 @@ Shader "TurboTurbo/Smoke"
 
             sampler2D _MainTex;
             float _FacingFloor;
+            float _Saturation;
 
             struct appdata
             {
@@ -56,18 +58,17 @@ Shader "TurboTurbo/Smoke"
 
             half4 frag (v2f i) : SV_Target
             {
-                // atlas tile (TSA UVs baked by the renderer) tinted by the
-                // per-particle model color, faded by the envelope alpha
                 half4 tex = tex2D(_MainTex, i.uv);
                 float alpha = tex.a * i.color.a;
 
-                // fixed UP normal (top-lit fake lighting, like vanilla): the
-                // facing factor is the sun's elevation; the floor keeps a low
-                // sun from blacking the plume out. directional dirs are unit
-                // length, no normalize needed
                 float3 L = _WorldSpaceLightPos0.xyz;
                 float facing = lerp(_FacingFloor, 1.0, saturate(L.y));
                 half3 light = ShadeSH9(half4(0, 1, 0, 1)) + _LightColor0.rgb * facing;
+
+                // de-intensify the light colour tint, otherwise the smoke turns
+                // too yellow at sunset and too blue at night
+                half lum = Luminance(light);
+                light = lerp(lum.xxx, light, _Saturation);
 
                 half4 col = half4(tex.rgb * i.color.rgb * light, alpha);
                 UNITY_APPLY_FOG(i.fogCoord, col);
