@@ -6,6 +6,7 @@ Shader "TurboTurbo/Smoke"
         // this deserves some testing to see if it's actually necessary
         _FacingFloor ("Facing Floor", Range(0, 1)) = 0.6
         _Saturation ("Light Saturation", Range(0, 1)) = 0.35
+        _MaxShadowFloor ("Max Shadow Floor", Range(0, 1)) = 0.65
     }
     SubShader
     {
@@ -30,6 +31,7 @@ Shader "TurboTurbo/Smoke"
             sampler2D _MainTex;
             float _FacingFloor;
             float _Saturation;
+            float _MaxShadowFloor;
 
             struct appdata
             {
@@ -61,16 +63,23 @@ Shader "TurboTurbo/Smoke"
                 half4 tex = tex2D(_MainTex, i.uv);
                 float alpha = tex.a * i.color.a;
 
+                // compress the dynamic range on bright colours, to avoid white
+                // smoke having unnaturally dark shadows, while preserving
+                // detail in darker colours
+                half tintLum = Luminance(i.color.rgb);
+                half dynamicFloor = tintLum * _MaxShadowFloor;
+                half3 remappedTex = lerp(dynamicFloor.xxx, 1.0.xxx, tex.rgb);
+
                 float3 L = _WorldSpaceLightPos0.xyz;
                 float facing = lerp(_FacingFloor, 1.0, saturate(L.y));
                 half3 light = ShadeSH9(half4(0, 1, 0, 1)) + _LightColor0.rgb * facing;
 
                 // de-intensify the light colour tint, otherwise the smoke turns
                 // too yellow at sunset and too blue at night
-                half lum = Luminance(light);
-                light = lerp(lum.xxx, light, _Saturation);
+                half lightLum = Luminance(light);
+                light = lerp(lightLum.xxx, light, _Saturation);
 
-                half4 col = half4(tex.rgb * i.color.rgb * light, alpha);
+                half4 col = half4(remappedTex * i.color.rgb * light, alpha);
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }

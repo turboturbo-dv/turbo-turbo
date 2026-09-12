@@ -9,7 +9,7 @@ namespace TurboTurbo.Modeling
             public Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 1f);
             public Color ColorCleanBurn = new Color(0.45f, 0.45f, 0.45f, 1f);
             public Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 1f);
-            public Color ColorWetStack = new Color(0.93f, 0.93f, 0.93f, 1f);
+            public Color ColorWetStack = new Color(1f, 1f, 0.95f, 1f);
             public Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 1f);
 
             public float CleanExhaustLambda = 1.7f;

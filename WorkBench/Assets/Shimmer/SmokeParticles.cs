@@ -8,6 +8,7 @@ namespace TurboTurbo.WorkBench
     public class SmokeParticles : MonoBehaviour
     {
         private static readonly int LightSaturation = Shader.PropertyToID("_Saturation");
+        private static readonly int MaxShadowFloor = Shader.PropertyToID("_MaxShadowFloor");
 
         public sealed class Settings
         {
@@ -32,6 +33,7 @@ namespace TurboTurbo.WorkBench
             public float turbulenceScrollSpeed = 0f;
 
             public float lightSaturation = 0.35f;
+            public float maxShadowFloor = 0.65f;
 
             public Settings()
             {
@@ -56,6 +58,7 @@ namespace TurboTurbo.WorkBench
                 turbulenceFrequency = other.turbulenceFrequency;
                 turbulenceScrollSpeed = other.turbulenceScrollSpeed;
                 lightSaturation = other.lightSaturation;
+                maxShadowFloor = other.maxShadowFloor;
             }
         }
 
@@ -211,6 +214,7 @@ namespace TurboTurbo.WorkBench
                 rend.material.shader = shader;
                 rend.material.mainTexture = atlas;
                 SetLightSaturation(s.lightSaturation);
+                SetMaxShadowFloor(s.maxShadowFloor);
             }
         }
 
@@ -218,6 +222,12 @@ namespace TurboTurbo.WorkBench
         {
             tuning.lightSaturation = value;
             if (_renderer != null) _renderer.material.SetFloat(LightSaturation, value);
+        }
+
+        public void SetMaxShadowFloor(float value)
+        {
+            tuning.maxShadowFloor = value;
+            if (_renderer != null) _renderer.material.SetFloat(MaxShadowFloor, value);
         }
 
         private void Update()

@@ -405,6 +405,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 3f, true, () => f.tuning.turbulenceScrollSpeed, v => { foreach (var s in smokes) s.tuning.turbulenceScrollSpeed = v; });
             section.AddFloat("lightSaturation", "Environmental light color saturation on the smoke. Lower values limit environmental coloring.",
                 0f, 1f, false, () => f.tuning.lightSaturation, v => { foreach (var s in smokes) s.SetLightSaturation(v); });
+            section.AddFloat("maxShadowFloor", "Adjusts shadow intensity based on smoke color. Higher values reduce shadow intensity on light-colored smoke.",
+                0f, 1f, false, () => f.tuning.maxShadowFloor, v => { foreach (var s in smokes) s.SetMaxShadowFloor(v); });
             _sections.Add(section);
         }
 
