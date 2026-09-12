@@ -134,6 +134,10 @@ internal static class StockConfiguration
                 // lower power, so lower exhaust velocity
                 e.FullLoad = 12f;
             })
+            .ConfigureSmokeEmitter(e =>
+            {
+                e.sizeOverLifetimeEnd = 12f;
+            })
             .ConfigureShimmerEmitter(e =>
             {
                 // exhaust pipe is quite thin, so shimmer starts out small and rapidly grows bigger
