@@ -2,7 +2,7 @@
   "Id": "TurboTurbo",
   "DisplayName": "TurboTurbo",
   "Author": "geluk",
-  "Version": "0.1.0",
+  "Version": "##VERSION##",
   "AssemblyName": "TurboTurbo.dll",
   "EntryMethod": "TurboTurbo.Main.Load"
 }

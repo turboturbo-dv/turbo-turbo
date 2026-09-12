@@ -4,7 +4,8 @@
 # seem to detect the licence properly.
 param(
     [string]$Configuration = "Release",
-    [string]$GameDir = ""
+    [string]$GameDir = "",
+    [switch]$Install
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,8 +44,18 @@ if ($LASTEXITCODE -ne 0) {
 $stage = "$root\dist\stage\TurboTurbo"
 New-Item $stage -ItemType Directory -Force | Out-Null
 
+$describe = git -C $root describe --tags
+if ($LASTEXITCODE -ne 0 -or -not $describe) {
+    Write-Error "could not find a git tag"
+    exit 1
+}
+$version = $describe.Trim() -replace '^v', ''
+
 Copy-Item "$root\TurboTurbo\bin\$Configuration\TurboTurbo.dll" $stage
 Copy-Item "$root\TurboTurbo\info.json" $stage
+
+$stagedInfo = Join-Path $stage "info.json"
+((Get-Content $stagedInfo -Raw) -replace '##VERSION##', $version) | Set-Content -LiteralPath $stagedInfo -Encoding UTF8
 
 $bundle = "$root\WorkBench\AssetBundles\turboturbo_assets"
 if (-not (Test-Path $bundle)) {
@@ -53,10 +64,25 @@ if (-not (Test-Path $bundle)) {
 }
 Copy-Item $bundle $stage
 
-$version = (Get-Content "$root\TurboTurbo\info.json" -Raw | ConvertFrom-Json).Version
 $zip = "$root\dist\TurboTurbo-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$root\dist\stage\TurboTurbo" -DestinationPath $zip
 Remove-Item "$root\dist\stage" -Recurse -Force
 
 Write-Host "packaged: $zip"
+
+if ($Install) {
+    # $GameDir is only set when GameDir.props was just created; otherwise read it back
+    $installGameDir = $GameDir
+    if (-not $installGameDir) {
+        $installGameDir = ([xml](Get-Content $propsPath -Raw)).Project.PropertyGroup.GameDir
+    }
+    if (-not $installGameDir) {
+        Write-Error "Could not determine GameDir for install. Pass it explicitly: .\build.ps1 -Install -GameDir 'C:\path\to\Derail Valley'"
+        exit 1
+    }
+
+    $modsDir = Join-Path $installGameDir "Mods"
+    Expand-Archive -Path $zip -DestinationPath $modsDir -Force
+    Write-Host "installed to: $(Join-Path $modsDir 'TurboTurbo')"
+}
