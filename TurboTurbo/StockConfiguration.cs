@@ -128,11 +128,13 @@ internal static class StockConfiguration
             {
                 // not much wet stacking occurs in a smaller engine
                 s.WetStackMistStrength = 1f;
+                s.OilTintStrength = 0.35f;
             })
             .ConfigureExhaustVelocity(e =>
             {
                 // lower power, so lower exhaust velocity
-                e.FullLoad = 12f;
+                e.Idle = 1f;
+                e.FullLoad = 10f;
             })
             .ConfigureSmokeEmitter(e =>
             {
@@ -145,9 +147,13 @@ internal static class StockConfiguration
                 e.startSizeMax = 0.35f;
                 e.sizeOverLifetimeEnd = 9;
 
-                // lower power, so shimmer is less intense and short-lived
+                // lower power, so shimmer is less intense and disperses more quickly
                 e.lifetime = 1f;
-                e.strength = 0.008f;
+                e.strength = 0.004f;
+
+                // particle velocity adds enough movement, no need to scroll the effect itself
+                e.idleAnimSpeed = 0f;
+                e.fullAnimSpeed = 0f;
             }));
     }
 
