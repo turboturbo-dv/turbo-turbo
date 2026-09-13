@@ -405,6 +405,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 0f, 1f, false, () => f.tuning.lightSaturation, v => { foreach (var s in smokes) s.SetLightSaturation(v); });
             section.AddFloat("maxShadowFloor", "Adjusts shadow intensity based on smoke color. Higher values reduce shadow intensity on light-colored smoke.",
                 0f, 1f, false, () => f.tuning.maxShadowFloor, v => { foreach (var s in smokes) s.SetMaxShadowFloor(v); });
+            section.AddFloat("minFadeDist", "Camera distance [m] below which smoke is fully faded out.",
+                0f, 10f, false, () => f.tuning.minFadeDist, v => { foreach (var s in smokes) s.SetMinFadeDist(v); });
+            section.AddFloat("maxFadeDist", "Camera distance [m] above which smoke is fully visible.",
+                0f, 10f, false, () => f.tuning.maxFadeDist, v => { foreach (var s in smokes) s.SetMaxFadeDist(v); });
             _sections.Add(section);
         }
 

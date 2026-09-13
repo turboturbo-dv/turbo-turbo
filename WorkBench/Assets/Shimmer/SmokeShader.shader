@@ -7,6 +7,8 @@ Shader "TurboTurbo/Smoke"
         _FacingFloor ("Facing Floor", Range(0, 1)) = 0.6
         _Saturation ("Light Saturation", Range(0, 1)) = 0.35
         _MaxShadowFloor ("Max Shadow Floor", Range(0, 1)) = 0.65
+        _MinFadeDist ("Min Camera Fade Distance", Range(0, 10)) = 1
+        _MaxFadeDist ("Max Camera Fade Distance", Range(0, 10)) = 5
     }
     SubShader
     {
@@ -32,6 +34,8 @@ Shader "TurboTurbo/Smoke"
             float _FacingFloor;
             float _Saturation;
             float _MaxShadowFloor;
+            float _MinFadeDist;
+            float _MaxFadeDist;
 
             struct appdata
             {
@@ -53,7 +57,14 @@ Shader "TurboTurbo/Smoke"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
+
+                // fade out near the camera so smoke doesn't enter the cab if
+                // you're inside it
+                float eyeDepth = -UnityObjectToViewPos(v.vertex).z;
+                float camFade = smoothstep(_MinFadeDist, _MaxFadeDist, eyeDepth);
+
                 o.color = v.color;
+                o.color.a *= camFade;
                 UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }

@@ -9,6 +9,8 @@ namespace TurboTurbo.WorkBench
     {
         private static readonly int LightSaturation = Shader.PropertyToID("_Saturation");
         private static readonly int MaxShadowFloor = Shader.PropertyToID("_MaxShadowFloor");
+        private static readonly int MinFadeDist = Shader.PropertyToID("_MinFadeDist");
+        private static readonly int MaxFadeDist = Shader.PropertyToID("_MaxFadeDist");
 
         public sealed class Settings
         {
@@ -34,6 +36,8 @@ namespace TurboTurbo.WorkBench
 
             public float lightSaturation = 0.35f;
             public float maxShadowFloor = 0.65f;
+            public float minFadeDist = 1f;
+            public float maxFadeDist = 2f;
 
             public Settings()
             {
@@ -59,6 +63,8 @@ namespace TurboTurbo.WorkBench
                 turbulenceScrollSpeed = other.turbulenceScrollSpeed;
                 lightSaturation = other.lightSaturation;
                 maxShadowFloor = other.maxShadowFloor;
+                minFadeDist = other.minFadeDist;
+                maxFadeDist = other.maxFadeDist;
             }
         }
 
@@ -215,6 +221,8 @@ namespace TurboTurbo.WorkBench
                 rend.material.mainTexture = atlas;
                 SetLightSaturation(s.lightSaturation);
                 SetMaxShadowFloor(s.maxShadowFloor);
+                SetMinFadeDist(s.minFadeDist);
+                SetMaxFadeDist(s.maxFadeDist);
             }
         }
 
@@ -228,6 +236,18 @@ namespace TurboTurbo.WorkBench
         {
             tuning.maxShadowFloor = value;
             if (_renderer != null) _renderer.material.SetFloat(MaxShadowFloor, value);
+        }
+
+        public void SetMinFadeDist(float value)
+        {
+            tuning.minFadeDist = value;
+            if (_renderer != null) _renderer.material.SetFloat(MinFadeDist, value);
+        }
+
+        public void SetMaxFadeDist(float value)
+        {
+            tuning.maxFadeDist = value;
+            if (_renderer != null) _renderer.material.SetFloat(MaxFadeDist, value);
         }
 
         private void Update()
