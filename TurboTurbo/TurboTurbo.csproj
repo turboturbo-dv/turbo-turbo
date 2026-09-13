@@ -134,4 +134,8 @@
     <Message Importance="high" Text="Deployed TurboTurbo to $(ModDir)" />
   </Target>
 
+  <Target Name="StampModVersion" AfterTargets="Deploy" Condition="'$(DeployMod)' != 'false'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File $(MSBuildThisFileDirectory)..\scripts\StampModVersion.ps1 -InfoJson &quot;$(ModDir)\info.json&quot;" />
+  </Target>
+
 </Project>

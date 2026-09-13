@@ -44,18 +44,11 @@ if ($LASTEXITCODE -ne 0) {
 $stage = "$root\dist\stage\TurboTurbo"
 New-Item $stage -ItemType Directory -Force | Out-Null
 
-$describe = git -C $root describe --tags
-if ($LASTEXITCODE -ne 0 -or -not $describe) {
-    Write-Error "could not find a git tag"
-    exit 1
-}
-$version = $describe.Trim() -replace '^v', ''
-
 Copy-Item "$root\TurboTurbo\bin\$Configuration\TurboTurbo.dll" $stage
 Copy-Item "$root\TurboTurbo\info.json" $stage
 
 $stagedInfo = Join-Path $stage "info.json"
-((Get-Content $stagedInfo -Raw) -replace '##VERSION##', $version) | Set-Content -LiteralPath $stagedInfo -Encoding UTF8
+$version = & "$root\scripts\StampModVersion.ps1" -InfoJson $stagedInfo
 
 $bundle = "$root\WorkBench\AssetBundles\turboturbo_assets"
 if (-not (Test-Path $bundle)) {
