@@ -18,4 +18,3 @@ $logFile = Join-Path $PSScriptRoot "build.log"
 
 Write-Host "--- build finished, log: $logFile ---"
 Write-Host "Bundle output: $PSScriptRoot\AssetBundles\turboturbo_assets"
-Write-Host "Copy it to: <Derail Valley>\BepInEx\plugins\"
