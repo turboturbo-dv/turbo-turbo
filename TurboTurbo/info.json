@@ -3,6 +3,8 @@
   "DisplayName": "TurboTurbo",
   "Author": "geluk",
   "Version": "##VERSION##",
+	"HomePage":"https://www.nexusmods.com/derailvalley/mods/1700",
+	"Repository":"https://raw.githubusercontent.com/turboturbo-dv/turbo-turbo/refs/heads/main/repository.json",
   "AssemblyName": "TurboTurbo.dll",
   "EntryMethod": "TurboTurbo.Main.Load"
 }
