@@ -30,6 +30,7 @@ internal sealed class DevPanelPresenter : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        DestroyPanel();
     }
 
     private void Update()
@@ -50,9 +51,15 @@ internal sealed class DevPanelPresenter : MonoBehaviour
             return true;
         }
 
+        DestroyPanel();
+        return false;
+    }
+
+    private void DestroyPanel()
+    {
+        if (_panel == null) return;
         _panelRect = _panel.WindowRect;
         Destroy(_panel.gameObject);
         _panel = null;
-        return false;
     }
 }
