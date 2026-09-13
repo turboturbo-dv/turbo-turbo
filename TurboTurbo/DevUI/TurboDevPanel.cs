@@ -320,14 +320,12 @@ internal sealed class TurboDevPanel : MonoBehaviour
                 });
         }
 
-        Add("hazeAlpha", "Idle haze opacity.", 0f, 0.5f,
-            m => m.Tuning.HazeAlpha, (m, v) => m.Tuning.HazeAlpha = v);
+        Add("cleanMinHeatAlpha", "Clean exhaust opacity at zero heat.", 0f, 0.2f,
+            m => m.Tuning.CleanMinHeatAlpha, (m, v) => m.Tuning.CleanMinHeatAlpha = v);
+        Add("cleanMaxHeatAlpha", "Clean exhaust opacity at full heat.", 0f, 0.5f,
+            m => m.Tuning.CleanMaxHeatAlpha, (m, v) => m.Tuning.CleanMaxHeatAlpha = v);
         Add("cleanBurnHeat", "Heat at which the idle haze is fully gone.", 0.05f, 1f,
             m => m.Tuning.CleanBurnHeat, (m, v) => m.Tuning.CleanBurnHeat = v);
-        Add("cleanExhaustLambda", "Lambda at which the exhaust is fully clean.", 1f, 4f,
-            m => m.Tuning.CleanExhaustLambda, (m, v) => m.Tuning.CleanExhaustLambda = v);
-        Add("cleanExhaustAlpha", "Opacity of clean exhaust.", 0f, 0.2f,
-            m => m.Tuning.CleanExhaustAlpha, (m, v) => m.Tuning.CleanExhaustAlpha = v);
         Add("sootOnsetLambda", "Lambda where soot starts forming.", 0.3f, 1.5f,
             m => m.Tuning.SootOnsetLambda, (m, v) => m.Tuning.SootOnsetLambda = v);
         Add("sootOpaqueLambda", "Lambda where soot reaches maximum opacity.", 0.1f, 1f,

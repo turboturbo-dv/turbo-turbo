@@ -61,11 +61,11 @@ namespace TurboTurboTests
         // ------------------------------------------------------------
 
         [Fact]
-        public void CleanHighFlow_Exhaust_IsFaintCleanBurn()
+        public void CleanHighFlow_Exhaust_UsesMaxHeatAlpha()
         {
-            _model.Update(_model.Tuning.CleanExhaustLambda, 0f, 1f, engineOn: true, 0.016f);
+            _model.Update(2f, 0f, 1f, engineOn: true, 0.016f);
 
-            _model.Color.a.ShouldBe(_model.Tuning.CleanExhaustAlpha, tolerance: 0.001f);
+            _model.Color.a.ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.001f);
             _model.Color.r.ShouldBe(_model.Tuning.ColorCleanBurn.r, tolerance: 0.01f);
             _model.Color.g.ShouldBe(_model.Tuning.ColorCleanBurn.g, tolerance: 0.01f);
             _model.Color.b.ShouldBe(_model.Tuning.ColorCleanBurn.b, tolerance: 0.01f);
@@ -76,7 +76,7 @@ namespace TurboTurboTests
         {
             _model.Update(_model.Tuning.SootOnsetLambda, 0f, 0f, engineOn: true, 0.016f);
 
-            _model.Color.a.ShouldBe(_model.Tuning.HazeAlpha, tolerance: 0.001f);
+            _model.Color.a.ShouldBe(_model.Tuning.CleanMinHeatAlpha, tolerance: 0.001f);
             _model.Color.r.ShouldBe(_model.Tuning.ColorIdleHaze.r, tolerance: 0.01f);
             _model.Color.g.ShouldBe(_model.Tuning.ColorIdleHaze.g, tolerance: 0.01f);
             _model.Color.b.ShouldBe(_model.Tuning.ColorIdleHaze.b, tolerance: 0.01f);
@@ -85,7 +85,7 @@ namespace TurboTurboTests
         [Fact]
         public void Haze_IsFullyGone_AtCleanBurnHeat()
         {
-            _model.Update(_model.Tuning.CleanExhaustLambda, 0f, _model.Tuning.CleanBurnHeat, engineOn: true, 0.016f);
+            _model.Update(2f, 0f, _model.Tuning.CleanBurnHeat, engineOn: true, 0.016f);
 
             _model.Color.r.ShouldBe(_model.Tuning.ColorCleanBurn.r, tolerance: 0.01f);
         }
@@ -93,7 +93,7 @@ namespace TurboTurboTests
         [Fact]
         public void BaseColor_BlendsLinearly_WithHeat()
         {
-            _model.Update(_model.Tuning.CleanExhaustLambda, 0f, _model.Tuning.CleanBurnHeat * 0.5f, engineOn: true, 0.016f);
+            _model.Update(2f, 0f, _model.Tuning.CleanBurnHeat * 0.5f, engineOn: true, 0.016f);
 
             _model.Color.r.ShouldBe(
                 (_model.Tuning.ColorIdleHaze.r + _model.Tuning.ColorCleanBurn.r) * 0.5f,
@@ -109,7 +109,9 @@ namespace TurboTurboTests
         {
             _model.Update(_model.Tuning.SootOpaqueLambda, 0f, 0.5f, engineOn: true, 0.016f);
 
-            var expectedAlpha = 1f - (1f - _model.Tuning.HazeAlpha) * (1f - _model.Tuning.SootMaxAlpha);
+            var baseAlpha = Mathf.Lerp(
+                _model.Tuning.CleanMinHeatAlpha, _model.Tuning.CleanMaxHeatAlpha, 0.5f);
+            var expectedAlpha = 1f - (1f - baseAlpha) * (1f - _model.Tuning.SootMaxAlpha);
             _model.Color.a.ShouldBe(expectedAlpha, tolerance: 0.005f);
             _model.Color.r.ShouldBeLessThan(0.2f);
         }
@@ -179,7 +181,7 @@ namespace TurboTurboTests
             _model.Update(2f, 0.3f, 1f, engineOn: true, 0.016f);
 
             _model.WetStackAccumulator.ShouldBeLessThan(1f);
-            _model.Color.a.ShouldBeGreaterThan(_model.Tuning.HazeAlpha);
+            _model.Color.a.ShouldBeGreaterThan(_model.Tuning.CleanMaxHeatAlpha);
             _model.Color.r.ShouldBeGreaterThan(_model.Tuning.ColorIdleHaze.r,
                 "wet-stack mist should push the color toward off-white");
         }
@@ -197,7 +199,7 @@ namespace TurboTurboTests
             }
 
             _model.WetStackAccumulator.ShouldBe(0f, tolerance: 0.001f);
-            _model.Color.a.ShouldBe(_model.Tuning.CleanExhaustAlpha, tolerance: 0.01f);
+            _model.Color.a.ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.01f);
         }
 
         [Fact]
@@ -222,7 +224,6 @@ namespace TurboTurboTests
             {
                 Tuning =
                 {
-                    CleanExhaustLambda = 0.9f,
                     SootOnsetLambda = 1.2f,
                     SootOpaqueLambda = 1.1f,
                 },
@@ -230,7 +231,6 @@ namespace TurboTurboTests
             model.Tuning.Validate();
 
             model.Tuning.SootOpaqueLambda.ShouldBeLessThan(model.Tuning.SootOnsetLambda);
-            model.Tuning.SootOnsetLambda.ShouldBeLessThan(model.Tuning.CleanExhaustLambda);
         }
 
         [Fact]

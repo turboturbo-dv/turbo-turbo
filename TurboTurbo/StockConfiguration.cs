@@ -89,7 +89,7 @@ internal static class StockConfiguration
             .ConfigureSmoke(s =>
             {
                 // some oil burning gives the DM3 a distinctive blue-gray smoke
-                s.CleanExhaustAlpha = 0.04f;
+                s.CleanMinHeatAlpha = 0.04f;
                 s.OilTintStrength = 0.5f;
                 s.OilRpmExponent = 0.5f;
             })
@@ -176,7 +176,7 @@ internal static class StockConfiguration
             })
             .ConfigureSmoke(s =>
             {
-                s.CleanExhaustAlpha = 0.03f;
+                s.CleanMinHeatAlpha = 0.03f;
                 s.OilTintStrength = 0.5f;
                 s.OilRpmExponent = 0.5f;
             })

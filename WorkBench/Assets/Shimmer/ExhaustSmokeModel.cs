@@ -12,9 +12,8 @@ namespace TurboTurbo.Modeling
             public Color ColorWetStack = new Color(1f, 1f, 0.95f, 1f);
             public Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 1f);
 
-            public float CleanExhaustLambda = 1.7f;
-            public float CleanExhaustAlpha = 0.015f;
-            public float HazeAlpha = 0.08f;
+            public float CleanMinHeatAlpha = 0.015f;
+            public float CleanMaxHeatAlpha = 0.08f;
             public float CleanBurnHeat = 0.2f;
 
             public float SootOnsetLambda = 1.05f;
@@ -44,9 +43,8 @@ namespace TurboTurbo.Modeling
                 ColorWetStack = other.ColorWetStack;
                 ColorOilBurn = other.ColorOilBurn;
 
-                CleanExhaustLambda = other.CleanExhaustLambda;
-                CleanExhaustAlpha = other.CleanExhaustAlpha;
-                HazeAlpha = other.HazeAlpha;
+                CleanMinHeatAlpha = other.CleanMinHeatAlpha;
+                CleanMaxHeatAlpha = other.CleanMaxHeatAlpha;
                 CleanBurnHeat = other.CleanBurnHeat;
 
                 SootOnsetLambda = other.SootOnsetLambda;
@@ -72,8 +70,8 @@ namespace TurboTurbo.Modeling
             {
                 const float epsilon = 0.01f;
 
-                CleanExhaustAlpha = Mathf.Clamp01(CleanExhaustAlpha);
-                HazeAlpha = Mathf.Clamp01(HazeAlpha);
+                CleanMinHeatAlpha = Mathf.Clamp01(CleanMinHeatAlpha);
+                CleanMaxHeatAlpha = Mathf.Clamp01(CleanMaxHeatAlpha);
                 SootMaxAlpha = Mathf.Clamp01(SootMaxAlpha);
                 WetStackMaxAlpha = Mathf.Clamp01(WetStackMaxAlpha);
                 WetStackMistStrength = Mathf.Max(0f, WetStackMistStrength);
@@ -90,10 +88,8 @@ namespace TurboTurbo.Modeling
                     WetStackReleaseHeat, Mathf.Min(WetStackFillHeat + epsilon, 1f), 1f);
                 WetStackFillHeat = Mathf.Min(WetStackFillHeat, WetStackReleaseHeat - epsilon);
 
-                SootOnsetLambda = Mathf.Clamp(
-                    SootOnsetLambda, SootOpaqueLambda + epsilon, CleanExhaustLambda - epsilon);
+                SootOnsetLambda = Mathf.Max(SootOnsetLambda, SootOpaqueLambda + epsilon);
                 SootOpaqueLambda = Mathf.Min(SootOpaqueLambda, SootOnsetLambda - epsilon);
-                CleanExhaustLambda = Mathf.Max(CleanExhaustLambda, SootOnsetLambda + epsilon);
             }
         }
 
@@ -121,8 +117,7 @@ namespace TurboTurbo.Modeling
             var flowColorFactor = Mathf.InverseLerp(0f, s.CleanBurnHeat, heat);
             var baseColor = Color.Lerp(s.ColorIdleHaze, s.ColorCleanBurn, flowColorFactor);
 
-            var cleanliness = Mathf.InverseLerp(s.SootOnsetLambda, s.CleanExhaustLambda, lambda);
-            var baseAlpha = Mathf.Lerp(s.HazeAlpha, s.CleanExhaustAlpha, cleanliness);
+            var baseAlpha = Mathf.Lerp(s.CleanMinHeatAlpha, s.CleanMaxHeatAlpha, heat);
 
             var oilFactor = Mathf.Clamp01(s.OilTintStrength * Mathf.Pow(rpmNorm, s.OilRpmExponent));
             baseColor = Color.Lerp(baseColor, s.ColorOilBurn, oilFactor);
