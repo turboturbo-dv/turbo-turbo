@@ -39,11 +39,6 @@ internal sealed class Section
             requiresReconfigure ? _onRequiresReconfigure : null));
     }
 
-    public void AddKey(string key, string tooltip, Func<KeyCode> get, Action<KeyCode> set)
-    {
-        _specs.Add(new KeyCodeSpec(key, tooltip, get, set));
-    }
-
     public ColorSpec AddColor(string key, string tooltip, Func<Color> get, Action<Color> set)
     {
         var spec = new ColorSpec(key, tooltip, get, set);

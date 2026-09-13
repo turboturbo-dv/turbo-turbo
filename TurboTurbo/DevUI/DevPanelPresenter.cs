@@ -37,7 +37,7 @@ internal sealed class DevPanelPresenter : MonoBehaviour
     {
         DevCommands.TryRegister(this);
 
-        if (Input.GetKeyDown(_settings.ToggleDevPanelKey)) Toggle();
+        if (_settings.ToggleDevPanel.Down()) Toggle();
     }
 
     /// <summary>

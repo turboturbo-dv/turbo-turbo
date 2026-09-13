@@ -222,38 +222,3 @@ internal sealed class ButtonSpec : ITweakSpec
 
     public string Export() => null;
 }
-
-internal sealed class KeyCodeSpec : SpecBase<KeyCode>, ITweakSpec
-{
-    private bool _capturing;
-
-    public KeyCodeSpec(string key, string tooltip, Func<KeyCode> get, Action<KeyCode> set)
-        : base(key, tooltip, get, set, null)
-    {
-    }
-
-    public void Draw()
-    {
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
-
-        var buttonText = _capturing ? "press a key..."
-            : _get() == KeyCode.None ? "(none)"
-            : _get().ToString();
-        if (GUILayout.Button(buttonText, GUILayout.Width(120f))) _capturing = true;
-
-        GUILayout.EndHorizontal();
-
-        if (!_capturing) return;
-
-        var e = Event.current;
-        if (e == null || e.type != EventType.KeyDown) return;
-        e.Use();
-
-        _capturing = false;
-        // escape clears the binding instead of claiming escape itself
-        Commit(e.keyCode == KeyCode.Escape ? KeyCode.None : e.keyCode);
-    }
-
-    public string Export() => Changed ? $"  {Key}: {_get()}" : null;
-}

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 
 using TurboTurbo.DevUI;
 
+using UnityEngine;
+
 using UnityModManagerNet;
 
 namespace TurboTurbo.Configuration;
@@ -12,13 +14,11 @@ namespace TurboTurbo.Configuration;
 internal static class SettingsPanel
 {
     private static readonly List<Section> Sections = new();
+    private static Settings _settings;
 
     internal static void Initialize(Settings settings)
     {
-        var general = new Section("general", "general");
-        general.AddKey("Toggle dev panel", "Key that toggles the dev panel. None = unbound.",
-            () => settings.ToggleDevPanelKey, v => settings.ToggleDevPanelKey = v);
-        Sections.Add(general);
+        _settings = settings;
     }
 
     internal static void Draw(UnityModManager.ModEntry entry)
@@ -27,5 +27,9 @@ internal static class SettingsPanel
         {
             section.Draw();
         }
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Toggle dev panel");
+        UnityModManager.UI.DrawKeybindingSmart(_settings.ToggleDevPanel, "Toggle dev panel");
+        GUILayout.EndHorizontal();
     }
 }

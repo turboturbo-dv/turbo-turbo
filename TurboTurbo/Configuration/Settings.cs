@@ -1,10 +1,8 @@
-﻿using UnityEngine;
-
-using UnityModManagerNet;
+﻿using UnityModManagerNet;
 
 namespace TurboTurbo.Configuration;
 
 public class Settings : UnityModManager.ModSettings
 {
-    public KeyCode ToggleDevPanelKey = KeyCode.None;
+    public KeyBinding ToggleDevPanel = new KeyBinding();
 }
