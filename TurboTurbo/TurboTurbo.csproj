@@ -22,6 +22,12 @@
     <PackageReference Include="UnityModManager" Version="0.32.4" />
   </ItemGroup>
   
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>TurboTurboTests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- Shared source files -->
   <ItemGroup>
     <Compile Include="..\WorkBench\Assets\Shimmer\ExhaustSmokeModel.cs">

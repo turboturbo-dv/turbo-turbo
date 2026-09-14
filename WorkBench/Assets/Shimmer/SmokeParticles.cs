@@ -1,3 +1,5 @@
+using System.Xml.Serialization;
+
 using TurboTurbo.Modeling;
 
 using UnityEngine;
@@ -12,6 +14,7 @@ namespace TurboTurbo.WorkBench
         private static readonly int MinFadeDist = Shader.PropertyToID("_MinFadeDist");
         private static readonly int MaxFadeDist = Shader.PropertyToID("_MaxFadeDist");
 
+        [XmlType("SmokeEmitterSettings")]
         public sealed class Settings
         {
             public float idleEmissionRate = 15f;

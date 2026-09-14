@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+using TurboTurbo.Profiles;
+
 using UnityEngine;
 
 namespace TurboTurbo.Runtime;
@@ -132,7 +134,7 @@ internal sealed class Orchestrator : MonoBehaviour
     {
         // we really don't need to do anything on delete, if the car is revived from the pool
         // the host should just come back to life with it. Still log a bit in case we run into weird issues here.
-        var matchingConfiguration = Controller.TryGetConfiguration(car);
+        var matchingConfiguration = EngineConfigurationRepository.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
         {
@@ -146,7 +148,7 @@ internal sealed class Orchestrator : MonoBehaviour
     {
         if (!Enabled) return;
 
-        var matchingConfiguration = Controller.TryGetConfiguration(car);
+        var matchingConfiguration = EngineConfigurationRepository.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
         {

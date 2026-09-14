@@ -1,4 +1,5 @@
 using System;
+using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace TurboTurbo.Modeling;
 public sealed class CombustionModel
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
+    [XmlType("CombustionSettings")]
     public sealed class Settings
     {
         public float RpmTorqueExponent { get; set; } = 0f;

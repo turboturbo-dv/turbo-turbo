@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 
 using TurboTurbo.Modeling;
 
@@ -17,6 +18,7 @@ namespace TurboTurbo
         private static readonly int Outline = Shader.PropertyToID("_Outline");
         private static readonly int Debug1 = Shader.PropertyToID("_Debug");
 
+        [XmlType("ShimmerEmitterSettings")]
         public sealed class Settings
         {
             public float idleRate = 5f;

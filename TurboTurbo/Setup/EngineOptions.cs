@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using TurboTurbo.Modeling;
+using TurboTurbo.Profiles;
 using TurboTurbo.WorkBench;
 
 using UnityEngine;
@@ -11,20 +12,20 @@ namespace TurboTurbo.Setup;
 public class EngineOptions
 {
     private readonly List<ExhaustBinding> _exhausts = new();
-    private readonly CombustionModel.Settings _combustion = new();
-    private readonly TurboCharger.Settings _turboCharger = new();
-    private readonly AtmosphericCharger.Settings _atmospheric = new();
-    private readonly ExhaustSmokeModel.Settings _smoke = new();
-    private readonly SmokeParticles.Settings _smokeEmitter = new();
-    private readonly ShimmerParticles.Settings _shimmer = new();
-    private readonly ExhaustVelocitySettings _velocity = new();
+    private CombustionModel.Settings _combustion = new();
+    private TurboCharger.Settings _turboCharger = new();
+    private AtmosphericCharger.Settings _atmospheric = new();
+    private ExhaustSmokeModel.Settings _smoke = new();
+    private SmokeParticles.Settings _smokeEmitter = new();
+    private ShimmerParticles.Settings _shimmer = new();
+    private ExhaustVelocitySettings _velocity = new();
 
     private ChargerKind _chargerKind = ChargerKind.Turbo;
 
     /// <summary>Adds a new engine exhaust at the given position.</summary>
-    public EngineOptions AddEngineExhaust(Func<TrainCar, Transform> transformSelector)
+    public EngineOptions AddEngineExhaust(Func<TrainCar, Transform> transformSelector, Vector3? offset = null)
     {
-        _exhausts.Add(new ExhaustBinding(transformSelector, null, Vector3.zero));
+        _exhausts.Add(new ExhaustBinding(transformSelector, null, offset ?? Vector3.zero));
         return this;
     }
 
@@ -87,6 +88,51 @@ public class EngineOptions
     {
         configure(_velocity);
         return this;
+    }
+
+    /// <summary>
+    /// Populates this options object from a loco profile. Null settings blocks keep
+    /// their defaults; present smoke/atmospheric blocks are normalized via Validate,
+    /// mirroring the dev panel edit path.
+    /// </summary>
+    internal void ApplyLocoProfile(LocoProfile profile)
+    {
+        foreach (var exhaust in profile.Exhausts)
+        {
+            if (exhaust.Kind == ExhaustKind.Replacement)
+            {
+                ReplaceEngineExhaust(
+                    c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == exhaust.Name),
+                    exhaust.Offset);
+            }
+            else
+            {
+                AddEngineExhaust(c => c.transform, exhaust.Offset);
+            }
+        }
+
+        if (profile.Combustion != null) _combustion = new CombustionModel.Settings(profile.Combustion);
+        if (profile.ChargerKind == ChargerKind.Atmospheric)
+        {
+            _chargerKind = ChargerKind.Atmospheric;
+            if (profile.Atmospheric != null)
+            {
+                _atmospheric = new AtmosphericCharger.Settings(profile.Atmospheric);
+                _atmospheric.Validate();
+            }
+        }
+        else if (profile.TurboCharger != null)
+        {
+            _turboCharger = new TurboCharger.Settings(profile.TurboCharger);
+        }
+        if (profile.Smoke != null)
+        {
+            _smoke = new ExhaustSmokeModel.Settings(profile.Smoke);
+            _smoke.Validate();
+        }
+        if (profile.SmokeEmitter != null) _smokeEmitter = new SmokeParticles.Settings(profile.SmokeEmitter);
+        if (profile.ShimmerEmitter != null) _shimmer = new ShimmerParticles.Settings(profile.ShimmerEmitter);
+        if (profile.Velocity != null) _velocity = new ExhaustVelocitySettings(profile.Velocity);
     }
 
     internal EngineConfiguration Build()

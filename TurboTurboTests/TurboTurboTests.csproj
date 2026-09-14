@@ -30,6 +30,21 @@
       <HintPath>$(GameDir)\DerailValley_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <!-- Full UnityEngine for KeyCode, ParticleSystemModule for the exhaust
+         selectors, Assembly-CSharp for TrainCar - all needed to exercise
+         EngineOptions and Settings outside the game -->
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameDir)\DerailValley_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(GameDir)\DerailValley_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameDir)\DerailValley_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

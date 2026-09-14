@@ -1,4 +1,5 @@
 using System;
+using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -8,6 +9,7 @@ namespace TurboTurbo.Modeling;
 public sealed class TurboCharger : ICharger
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
+    [XmlType("TurboChargerSettings")]
     public sealed class Settings
     {
         public float LambdaCalibration { get; set; } = 1.74f;

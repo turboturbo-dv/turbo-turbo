@@ -1,4 +1,5 @@
 using System;
+using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -8,6 +9,7 @@ namespace TurboTurbo.Modeling;
 public sealed class AtmosphericCharger : ICharger
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
+    [XmlType("AtmosphericChargerSettings")]
     public sealed class Settings
     {
         public float EtaPeak { get; set; } = 0.9f;

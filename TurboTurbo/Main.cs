@@ -1,12 +1,13 @@
-using DV.ThingTypes;
-
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
+using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
 
 namespace TurboTurbo;
+
+using System.Linq;
 
 using UnityModManagerNet;
 
@@ -16,11 +17,21 @@ public static class Main
 
     public static void Load(UnityModManager.ModEntry entry)
     {
-        Log.Init(entry.Logger);
+        Log.Init(new UmmLogSink(entry.Logger));
         ModAssets.Initialize(entry.Path);
 
         _settings = UnityModManager.ModSettings.Load<Settings>(entry);
         SettingsPanel.Initialize(_settings);
+
+        EngineConfigurationRepository.Initialize(_settings, entry);
+
+        var userProfiles = ProfileLoader.LoadUserProfiles(_settings.LocoProfiles);
+        var modProfiles = ProfileLoader.LoadModProfiles(
+            UnityModManager.modEntries.Select(e => new ProfileLoader.ModSource(e.Info.Id, e.Info.DisplayName, e.Enabled, e.Path)),
+            entry.Info.Id);
+
+        EngineConfigurationRepository.SetUserProfiles(userProfiles);
+        EngineConfigurationRepository.SetSuppliedProfiles(modProfiles);
 
         StockConfiguration.Apply();
 

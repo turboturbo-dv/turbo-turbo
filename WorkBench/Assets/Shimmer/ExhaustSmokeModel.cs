@@ -1,9 +1,12 @@
+using System.Xml.Serialization;
+
 using UnityEngine;
 
 namespace TurboTurbo.Modeling
 {
     public class ExhaustSmokeModel
     {
+        [XmlType("SmokeSettings")]
         public sealed class Settings
         {
             public Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 1f);
