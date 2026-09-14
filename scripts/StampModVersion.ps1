@@ -25,8 +25,9 @@ if (-not $gitOk -or -not $describe) {
 }
 $version = $describe.Trim() -replace '^v', ''
 
-((Get-Content $InfoJson -Raw) -replace '##VERSION##', $version) |
-    Set-Content -LiteralPath $InfoJson -Encoding UTF8
+$stamped = (Get-Content $InfoJson -Raw) -replace '##VERSION##', $version
+# we need to do it this way to ensure PS doesn't write a BOM, which Vortex can't handle
+[System.IO.File]::WriteAllText($InfoJson, $stamped, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "stamped version $version into $InfoJson"
 $version
