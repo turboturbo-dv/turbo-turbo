@@ -55,7 +55,9 @@ Copy-Item "$root\TurboTurbo\bin\$Configuration\TurboTurbo.dll" $stage
 Copy-Item "$root\TurboTurbo\info.json" $stage
 
 $stagedInfo = Join-Path $stage "info.json"
-((Get-Content $stagedInfo -Raw) -replace '##VERSION##', $version) | Set-Content -LiteralPath $stagedInfo -Encoding UTF8
+$stamped = (Get-Content $stagedInfo -Raw) -replace '##VERSION##', $version
+# we need to do it this way to ensure PS doesn't write a BOM, which Vortex can't handle
+[System.IO.File]::WriteAllText($stagedInfo, $stamped, [System.Text.UTF8Encoding]::new($false))
 
 $bundle = "$root\WorkBench\AssetBundles\turboturbo_assets"
 if (-not (Test-Path $bundle)) {
