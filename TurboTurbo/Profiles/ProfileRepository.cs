@@ -9,16 +9,16 @@ using UnityModManagerNet;
 namespace TurboTurbo.Profiles;
 
 /// <summary>
-/// Authoritative source for engine configurations. Queries, in order of precedence:
+/// Authoritative source for loco profiles. Queries, in order of precedence:
 /// user-defined profiles, mod-defined profiles, then built-in configuration.
 /// </summary>
-internal static class EngineConfigurationRepository
+internal static class ProfileRepository
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("profiles");
 
     private static readonly Dictionary<string, LocoProfile> UserProfiles = new();
     private static readonly Dictionary<string, ProfileLoader.ModProfile> ModProfiles = new();
-    private static readonly Dictionary<string, EngineConfiguration> Cache = new();
+    private static readonly Dictionary<string, LocoProfile> Cache = new();
 
     private static Settings _settings;
     private static UnityModManager.ModEntry _entry;
@@ -36,23 +36,34 @@ internal static class EngineConfigurationRepository
         Cache.Clear();
     }
 
-    internal static EngineConfiguration? TryGetConfiguration(TrainCar car)
+    internal static LocoProfile TryGetConfiguration(TrainCar car)
     {
         var liveryId = car.carLivery.id;
-        if (UserProfiles.TryGetValue(liveryId, out var profile) && profile.Enabled)
-            return GetOrBuild(liveryId, profile);
-        if (ModProfiles.TryGetValue(liveryId, out var supplied) && supplied.Profile.Enabled)
-            return GetOrBuild(liveryId, supplied.Profile);
-        return Controller.TryGetConfiguration(car);
+        if (UserProfiles.TryGetValue(liveryId, out var profile))
+        {
+            // note: a disabled user profile still overrides a mod profile, that's deliberate
+            if (profile.Enabled) return GetOrBuild(liveryId, profile);
+        }
+        else if (ModProfiles.TryGetValue(liveryId, out var supplied))
+        {
+            // note: a disabled mod profile still overrides a built-in profile, that's deliberate too
+            if (supplied.Profile.Enabled) return GetOrBuild(liveryId, supplied.Profile);
+        }
+        else
+        {
+            return Controller.TryGetConfiguration(liveryId);
+        }
+
+        return null;
     }
 
-    private static EngineConfiguration GetOrBuild(string liveryId, LocoProfile profile)
+    private static LocoProfile GetOrBuild(string liveryId, LocoProfile profile)
     {
         if (!Cache.TryGetValue(liveryId, out var configuration))
         {
             var options = new EngineOptions();
             options.ApplyLocoProfile(profile);
-            configuration = options.Build();
+            configuration = options.Build(liveryId);
             Cache[liveryId] = configuration;
         }
         return configuration;

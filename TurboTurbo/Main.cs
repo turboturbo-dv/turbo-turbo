@@ -23,15 +23,15 @@ public static class Main
         _settings = UnityModManager.ModSettings.Load<Settings>(entry);
         SettingsPanel.Initialize(_settings);
 
-        EngineConfigurationRepository.Initialize(_settings, entry);
+        ProfileRepository.Initialize(_settings, entry);
 
         var userProfiles = ProfileLoader.LoadUserProfiles(_settings.LocoProfiles);
         var modProfiles = ProfileLoader.LoadModProfiles(
             UnityModManager.modEntries.Select(e => new ProfileLoader.ModSource(e.Info.Id, e.Info.DisplayName, e.Enabled, e.Path)),
             entry.Info.Id);
 
-        EngineConfigurationRepository.SetUserProfiles(userProfiles);
-        EngineConfigurationRepository.SetSuppliedProfiles(modProfiles);
+        ProfileRepository.SetUserProfiles(userProfiles);
+        ProfileRepository.SetSuppliedProfiles(modProfiles);
 
         StockConfiguration.Apply();
 

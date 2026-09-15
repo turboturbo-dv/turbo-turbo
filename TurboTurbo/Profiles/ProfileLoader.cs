@@ -23,7 +23,7 @@ internal static class ProfileLoader
             if (config == null) continue;
             MergeInto(loaded, mod, config);
         }
-        
+
         Log.Info($"loaded {loaded.Count} loco profiles from mods");
         return loaded;
     }

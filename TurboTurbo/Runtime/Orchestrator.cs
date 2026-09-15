@@ -134,7 +134,7 @@ internal sealed class Orchestrator : MonoBehaviour
     {
         // we really don't need to do anything on delete, if the car is revived from the pool
         // the host should just come back to life with it. Still log a bit in case we run into weird issues here.
-        var matchingConfiguration = EngineConfigurationRepository.TryGetConfiguration(car);
+        var matchingConfiguration = ProfileRepository.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
         {
@@ -148,7 +148,7 @@ internal sealed class Orchestrator : MonoBehaviour
     {
         if (!Enabled) return;
 
-        var matchingConfiguration = EngineConfigurationRepository.TryGetConfiguration(car);
+        var matchingConfiguration = ProfileRepository.TryGetConfiguration(car);
 
         if (matchingConfiguration == null)
         {
@@ -172,7 +172,8 @@ internal sealed class Orchestrator : MonoBehaviour
 
         // host is a component of the car so it dies along with it if the car is fully removed
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
-        host.Configure(matchingConfiguration.Value);
+        // hand it its own deep copy so any edits to its settings remain local to the car
+        host.Configure(matchingConfiguration.Clone());
         Hosts.Add(host);
     }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using TurboTurbo.Modeling;
 using TurboTurbo.Profiles;
@@ -11,7 +12,7 @@ namespace TurboTurbo.Setup;
 
 public class EngineOptions
 {
-    private readonly List<ExhaustBinding> _exhausts = new();
+    private readonly List<LocoExhaust> _exhausts = new();
     private CombustionModel.Settings _combustion = new();
     private TurboCharger.Settings _turboCharger = new();
     private AtmosphericCharger.Settings _atmospheric = new();
@@ -22,21 +23,21 @@ public class EngineOptions
 
     private ChargerKind _chargerKind = ChargerKind.Turbo;
 
-    /// <summary>Adds a new engine exhaust at the given position.</summary>
-    public EngineOptions AddEngineExhaust(Func<TrainCar, Transform> transformSelector, Vector3? offset = null)
+    /// <summary>Adds an exhaust that hangs off the car's own transform, at the given car-local offset.</summary>
+    public EngineOptions AddEngineExhaust(Vector3 offset = default)
     {
-        _exhausts.Add(new ExhaustBinding(transformSelector, null, offset ?? Vector3.zero));
+        _exhausts.Add(new LocoExhaust { Kind = ExhaustKind.Independent, Offset = offset });
         return this;
     }
 
     /// <summary>
-    /// Takes over an existing exhaust ParticleSystem: its emission is disabled so that it is effectively replaced.
-    /// The optional offset, in car-local space, shifts the new emitters relative to the transform
-    /// of the existing particle system.
+    /// Takes over an existing exhaust ParticleSystem found by exact name: its emission
+    /// is disabled so that it is effectively replaced. The offset, in car-local space,
+    /// shifts the new emitters relative to the transform of the existing particle system.
     /// </summary>
-    public EngineOptions ReplaceEngineExhaust(Func<TrainCar, ParticleSystem> psSelector, Vector3? offset = null)
+    public EngineOptions ReplaceEngineExhaust(string particleSystemName, Vector3 offset = default)
     {
-        _exhausts.Add(new ExhaustBinding(null, psSelector, offset ?? Vector3.zero));
+        _exhausts.Add(new LocoExhaust { Kind = ExhaustKind.Replacement, Name = particleSystemName, Offset = offset });
         return this;
     }
 
@@ -97,17 +98,11 @@ public class EngineOptions
     /// </summary>
     internal void ApplyLocoProfile(LocoProfile profile)
     {
-        foreach (var exhaust in profile.Exhausts)
+        if (profile.Exhausts != null)
         {
-            if (exhaust.Kind == ExhaustKind.Replacement)
+            foreach (var exhaust in profile.Exhausts)
             {
-                ReplaceEngineExhaust(
-                    c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == exhaust.Name),
-                    exhaust.Offset);
-            }
-            else
-            {
-                AddEngineExhaust(c => c.transform, exhaust.Offset);
+                _exhausts.Add(new LocoExhaust { Kind = exhaust.Kind, Name = exhaust.Name, Offset = exhaust.Offset });
             }
         }
 
@@ -135,17 +130,20 @@ public class EngineOptions
         if (profile.Velocity != null) _velocity = new ExhaustVelocitySettings(profile.Velocity);
     }
 
-    internal EngineConfiguration Build()
+    internal LocoProfile Build(string liveryId)
     {
-        // clone so later edits to this options object cannot leak into an already built configuration
-        return new EngineConfiguration(_exhausts,
-            new CombustionModel.Settings(_combustion),
-            _chargerKind,
-            new TurboCharger.Settings(_turboCharger),
-            new AtmosphericCharger.Settings(_atmospheric),
-            new ExhaustSmokeModel.Settings(_smoke),
-            new SmokeParticles.Settings(_smokeEmitter),
-            new ShimmerParticles.Settings(_shimmer),
-            new ExhaustVelocitySettings(_velocity));
+        return new LocoProfile
+        {
+            LiveryId = liveryId,
+            ChargerKind = _chargerKind,
+            Exhausts = _exhausts.Select(e => new LocoExhaust { Kind = e.Kind, Name = e.Name, Offset = e.Offset }).ToList(),
+            Combustion = new CombustionModel.Settings(_combustion),
+            TurboCharger = new TurboCharger.Settings(_turboCharger),
+            Atmospheric = new AtmosphericCharger.Settings(_atmospheric),
+            Smoke = new ExhaustSmokeModel.Settings(_smoke),
+            SmokeEmitter = new SmokeParticles.Settings(_smokeEmitter),
+            ShimmerEmitter = new ShimmerParticles.Settings(_shimmer),
+            Velocity = new ExhaustVelocitySettings(_velocity),
+        };
     }
 }

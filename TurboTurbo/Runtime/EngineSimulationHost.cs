@@ -10,6 +10,7 @@ using LocoSim.Implementations;
 
 using TurboTurbo.Assets;
 using TurboTurbo.Modeling;
+using TurboTurbo.Profiles;
 using TurboTurbo.Setup;
 using TurboTurbo.WorkBench;
 
@@ -19,7 +20,7 @@ namespace TurboTurbo.Runtime;
 
 /// <summary>
 /// Per-car runtime host, attached to the car's root GameObject by the
-/// Orchestrator when a matching EngineConfiguration exists, living alongside
+/// Orchestrator when a matching loco profile exists, living alongside
 /// DV's own per-car runtime components.
 /// Waits for the car's simulation to initialize, then binds the configured
 /// features to it.
@@ -47,7 +48,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private bool _loggedNoSim;
     private bool _effectsBound;
 
-    private EngineConfiguration _configuration;
+    private LocoProfile _configuration;
     private SimController _simController;
 
     private Port _throttlePort;
@@ -90,7 +91,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         Orchestrator.Instance?.Forget(this);
     }
 
-    public EngineSimulationHost Configure(EngineConfiguration configuration)
+    public EngineSimulationHost Configure(LocoProfile configuration)
     {
         _configuration = configuration;
 
@@ -191,7 +192,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             ? () => engineOnPort.Value > 0.5f
             : () => rpmPort.Value > 0.05f;
 
-        CombustionModel = new CombustionModel(new CombustionModel.Settings(_configuration.Combustion),
+        CombustionModel = new CombustionModel(_configuration.Combustion,
             () => _throttlePort.Value,
             _fuelNorm,
             () => rpmPort.Value,
@@ -212,30 +213,30 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         TrainCar = GetComponent<TrainCar>();
         Exhausts.Clear();
 
-        Velocity = new ExhaustVelocitySettings(_configuration.Velocity);
+        Velocity = _configuration.Velocity;
 
         var exhausts = _configuration.Exhausts;
         for (var i = 0; i < exhausts.Count; i++)
         {
-            var binding = exhausts[i];
+            var exhaust = exhausts[i];
 
-            var exhaust = ResolveExhaustTransform(binding);
-            if (exhaust == null)
+            var exhaustTransform = ResolveExhaustTransform(exhaust);
+            if (exhaustTransform == null)
             {
-                _log.Warn($"exhaust selector {i} resolved to null on '{name}', skipping");
+                _log.Warn($"exhaust {i} ('{exhaust.Name}') resolved to null on '{name}', skipping");
                 continue;
             }
 
             var emitters = new ExhaustEmitters
             {
-                Mouth = TrainCar.transform.InverseTransformPoint(exhaust.position),
-                Offset = binding.Offset,
+                Mouth = TrainCar.transform.InverseTransformPoint(exhaustTransform.position),
+                Offset = exhaust.Offset,
             };
-            emitters.Smoke = CreateSmokeEmitter(i, exhaust.position, binding.Offset,
-                new SmokeParticles.Settings(_configuration.SmokeEmitter),
-                new ExhaustSmokeModel.Settings(_configuration.Smoke));
-            emitters.Shimmer = CreateShimmerEmitter(i, exhaust.position, binding.Offset,
-                new ShimmerParticles.Settings(_configuration.ShimmerEmitter));
+            emitters.Smoke = CreateSmokeEmitter(i, exhaustTransform.position, exhaust.Offset,
+                _configuration.SmokeEmitter,
+                _configuration.Smoke);
+            emitters.Shimmer = CreateShimmerEmitter(i, exhaustTransform.position, exhaust.Offset,
+                _configuration.ShimmerEmitter);
             Exhausts.Add(emitters);
         }
 
@@ -243,25 +244,23 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         _log.Info($"effects bound on '{name}' ({Exhausts.Count} exhaust emitter(s))");
     }
 
-    private Transform ResolveExhaustTransform(ExhaustBinding binding)
+    private Transform ResolveExhaustTransform(LocoExhaust exhaust)
     {
-        if (binding.ParticleSystemSelector != null)
+        if (exhaust.Kind == ExhaustKind.Independent)
         {
-            var existingPs = binding.ParticleSystemSelector(TrainCar);
-            if (existingPs == null)
-            {
-                return null;
-            }
+            return TrainCar.transform;
+        }
 
-            var existingEmission = existingPs.emission;
-            existingEmission.enabled = false;
-            _replacedExhausts.Add(existingPs);
-            return existingPs.transform;
-        }
-        else
+        var existingPs = TrainCar.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == exhaust.Name);
+        if (existingPs == null)
         {
-            return binding.TransformSelector(TrainCar);
+            return null;
         }
+
+        var existingEmission = existingPs.emission;
+        existingEmission.enabled = false;
+        _replacedExhausts.Add(existingPs);
+        return existingPs.transform;
     }
 
     private SmokeParticles CreateSmokeEmitter(int index, Vector3 exhaustPosition, Vector3 offset,

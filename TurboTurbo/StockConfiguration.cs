@@ -13,23 +13,18 @@ internal static class StockConfiguration
         ConfigureDm3();
         ConfigureDe2();
         ConfigureDm1U();
-        ConfigureModdedLocos();
     }
 
     private static void ConfigureDe6()
     {
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0.02f, 0.15f, -0.02f)));
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0.02f, 0.15f, -0.02f)));
     }
 
     private static void ConfigureDh4()
     {
         Controller.ConfigureEngine(TrainCarType.LocoDH4, options => options
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0.03f, 0f))
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0.03f, 0f))
             .ConfigureTurboCharger(t =>
             {
                 // the DH4 runs slightly cleaner and has a lighter turbo that spins up faster
@@ -71,9 +66,7 @@ internal static class StockConfiguration
     private static void ConfigureDm3()
     {
         Controller.ConfigureEngine(TrainCarType.LocoDM3, options => options
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, -0.02f, 0f))
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, -0.02f, 0f))
             .UseAtmosphericCharger(c =>
             {
                 // with these parameters, the DM3 starts producing black smoke near the redline
@@ -113,9 +106,7 @@ internal static class StockConfiguration
     private static void ConfigureDe2()
     {
         Controller.ConfigureEngine(TrainCarType.LocoShunter, options => options
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0f, 0f))
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0f, 0f))
             .UseAtmosphericCharger(c =>
             {
                 // a reasonably clean naturally aspirated engine, shouldn't really generate soot normally
@@ -163,9 +154,7 @@ internal static class StockConfiguration
     {
         // this model is generally similar to the DM3, but weaker and smaller
         Controller.ConfigureEngine(TrainCarType.LocoDM1U, options => options
-            .ReplaceEngineExhaust(
-                c => c.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == "ExhaustEngineSmoke"),
-                new Vector3(0f, 0f, 0f))
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0f, 0f))
             .UseAtmosphericCharger(c =>
             {
                 c.EtaPeak = 0.83f;
@@ -196,10 +185,5 @@ internal static class StockConfiguration
                 e.sizeOverLifetimeEnd = 8;
                 e.strength = 0.008f;
             }));
-    }
-
-    private static void ConfigureModdedLocos()
-    {
-        // todo
     }
 }

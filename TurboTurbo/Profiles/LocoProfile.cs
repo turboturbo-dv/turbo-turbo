@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using TurboTurbo.Modeling;
 using TurboTurbo.WorkBench;
@@ -9,7 +10,7 @@ using UnityEngine;
 namespace TurboTurbo.Profiles;
 
 /// <summary>
-/// Serialization model for a user-defined or mod-defined profile.
+/// Fully describes the engine configuration for a locomotive livery. Serializable.
 /// </summary>
 public sealed class LocoProfile
 {
@@ -30,6 +31,35 @@ public sealed class LocoProfile
     public SmokeParticles.Settings SmokeEmitter { get; set; }
     public ShimmerParticles.Settings ShimmerEmitter { get; set; }
     public ExhaustVelocitySettings Velocity { get; set; }
+
+    /// <summary>Builds the charger selected by this profile.</summary>
+    public ICharger BuildCharger()
+    {
+        return ChargerKind == ChargerKind.Atmospheric
+            ? new AtmosphericCharger(Atmospheric)
+            : new TurboCharger(TurboCharger);
+    }
+
+    /// <summary>Returns a deep copy of this profile.</summary>
+    public LocoProfile Clone()
+    {
+        return new LocoProfile
+        {
+            Version = Version,
+            LiveryId = LiveryId,
+            Enabled = Enabled,
+            ChargerKind = ChargerKind,
+            Exhausts = Exhausts?.Select(e => new LocoExhaust { Kind = e.Kind, Name = e.Name, Offset = e.Offset }).ToList()
+                       ?? new List<LocoExhaust>(),
+            Combustion = Combustion != null ? new CombustionModel.Settings(Combustion) : null,
+            TurboCharger = TurboCharger != null ? new TurboCharger.Settings(TurboCharger) : null,
+            Atmospheric = Atmospheric != null ? new AtmosphericCharger.Settings(Atmospheric) : null,
+            Smoke = Smoke != null ? new ExhaustSmokeModel.Settings(Smoke) : null,
+            SmokeEmitter = SmokeEmitter != null ? new SmokeParticles.Settings(SmokeEmitter) : null,
+            ShimmerEmitter = ShimmerEmitter != null ? new ShimmerParticles.Settings(ShimmerEmitter) : null,
+            Velocity = Velocity != null ? new ExhaustVelocitySettings(Velocity) : null,
+        };
+    }
 
     /// <summary>Structural validation. Returns an error, or null when the profile is usable.</summary>
     public string Validate()
