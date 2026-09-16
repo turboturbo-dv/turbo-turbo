@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 using UnityEngine;
@@ -12,10 +13,22 @@ public sealed class AtmosphericCharger : ICharger
     [XmlType("AtmosphericChargerSettings")]
     public sealed class Settings
     {
-        public float EtaPeak { get; set; } = 0.9f;
-        public float ChokeK { get; set; } = 0.25f;
-        public float ChokeBeta { get; set; } = 2f;
-        public float LambdaCalibration { get; set; } = 0.6f;
+        internal const float DefaultEtaPeak = 0.9f;
+        internal const float DefaultChokeK = 0.25f;
+        internal const float DefaultChokeBeta = 2f;
+        internal const float DefaultLambdaCalibration = 0.6f;
+
+        [DefaultValue(DefaultEtaPeak)]
+        public float EtaPeak { get; set; } = DefaultEtaPeak;
+
+        [DefaultValue(DefaultChokeK)]
+        public float ChokeK { get; set; } = DefaultChokeK;
+
+        [DefaultValue(DefaultChokeBeta)]
+        public float ChokeBeta { get; set; } = DefaultChokeBeta;
+
+        [DefaultValue(DefaultLambdaCalibration)]
+        public float LambdaCalibration { get; set; } = DefaultLambdaCalibration;
 
         public Settings()
         {

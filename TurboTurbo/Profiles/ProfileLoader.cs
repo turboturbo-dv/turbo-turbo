@@ -35,12 +35,14 @@ internal static class ProfileLoader
         foreach (var profile in stored)
         {
             if (profile == null) continue;
-            var error = profile.Validate();
+
+            var error = profile.Complete();
             if (error != null)
             {
                 Log.Warn($"skipping loco profile '{profile.LiveryId}': {error}");
                 continue;
             }
+
             loaded[profile.LiveryId] = profile;
             Log.Info($"added loco profile for '{profile.LiveryId}' from user settings");
         }
@@ -72,12 +74,14 @@ internal static class ProfileLoader
         foreach (var profile in config.LocoProfiles)
         {
             if (profile == null) continue;
-            var error = profile.Validate();
+
+            var error = profile.Complete();
             if (error != null)
             {
                 Log.Warn($"skipping loco profile '{profile.LiveryId}' from '{source.ModName}': {error}");
                 continue;
             }
+
             if (merged.TryGetValue(profile.LiveryId, out var existing))
             {
                 Log.Warn($"loco profile for '{profile.LiveryId}' from '{source.ModName}' overrides profile defined by " +

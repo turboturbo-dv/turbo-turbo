@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 using TurboTurbo.Modeling;
@@ -21,36 +22,102 @@ namespace TurboTurbo
         [XmlType("ShimmerEmitterSettings")]
         public sealed class Settings
         {
-            public float idleRate = 5f;
-            public float fullRate = 10f;
+            internal const float DefaultIdleRate = 5f;
+            internal const float DefaultFullRate = 10f;
+            internal const float DefaultLifetime = 1.5f;
+            internal const float DefaultStartSizeMin = 0.8f;
+            internal const float DefaultStartSizeMax = 0.8f;
+            internal const float DefaultSizeOverLifetimeStart = 1f;
+            internal const float DefaultSizeOverLifetimeEnd = 6f;
+            internal const float DefaultGravity = -0.05f;
+            internal const float DefaultDrag = 0.8f;
+            internal const float DefaultBuoyancy = 0.3f;
+            internal const float DefaultSpeedNormMax = 15f;
+            internal const float DefaultSpeedLifetimeScale = 0.4f;
+            internal const float DefaultSpeedJitter = 0.5f;
+            internal const float DefaultStrength = 0.014f;
+            internal const float DefaultBaseStrength = 0.1f;
+            internal const float DefaultFreq = 6f;
+            internal const float DefaultIdleRadius = 0.8f;
+            internal const float DefaultFullRadius = 1f;
+            internal const float DefaultIdleAnimSpeed = 0.5f;
+            internal const float DefaultFullAnimSpeed = 2f;
+            internal const float DefaultSpeedMultiplier = 1f;
+            internal const float DefaultShimmerHoldTime = 0.15f;
+            internal const float DefaultDecayK = 4f;
+            internal const float DefaultYOffset = 0.1f;
 
-            public float lifetime = 1.5f;
-            public float startSizeMin = 0.8f;
-            public float startSizeMax = 0.8f;
-            public float sizeOverLifetimeStart = 1f;
-            public float sizeOverLifetimeEnd = 6f;
-            public float gravity = -0.05f;
+            [DefaultValue(DefaultIdleRate)]
+            public float idleRate = DefaultIdleRate;
 
-            public float drag = 0.8f;
-            public float buoyancy = 0.3f;
+            [DefaultValue(DefaultFullRate)]
+            public float fullRate = DefaultFullRate;
 
-            public float speedNormMax = 15f;
-            public float speedLifetimeScale = 0.4f;
-            public float speedJitter = 0.5f;
+            [DefaultValue(DefaultLifetime)]
+            public float lifetime = DefaultLifetime;
 
-            public float strength = 0.014f;
-            public float baseStrength = 0.1f;
-            public float freq = 6f;
-            public float idleRadius = 0.8f;
-            public float fullRadius = 1f;
-            public float idleAnimSpeed = 0.5f;
-            public float fullAnimSpeed = 2f;
-            public float speedMultiplier = 1f;
+            [DefaultValue(DefaultStartSizeMin)]
+            public float startSizeMin = DefaultStartSizeMin;
 
-            public float shimmerHoldTime = 0.15f;
-            public float decayK = 4f;
+            [DefaultValue(DefaultStartSizeMax)]
+            public float startSizeMax = DefaultStartSizeMax;
 
-            public float yOffset = 0.1f;
+            [DefaultValue(DefaultSizeOverLifetimeStart)]
+            public float sizeOverLifetimeStart = DefaultSizeOverLifetimeStart;
+
+            [DefaultValue(DefaultSizeOverLifetimeEnd)]
+            public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
+
+            [DefaultValue(DefaultGravity)]
+            public float gravity = DefaultGravity;
+
+            [DefaultValue(DefaultDrag)]
+            public float drag = DefaultDrag;
+
+            [DefaultValue(DefaultBuoyancy)]
+            public float buoyancy = DefaultBuoyancy;
+
+            [DefaultValue(DefaultSpeedNormMax)]
+            public float speedNormMax = DefaultSpeedNormMax;
+
+            [DefaultValue(DefaultSpeedLifetimeScale)]
+            public float speedLifetimeScale = DefaultSpeedLifetimeScale;
+
+            [DefaultValue(DefaultSpeedJitter)]
+            public float speedJitter = DefaultSpeedJitter;
+
+            [DefaultValue(DefaultStrength)]
+            public float strength = DefaultStrength;
+
+            [DefaultValue(DefaultBaseStrength)]
+            public float baseStrength = DefaultBaseStrength;
+
+            [DefaultValue(DefaultFreq)]
+            public float freq = DefaultFreq;
+
+            [DefaultValue(DefaultIdleRadius)]
+            public float idleRadius = DefaultIdleRadius;
+
+            [DefaultValue(DefaultFullRadius)]
+            public float fullRadius = DefaultFullRadius;
+
+            [DefaultValue(DefaultIdleAnimSpeed)]
+            public float idleAnimSpeed = DefaultIdleAnimSpeed;
+
+            [DefaultValue(DefaultFullAnimSpeed)]
+            public float fullAnimSpeed = DefaultFullAnimSpeed;
+
+            [DefaultValue(DefaultSpeedMultiplier)]
+            public float speedMultiplier = DefaultSpeedMultiplier;
+
+            [DefaultValue(DefaultShimmerHoldTime)]
+            public float shimmerHoldTime = DefaultShimmerHoldTime;
+
+            [DefaultValue(DefaultDecayK)]
+            public float decayK = DefaultDecayK;
+
+            [DefaultValue(DefaultYOffset)]
+            public float yOffset = DefaultYOffset;
 
             public Settings()
             {

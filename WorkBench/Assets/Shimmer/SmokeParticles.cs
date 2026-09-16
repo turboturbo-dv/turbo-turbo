@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 using TurboTurbo.Modeling;
@@ -17,30 +18,86 @@ namespace TurboTurbo.WorkBench
         [XmlType("SmokeEmitterSettings")]
         public sealed class Settings
         {
-            public float idleEmissionRate = 15f;
-            public float fullEmissionRate = 75f;
+            internal const float DefaultIdleEmissionRate = 15f;
+            internal const float DefaultFullEmissionRate = 75f;
+            internal const float DefaultLifetime = 3f;
+            internal const float DefaultStartSizeMin = 0.3f;
+            internal const float DefaultStartSizeMax = 0.5f;
+            internal const float DefaultSizeOverLifetimeStart = 1f;
+            internal const float DefaultSizeOverLifetimeEnd = 9.5f;
+            internal const float DefaultBuoyancy = 0.1f;
+            internal const float DefaultDrag = 0.6f;
+            internal const float DefaultAngularVelocityMax = 20f;
+            internal const float DefaultSpeedNormMax = 15f;
+            internal const float DefaultSpeedLifetimeScale = 0.3f;
+            internal const float DefaultSpeedJitter = 0.5f;
+            internal const float DefaultTurbulenceStrength = 1.25f;
+            internal const float DefaultTurbulenceFrequency = 0.5f;
+            internal const float DefaultTurbulenceScrollSpeed = 0f;
+            internal const float DefaultLightSaturation = 0.35f;
+            internal const float DefaultMaxShadowFloor = 0.65f;
+            internal const float DefaultMinFadeDist = 1f;
+            internal const float DefaultMaxFadeDist = 2f;
 
-            public float lifetime = 3f;
-            public float startSizeMin = 0.3f;
-            public float startSizeMax = 0.5f;
-            public float sizeOverLifetimeStart = 1f;
-            public float sizeOverLifetimeEnd = 9.5f;
-            public float buoyancy = 0.1f;
-            public float drag = 0.6f;
-            public float angularVelocityMax = 20f;
+            [DefaultValue(DefaultIdleEmissionRate)]
+            public float idleEmissionRate = DefaultIdleEmissionRate;
 
-            public float speedNormMax = 15f;
-            public float speedLifetimeScale = 0.3f;
-            public float speedJitter = 0.5f;
+            [DefaultValue(DefaultFullEmissionRate)]
+            public float fullEmissionRate = DefaultFullEmissionRate;
 
-            public float turbulenceStrength = 1.25f;
-            public float turbulenceFrequency = 0.5f;
-            public float turbulenceScrollSpeed = 0f;
+            [DefaultValue(DefaultLifetime)]
+            public float lifetime = DefaultLifetime;
 
-            public float lightSaturation = 0.35f;
-            public float maxShadowFloor = 0.65f;
-            public float minFadeDist = 1f;
-            public float maxFadeDist = 2f;
+            [DefaultValue(DefaultStartSizeMin)]
+            public float startSizeMin = DefaultStartSizeMin;
+
+            [DefaultValue(DefaultStartSizeMax)]
+            public float startSizeMax = DefaultStartSizeMax;
+
+            [DefaultValue(DefaultSizeOverLifetimeStart)]
+            public float sizeOverLifetimeStart = DefaultSizeOverLifetimeStart;
+
+            [DefaultValue(DefaultSizeOverLifetimeEnd)]
+            public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
+
+            [DefaultValue(DefaultBuoyancy)]
+            public float buoyancy = DefaultBuoyancy;
+
+            [DefaultValue(DefaultDrag)]
+            public float drag = DefaultDrag;
+
+            [DefaultValue(DefaultAngularVelocityMax)]
+            public float angularVelocityMax = DefaultAngularVelocityMax;
+
+            [DefaultValue(DefaultSpeedNormMax)]
+            public float speedNormMax = DefaultSpeedNormMax;
+
+            [DefaultValue(DefaultSpeedLifetimeScale)]
+            public float speedLifetimeScale = DefaultSpeedLifetimeScale;
+
+            [DefaultValue(DefaultSpeedJitter)]
+            public float speedJitter = DefaultSpeedJitter;
+
+            [DefaultValue(DefaultTurbulenceStrength)]
+            public float turbulenceStrength = DefaultTurbulenceStrength;
+
+            [DefaultValue(DefaultTurbulenceFrequency)]
+            public float turbulenceFrequency = DefaultTurbulenceFrequency;
+
+            [DefaultValue(DefaultTurbulenceScrollSpeed)]
+            public float turbulenceScrollSpeed = DefaultTurbulenceScrollSpeed;
+
+            [DefaultValue(DefaultLightSaturation)]
+            public float lightSaturation = DefaultLightSaturation;
+
+            [DefaultValue(DefaultMaxShadowFloor)]
+            public float maxShadowFloor = DefaultMaxShadowFloor;
+
+            [DefaultValue(DefaultMinFadeDist)]
+            public float minFadeDist = DefaultMinFadeDist;
+
+            [DefaultValue(DefaultMaxFadeDist)]
+            public float maxFadeDist = DefaultMaxFadeDist;
 
             public Settings()
             {

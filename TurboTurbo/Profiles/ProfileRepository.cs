@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using System.Linq;
 
 using TurboTurbo.Configuration;
-using TurboTurbo.Setup;
 
 using UnityModManagerNet;
 
@@ -14,11 +12,8 @@ namespace TurboTurbo.Profiles;
 /// </summary>
 internal static class ProfileRepository
 {
-    private static readonly Logger Log = TurboTurbo.Log.ForContext("profiles");
-
     private static readonly Dictionary<string, LocoProfile> UserProfiles = new();
     private static readonly Dictionary<string, ProfileLoader.ModProfile> ModProfiles = new();
-    private static readonly Dictionary<string, LocoProfile> Cache = new();
 
     private static Settings _settings;
     private static UnityModManager.ModEntry _entry;
@@ -33,70 +28,60 @@ internal static class ProfileRepository
     {
         UserProfiles.Clear();
         foreach (var entry in profiles) UserProfiles[entry.Key] = entry.Value;
-        Cache.Clear();
-    }
-
-    internal static LocoProfile TryGetConfiguration(TrainCar car)
-    {
-        var liveryId = car.carLivery.id;
-        if (UserProfiles.TryGetValue(liveryId, out var profile))
-        {
-            // note: a disabled user profile still overrides a mod profile, that's deliberate
-            if (profile.Enabled) return GetOrBuild(liveryId, profile);
-        }
-        else if (ModProfiles.TryGetValue(liveryId, out var supplied))
-        {
-            // note: a disabled mod profile still overrides a built-in profile, that's deliberate too
-            if (supplied.Profile.Enabled) return GetOrBuild(liveryId, supplied.Profile);
-        }
-        else
-        {
-            return Controller.TryGetConfiguration(liveryId);
-        }
-
-        return null;
-    }
-
-    private static LocoProfile GetOrBuild(string liveryId, LocoProfile profile)
-    {
-        if (!Cache.TryGetValue(liveryId, out var configuration))
-        {
-            var options = new EngineOptions();
-            options.ApplyLocoProfile(profile);
-            configuration = options.Build(liveryId);
-            Cache[liveryId] = configuration;
-        }
-        return configuration;
-    }
-
-    internal static LocoProfile GetProfile(string liveryId)
-    {
-        UserProfiles.TryGetValue(liveryId, out var profile);
-        return profile;
     }
 
     internal static void SetSuppliedProfiles(Dictionary<string, ProfileLoader.ModProfile> supplied)
     {
         ModProfiles.Clear();
         foreach (var entry in supplied) ModProfiles[entry.Key] = entry.Value;
-        Cache.Clear();
     }
 
-    internal static LocoProfile GetSuppliedProfile(string liveryId)
+    internal static LocoProfile TryGetProfile(TrainCar car)
     {
-        return ModProfiles.TryGetValue(liveryId, out var supplied) ? supplied.Profile : null;
+        var liveryId = car.carLivery.id;
+        LocoProfile profile = null;
+
+        if (UserProfiles.TryGetValue(liveryId, out var user))
+        {
+            // note: a disabled user profile still overrides a mod profile, that's deliberate
+            if (user.Enabled) profile = user;
+        }
+        else if (ModProfiles.TryGetValue(liveryId, out var supplied))
+        {
+            // note: a disabled mod profile still overrides a built-in profile, that's deliberate too
+            if (supplied.Profile.Enabled) profile = supplied.Profile;
+        }
+        else
+        {
+            profile = Controller.TryGetConfiguration(liveryId);
+        }
+
+        // a fresh instance per query, so callers may tune it freely
+        return profile?.Clone();
     }
 
-    internal static string SaveProfile(LocoProfile profile)
+    internal static LocoProfile TryGetUserProfile(string liveryId)
     {
-        var error = profile?.Validate();
+        UserProfiles.TryGetValue(liveryId, out var profile);
+        return profile;
+    }
+
+    internal static LocoProfile TryGetModProfile(string liveryId)
+    {
+        return ModProfiles.TryGetValue(liveryId, out var profile) ? profile.Profile : null;
+    }
+
+    internal static ValidationError? SaveProfile(LocoProfile profile)
+    {
+        var error = profile.Complete();
         if (error != null) return error;
+
         var stored = _settings.LocoProfiles;
         var index = stored.FindIndex(p => p.LiveryId == profile.LiveryId);
         if (index >= 0) stored[index] = profile;
         else stored.Add(profile);
+
         UserProfiles[profile.LiveryId] = profile;
-        Cache.Remove(profile.LiveryId);
         Persist();
         return null;
     }
@@ -105,7 +90,6 @@ internal static class ProfileRepository
     {
         var removed = UserProfiles.Remove(liveryId);
         _settings.LocoProfiles.RemoveAll(p => p.LiveryId == liveryId);
-        Cache.Remove(liveryId);
         if (removed) Persist();
         return removed;
     }
@@ -114,7 +98,6 @@ internal static class ProfileRepository
     {
         if (!UserProfiles.TryGetValue(liveryId, out var profile)) return false;
         profile.Enabled = enabled;
-        Cache.Remove(liveryId);
         Persist();
         return true;
     }

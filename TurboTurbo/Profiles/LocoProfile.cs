@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 using TurboTurbo.Modeling;
@@ -22,8 +23,7 @@ public sealed class LocoProfile
     public List<LocoExhaust> Exhausts { get; set; } = new();
     public ChargerKind ChargerKind { get; set; } = ChargerKind.Turbo;
 
-    // XmlSerializer needs unique type names, so each nested Settings class
-    // carries an XmlType attribute. Null blocks serialize as no element.
+    // XmlSerializer needs unique type names, so each nested settings class needs an XmlType attribute
     public CombustionModel.Settings Combustion { get; set; }
     public TurboCharger.Settings TurboCharger { get; set; }
     public AtmosphericCharger.Settings Atmospheric { get; set; }
@@ -49,8 +49,7 @@ public sealed class LocoProfile
             LiveryId = LiveryId,
             Enabled = Enabled,
             ChargerKind = ChargerKind,
-            Exhausts = Exhausts?.Select(e => new LocoExhaust { Kind = e.Kind, Name = e.Name, Offset = e.Offset }).ToList()
-                       ?? new List<LocoExhaust>(),
+            Exhausts = Exhausts?.Select(e => e.Clone()).ToList() ?? new List<LocoExhaust>(),
             Combustion = Combustion != null ? new CombustionModel.Settings(Combustion) : null,
             TurboCharger = TurboCharger != null ? new TurboCharger.Settings(TurboCharger) : null,
             Atmospheric = Atmospheric != null ? new AtmosphericCharger.Settings(Atmospheric) : null,
@@ -62,27 +61,33 @@ public sealed class LocoProfile
     }
 
     /// <summary>Structural validation. Returns an error, or null when the profile is usable.</summary>
-    public string Validate()
+    public ValidationError? Validate()
     {
-        if (Version != CurrentVersion) return $"unknown version {Version}";
-        if (string.IsNullOrWhiteSpace(LiveryId)) return "LiveryId is required";
-        if (Exhausts == null || Exhausts.Count == 0) return "at least one exhaust is required";
-        if (!Enum.IsDefined(typeof(ChargerKind), ChargerKind)) return $"unknown charger kind {(int)ChargerKind}";
+        if (Version != CurrentVersion) return new ValidationError($"unknown version {Version}");
+        if (string.IsNullOrWhiteSpace(LiveryId)) return new ValidationError("LiveryId is required");
+        if (Exhausts == null || Exhausts.Count == 0)
+            return new ValidationError("at least one exhaust is required");
+        if (!Enum.IsDefined(typeof(ChargerKind), ChargerKind))
+            return new ValidationError($"unknown charger kind {(int)ChargerKind}");
+
         foreach (var exhaust in Exhausts)
         {
             var error = ValidateExhaust(exhaust);
             if (error != null) return error;
         }
+
         return null;
     }
 
-    private static string ValidateExhaust(LocoExhaust exhaust)
+    private static ValidationError? ValidateExhaust(LocoExhaust exhaust)
     {
-        if (exhaust == null) return "exhaust entry is null";
-        if (!Enum.IsDefined(typeof(ExhaustKind), exhaust.Kind)) return $"unknown exhaust kind {(int)exhaust.Kind}";
-        if (!IsFinite(exhaust.Offset)) return "exhaust offset must be finite";
+        if (exhaust == null) return new ValidationError("exhaust entry is null");
+        if (!Enum.IsDefined(typeof(ExhaustKind), exhaust.Kind))
+            return new ValidationError($"unknown exhaust kind {(int)exhaust.Kind}");
+        if (!IsFinite(exhaust.Offset)) return new ValidationError("exhaust offset must be finite");
         if (exhaust.Kind == ExhaustKind.Replacement && string.IsNullOrWhiteSpace(exhaust.Name))
-            return "replacement exhausts need a particle system name";
+            return new ValidationError("replacement exhausts need a particle system name");
+
         return null;
     }
 
@@ -90,19 +95,54 @@ public sealed class LocoProfile
         !float.IsNaN(v.x) && !float.IsInfinity(v.x)
         && !float.IsNaN(v.y) && !float.IsInfinity(v.y)
         && !float.IsNaN(v.z) && !float.IsInfinity(v.z);
+
+    /// <summary>
+    /// Validates and completes this profile: any uninitialized settings blocks are
+    /// initialized to their default values. Settings for an unused charger kind are dropped.
+    /// Returns an error if validation failed.
+    /// </summary>
+    internal ValidationError? Complete()
+    {
+        var error = Validate();
+        if (error != null) return error;
+
+        Combustion ??= new CombustionModel.Settings();
+        Smoke ??= new ExhaustSmokeModel.Settings();
+        SmokeEmitter ??= new SmokeParticles.Settings();
+        ShimmerEmitter ??= new ShimmerParticles.Settings();
+        Velocity ??= new ExhaustVelocitySettings();
+
+        if (ChargerKind == ChargerKind.Atmospheric)
+        {
+            Atmospheric ??= new AtmosphericCharger.Settings();
+            TurboCharger = null;
+            Atmospheric.Validate();
+        }
+        else
+        {
+            TurboCharger ??= new TurboCharger.Settings();
+            Atmospheric = null;
+        }
+
+        Smoke.Validate();
+        return null;
+    }
 }
 
 /// <summary>One exhaust entry in a <see cref="LocoProfile"/>.</summary>
 public sealed class LocoExhaust
 {
     public ExhaustKind Kind { get; set; } = ExhaustKind.Replacement;
+
     /// <summary>
-    /// Exact particle system name for replacements. Ignored for independent exhausts,
-    /// which hang off the car's own transform.
+    /// Set when declaring a particle system to replace. Leave unset for independent exhausts.
     /// </summary>
+    [DefaultValue("")]
     public string Name { get; set; } = "";
 
     public Vector3 Offset { get; set; }
+
+    public LocoExhaust Clone() => new() { Kind = Kind, Name = Name, Offset = Offset };
 }
 
 public enum ExhaustKind

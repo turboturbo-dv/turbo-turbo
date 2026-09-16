@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 using UnityEngine;
@@ -12,16 +13,39 @@ public sealed class TurboCharger : ICharger
     [XmlType("TurboChargerSettings")]
     public sealed class Settings
     {
-        public float LambdaCalibration { get; set; } = 1.74f;
-        public float BoostChargeMultiplier { get; set; } = 1.125f;
-        public float RpmBoostExponent { get; set; } = 1.2f;
-        public float TauUp { get; set; } = 3.0f;
-        public float TauDown { get; set; } = 1.0f;
-        public float MinSpoolTau { get; set; } = 0.5f;
-        public float ThermalK { get; set; } = 0.8f;
+        internal const float DefaultLambdaCalibration = 1.74f;
+        internal const float DefaultBoostChargeMultiplier = 1.125f;
+        internal const float DefaultRpmBoostExponent = 1.2f;
+        internal const float DefaultTauUp = 3.0f;
+        internal const float DefaultTauDown = 1.0f;
+        internal const float DefaultMinSpoolTau = 0.5f;
+        internal const float DefaultThermalK = 0.8f;
+        internal const float DefaultSurgeRateThreshold = 15f;
+
+        [DefaultValue(DefaultLambdaCalibration)]
+        public float LambdaCalibration { get; set; } = DefaultLambdaCalibration;
+
+        [DefaultValue(DefaultBoostChargeMultiplier)]
+        public float BoostChargeMultiplier { get; set; } = DefaultBoostChargeMultiplier;
+
+        [DefaultValue(DefaultRpmBoostExponent)]
+        public float RpmBoostExponent { get; set; } = DefaultRpmBoostExponent;
+
+        [DefaultValue(DefaultTauUp)]
+        public float TauUp { get; set; } = DefaultTauUp;
+
+        [DefaultValue(DefaultTauDown)]
+        public float TauDown { get; set; } = DefaultTauDown;
+
+        [DefaultValue(DefaultMinSpoolTau)]
+        public float MinSpoolTau { get; set; } = DefaultMinSpoolTau;
+
+        [DefaultValue(DefaultThermalK)]
+        public float ThermalK { get; set; } = DefaultThermalK;
 
         /// <summary>Demand drop rate [1/s] that triggers a surge while boost is high.</summary>
-        public float SurgeRateThreshold { get; set; } = 15f;
+        [DefaultValue(DefaultSurgeRateThreshold)]
+        public float SurgeRateThreshold { get; set; } = DefaultSurgeRateThreshold;
 
         public Settings()
         {

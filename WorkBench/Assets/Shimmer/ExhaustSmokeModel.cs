@@ -1,3 +1,6 @@
+using System;
+using System.ComponentModel;
+using System.Globalization;
 using System.Xml.Serialization;
 
 using UnityEngine;
@@ -9,30 +12,115 @@ namespace TurboTurbo.Modeling
         [XmlType("SmokeSettings")]
         public sealed class Settings
         {
-            public Color ColorIdleHaze = new Color(0.62f, 0.59f, 0.47f, 1f);
-            public Color ColorCleanBurn = new Color(0.45f, 0.45f, 0.45f, 1f);
-            public Color ColorHeavySoot = new Color(0.05f, 0.05f, 0.05f, 1f);
-            public Color ColorWetStack = new Color(1f, 1f, 0.95f, 1f);
-            public Color ColorOilBurn = new Color(0.44f, 0.52f, 0.85f, 1f);
+            // colors cannot be [DefaultValue] constants, so they serialize as hex.
+            // the hex is the source of truth, so the default round-trips byte-exact and is omitted.
+            internal const string DefaultColorIdleHazeHex = "9E9678FF";
+            internal const string DefaultColorCleanBurnHex = "737373FF";
+            internal const string DefaultColorHeavySootHex = "0D0D0DFF";
+            internal const string DefaultColorWetStackHex = "FFFFF2FF";
+            internal const string DefaultColorOilBurnHex = "7085D9FF";
 
-            public float CleanMinHeatAlpha = 0.015f;
-            public float CleanMaxHeatAlpha = 0.08f;
-            public float CleanBurnHeat = 0.2f;
+            [XmlIgnore] public Color ColorIdleHaze = ColorHex.Parse(DefaultColorIdleHazeHex);
+            [XmlIgnore] public Color ColorCleanBurn = ColorHex.Parse(DefaultColorCleanBurnHex);
+            [XmlIgnore] public Color ColorHeavySoot = ColorHex.Parse(DefaultColorHeavySootHex);
+            [XmlIgnore] public Color ColorWetStack = ColorHex.Parse(DefaultColorWetStackHex);
+            [XmlIgnore] public Color ColorOilBurn = ColorHex.Parse(DefaultColorOilBurnHex);
 
-            public float SootOnsetLambda = 1.05f;
-            public float SootOpaqueLambda = 0.8f;
-            public float SootCurveExponent = 1.1f;
-            public float SootMaxAlpha = 0.95f;
+            [DefaultValue(DefaultColorIdleHazeHex)]
+            public string ColorIdleHazeHex
+            {
+                get => ColorHex.Format(ColorIdleHaze);
+                set => ColorIdleHaze = ColorHex.Parse(value);
+            }
 
-            public float WetStackFillHeat = 0.1f;
-            public float WetStackReleaseHeat = 0.15f;
-            public float WetStackFillRate = 0.005f;
-            public float WetStackReleaseRate = 0.75f;
-            public float WetStackMistStrength = 4f;
-            public float WetStackMaxAlpha = 0.95f;
+            [DefaultValue(DefaultColorCleanBurnHex)]
+            public string ColorCleanBurnHex
+            {
+                get => ColorHex.Format(ColorCleanBurn);
+                set => ColorCleanBurn = ColorHex.Parse(value);
+            }
 
-            public float OilTintStrength = 0.3f;
-            public float OilRpmExponent = 2.5f;
+            [DefaultValue(DefaultColorHeavySootHex)]
+            public string ColorHeavySootHex
+            {
+                get => ColorHex.Format(ColorHeavySoot);
+                set => ColorHeavySoot = ColorHex.Parse(value);
+            }
+
+            [DefaultValue(DefaultColorWetStackHex)]
+            public string ColorWetStackHex
+            {
+                get => ColorHex.Format(ColorWetStack);
+                set => ColorWetStack = ColorHex.Parse(value);
+            }
+
+            [DefaultValue(DefaultColorOilBurnHex)]
+            public string ColorOilBurnHex
+            {
+                get => ColorHex.Format(ColorOilBurn);
+                set => ColorOilBurn = ColorHex.Parse(value);
+            }
+
+            internal const float DefaultCleanMinHeatAlpha = 0.015f;
+            internal const float DefaultCleanMaxHeatAlpha = 0.08f;
+            internal const float DefaultCleanBurnHeat = 0.2f;
+            internal const float DefaultSootOnsetLambda = 1.05f;
+            internal const float DefaultSootOpaqueLambda = 0.8f;
+            internal const float DefaultSootCurveExponent = 1.1f;
+            internal const float DefaultSootMaxAlpha = 0.95f;
+            internal const float DefaultWetStackFillHeat = 0.1f;
+            internal const float DefaultWetStackReleaseHeat = 0.15f;
+            internal const float DefaultWetStackFillRate = 0.005f;
+            internal const float DefaultWetStackReleaseRate = 0.75f;
+            internal const float DefaultWetStackMistStrength = 4f;
+            internal const float DefaultWetStackMaxAlpha = 0.95f;
+            internal const float DefaultOilTintStrength = 0.3f;
+            internal const float DefaultOilRpmExponent = 2.5f;
+
+            [DefaultValue(DefaultCleanMinHeatAlpha)]
+            public float CleanMinHeatAlpha = DefaultCleanMinHeatAlpha;
+
+            [DefaultValue(DefaultCleanMaxHeatAlpha)]
+            public float CleanMaxHeatAlpha = DefaultCleanMaxHeatAlpha;
+
+            [DefaultValue(DefaultCleanBurnHeat)]
+            public float CleanBurnHeat = DefaultCleanBurnHeat;
+
+            [DefaultValue(DefaultSootOnsetLambda)]
+            public float SootOnsetLambda = DefaultSootOnsetLambda;
+
+            [DefaultValue(DefaultSootOpaqueLambda)]
+            public float SootOpaqueLambda = DefaultSootOpaqueLambda;
+
+            [DefaultValue(DefaultSootCurveExponent)]
+            public float SootCurveExponent = DefaultSootCurveExponent;
+
+            [DefaultValue(DefaultSootMaxAlpha)]
+            public float SootMaxAlpha = DefaultSootMaxAlpha;
+
+            [DefaultValue(DefaultWetStackFillHeat)]
+            public float WetStackFillHeat = DefaultWetStackFillHeat;
+
+            [DefaultValue(DefaultWetStackReleaseHeat)]
+            public float WetStackReleaseHeat = DefaultWetStackReleaseHeat;
+
+            [DefaultValue(DefaultWetStackFillRate)]
+            public float WetStackFillRate = DefaultWetStackFillRate;
+
+            [DefaultValue(DefaultWetStackReleaseRate)]
+            public float WetStackReleaseRate = DefaultWetStackReleaseRate;
+
+            [DefaultValue(DefaultWetStackMistStrength)]
+            public float WetStackMistStrength = DefaultWetStackMistStrength;
+
+            [DefaultValue(DefaultWetStackMaxAlpha)]
+            public float WetStackMaxAlpha = DefaultWetStackMaxAlpha;
+
+            [DefaultValue(DefaultOilTintStrength)]
+            public float OilTintStrength = DefaultOilTintStrength;
+
+            [DefaultValue(DefaultOilRpmExponent)]
+            public float OilRpmExponent = DefaultOilRpmExponent;
 
             public Settings()
             {
@@ -67,7 +155,7 @@ namespace TurboTurbo.Modeling
             }
 
             /// <summary>
-            /// Restores the documented invariants after tuning.
+            /// Validates the model: any settings that violate invariants are adjusted.
             /// </summary>
             public void Validate()
             {
@@ -176,14 +264,20 @@ namespace TurboTurbo.Modeling
 
     public static class ExhaustPlacement
     {
+        /// <summary>Parents an emitter to the car and orients it for smoke emission.</summary>
+        public static void AttachTo(Transform emitter, Transform parent)
+        {
+            emitter.SetParent(parent, worldPositionStays: false);
+            emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+        }
+
         public static void PlaceAt(Transform emitter, Vector3 exhaustPosition, Transform parent, Vector3 offset)
         {
             // probably not the easiest way, but hey, it seems to work even under the heaviest of derailments.
             // if ever you wanted to test if the exhaust emits in the right direction even when the loco is upside down
             // boy have I got you covered
-            emitter.SetParent(parent, worldPositionStays: false);
+            AttachTo(emitter, parent);
             emitter.localPosition = parent.InverseTransformPoint(exhaustPosition) + offset;
-            emitter.localRotation = Quaternion.Euler(-90f, 0f, 0f);
         }
     }
 
@@ -192,8 +286,14 @@ namespace TurboTurbo.Modeling
     /// </summary>
     public sealed class ExhaustVelocitySettings
     {
-        public float Idle = 1.5f;
-        public float FullLoad = 15f;
+        internal const float DefaultIdle = 1.5f;
+        internal const float DefaultFullLoad = 15f;
+
+        [DefaultValue(DefaultIdle)]
+        public float Idle = DefaultIdle;
+
+        [DefaultValue(DefaultFullLoad)]
+        public float FullLoad = DefaultFullLoad;
 
         public ExhaustVelocitySettings()
         {
@@ -203,6 +303,44 @@ namespace TurboTurbo.Modeling
         {
             Idle = other.Idle;
             FullLoad = other.FullLoad;
+        }
+    }
+
+    /// <summary>
+    /// Hex color codec for XML serialization, where a Color cannot be a
+    /// [DefaultValue] constant. Pure managed so it also works outside the game
+    /// (ColorUtility's parse is a native ECall). Unparseable input yields magenta.
+    /// </summary>
+    internal static class ColorHex
+    {
+        public static Color Parse(string hex)
+        {
+            if (string.IsNullOrEmpty(hex)) return Color.magenta;
+
+            if (hex[0] == '#') hex = hex.Substring(1);
+            if ((hex.Length != 6 && hex.Length != 8)
+                || !uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value))
+            {
+                return Color.magenta;
+            }
+
+            if (hex.Length == 6)
+            {
+                return new Color(((value >> 16) & 0xFF) / 255f, ((value >> 8) & 0xFF) / 255f,
+                    (value & 0xFF) / 255f, 1f);
+            }
+
+            return new Color(((value >> 24) & 0xFF) / 255f, ((value >> 16) & 0xFF) / 255f,
+                ((value >> 8) & 0xFF) / 255f, (value & 0xFF) / 255f);
+        }
+
+        public static string Format(Color color)
+        {
+            var r = (byte)Math.Round(Mathf.Clamp(color.r, 0f, 1f) * 255f);
+            var g = (byte)Math.Round(Mathf.Clamp(color.g, 0f, 1f) * 255f);
+            var b = (byte)Math.Round(Mathf.Clamp(color.b, 0f, 1f) * 255f);
+            var a = (byte)Math.Round(Mathf.Clamp(color.a, 0f, 1f) * 255f);
+            return $"{r:X2}{g:X2}{b:X2}{a:X2}";
         }
     }
 }

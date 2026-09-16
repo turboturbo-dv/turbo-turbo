@@ -27,12 +27,12 @@ namespace TurboTurboTests
                 ["test-livery"] = new ModProfile(profile, "mod-a"),
             });
 
-            GetSuppliedProfile("test-livery").Exhausts[0].Name.ShouldBe("ExhaustEngineSmoke(Clone)");
-            GetSuppliedProfile("missing").ShouldBeNull();
+            TryGetModProfile("test-livery").Exhausts[0].Name.ShouldBe("ExhaustEngineSmoke(Clone)");
+            TryGetModProfile("missing").ShouldBeNull();
 
             SetSuppliedProfiles(new Dictionary<string, ModProfile>());
 
-            GetSuppliedProfile("test-livery").ShouldBeNull();
+            TryGetModProfile("test-livery").ShouldBeNull();
         }
     }
 }

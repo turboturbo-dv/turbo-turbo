@@ -64,7 +64,7 @@ internal sealed class ExhaustOffsetDebugView : MonoBehaviour
 
         for (var i = 0; i < _markers.Count; i++)
         {
-            _markers[i].transform.localPosition = _host.Exhausts[i].Mouth + _host.Exhausts[i].Offset;
+            _markers[i].transform.localPosition = _host.Exhausts[i].LocalPosition;
         }
     }
 
@@ -99,7 +99,7 @@ internal sealed class ExhaustOffsetDebugView : MonoBehaviour
 
         for (var i = 0; i < _markers.Count; i++)
         {
-            _markers[i].transform.localPosition = _host.Exhausts[i].Mouth + _host.Exhausts[i].Offset;
+            _markers[i].transform.localPosition = _host.Exhausts[i].LocalPosition;
         }
     }
 

@@ -73,7 +73,6 @@ internal sealed class Orchestrator : MonoBehaviour
         _log.Info($"hooked {spawner}");
 
         spawner.CarSpawned += OnCarSpawned;
-        spawner.CarAboutToBeDeleted += OnCarAboutToBeDeleted;
         _hookedSpawner = spawner;
 
         // if the spawner already has cars before we discover it, track those too.
@@ -130,25 +129,12 @@ internal sealed class Orchestrator : MonoBehaviour
         }
     }
 
-    private void OnCarAboutToBeDeleted(TrainCar car)
-    {
-        // we really don't need to do anything on delete, if the car is revived from the pool
-        // the host should just come back to life with it. Still log a bit in case we run into weird issues here.
-        var matchingConfiguration = ProfileRepository.TryGetConfiguration(car);
-
-        if (matchingConfiguration == null)
-        {
-            return;
-        }
-
-        _log.Info($"about to be deleted '{car.name}' ({car.carType}, id={car.ID})");
-    }
-
     private void Track(TrainCar car)
     {
         if (!Enabled) return;
 
-        var matchingConfiguration = ProfileRepository.TryGetConfiguration(car);
+        // this is a fresh instance, so edits to a host stay local to that host
+        var matchingConfiguration = ProfileRepository.TryGetProfile(car);
 
         if (matchingConfiguration == null)
         {
@@ -172,8 +158,7 @@ internal sealed class Orchestrator : MonoBehaviour
 
         // host is a component of the car so it dies along with it if the car is fully removed
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
-        // hand it its own deep copy so any edits to its settings remain local to the car
-        host.Configure(matchingConfiguration.Clone());
+        host.Configure(matchingConfiguration);
         Hosts.Add(host);
     }
 

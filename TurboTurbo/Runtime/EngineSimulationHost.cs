@@ -11,7 +11,6 @@ using LocoSim.Implementations;
 using TurboTurbo.Assets;
 using TurboTurbo.Modeling;
 using TurboTurbo.Profiles;
-using TurboTurbo.Setup;
 using TurboTurbo.WorkBench;
 
 using UnityEngine;
@@ -34,13 +33,16 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         public Vector3 Offset;
         public SmokeParticles Smoke;
         public ShimmerParticles Shimmer;
+        public LocoExhaust Source;
 
-        /// <summary>Repositions both emitters to Mouth + Offset.</summary>
+        /// <summary>Car-local position both emitters are placed at.</summary>
+        public Vector3 LocalPosition => Mouth + Offset;
+
+        /// <summary>Places both emitters at <see cref="LocalPosition"/>.</summary>
         public void Reposition()
         {
-            var local = Mouth + Offset;
-            Smoke.transform.localPosition = local;
-            Shimmer.transform.localPosition = local;
+            Smoke.transform.localPosition = LocalPosition;
+            Shimmer.transform.localPosition = LocalPosition;
         }
     }
     private Logger _log;
@@ -63,33 +65,17 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
     public ExhaustVelocitySettings Velocity { get; private set; }
+
     public bool Bound => _simBound && CombustionModel != null;
+
     public bool EngineOn => CombustionModel != null && _engineOn();
+
     public float AbsSpeed => TrainCar.GetAbsSpeed();
+
     public string CarId => TrainCar.ID;
 
-    private void OnDestroy()
-    {
-        // restore replaced exhausts so a disabled mod leaves the car stock
-        foreach (var replacedPs in _replacedExhausts)
-        {
-            if (replacedPs == null) continue;
-
-            var emission = replacedPs.emission;
-            emission.enabled = true;
-        }
-
-        // emitters are separate GameObjects under the car root, they do not
-        // die with this component
-        foreach (var e in Exhausts)
-        {
-            if (e.Smoke != null) Destroy(e.Smoke.gameObject);
-            if (e.Shimmer != null) Destroy(e.Shimmer.gameObject);
-        }
-        Exhausts.Clear();
-
-        Orchestrator.Instance?.Forget(this);
-    }
+    /// <summary>Returns a clone of the underlying <see cref="LocoProfile"/>.</summary>
+    public LocoProfile CloneProfile() => _configuration.Clone();
 
     public EngineSimulationHost Configure(LocoProfile configuration)
     {
@@ -231,12 +217,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             {
                 Mouth = TrainCar.transform.InverseTransformPoint(exhaustTransform.position),
                 Offset = exhaust.Offset,
+                Source = exhaust,
+                Smoke = CreateSmokeEmitter(i, _configuration.SmokeEmitter, _configuration.Smoke),
+                Shimmer = CreateShimmerEmitter(i, _configuration.ShimmerEmitter)
             };
-            emitters.Smoke = CreateSmokeEmitter(i, exhaustTransform.position, exhaust.Offset,
-                _configuration.SmokeEmitter,
-                _configuration.Smoke);
-            emitters.Shimmer = CreateShimmerEmitter(i, exhaustTransform.position, exhaust.Offset,
-                _configuration.ShimmerEmitter);
+            emitters.Reposition();
             Exhausts.Add(emitters);
         }
 
@@ -263,11 +248,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         return existingPs.transform;
     }
 
-    private SmokeParticles CreateSmokeEmitter(int index, Vector3 exhaustPosition, Vector3 offset,
-        SmokeParticles.Settings tuning, ExhaustSmokeModel.Settings smokeTuning)
+    private SmokeParticles CreateSmokeEmitter(int index, SmokeParticles.Settings tuning,
+        ExhaustSmokeModel.Settings smokeTuning)
     {
         var go = new GameObject($"TurboTurbo.Smoke[{index}]");
-        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, TrainCar.transform, offset);
+        ExhaustPlacement.AttachTo(go.transform, TrainCar.transform);
         var smoke = go.AddComponent<SmokeParticles>();
         smoke.tuning = tuning;
         smoke.Model.Tuning = smokeTuning;
@@ -279,11 +264,10 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         return smoke;
     }
 
-    private ShimmerParticles CreateShimmerEmitter(int index, Vector3 exhaustPosition, Vector3 offset,
-        ShimmerParticles.Settings tuning)
+    private ShimmerParticles CreateShimmerEmitter(int index, ShimmerParticles.Settings tuning)
     {
         var go = new GameObject($"TurboTurbo.Shimmer[{index}]");
-        ExhaustPlacement.PlaceAt(go.transform, exhaustPosition, TrainCar.transform, offset);
+        ExhaustPlacement.AttachTo(go.transform, TrainCar.transform);
         var shimmer = go.AddComponent<ShimmerParticles>();
         shimmer.tuning = tuning;
         shimmer.velocity = Velocity;
@@ -318,5 +302,27 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 shimmer.absSpeed = absSpeed;
             }
         }
+    }
+
+    private void OnDestroy()
+    {
+        // when destroyed, we should re-enable the stock effects
+        foreach (var replacedPs in _replacedExhausts)
+        {
+            if (replacedPs == null) continue;
+
+            var emission = replacedPs.emission;
+            emission.enabled = true;
+        }
+
+        // emitters are separate GameObjects under the car root, they do not die with this component
+        foreach (var e in Exhausts)
+        {
+            if (e.Smoke != null) Destroy(e.Smoke.gameObject);
+            if (e.Shimmer != null) Destroy(e.Shimmer.gameObject);
+        }
+        Exhausts.Clear();
+
+        Orchestrator.Instance?.Forget(this);
     }
 }

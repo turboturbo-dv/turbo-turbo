@@ -38,7 +38,9 @@ public static class Controller
         var options = new EngineOptions();
         configure(options);
 
-        var profile = options.Build(liveryId);
+        var profile = options.TryBuild(liveryId);
+        if (profile == null) return;
+
         ConfigurationsByLiveryId[liveryId] = profile;
 
         Log.Info(

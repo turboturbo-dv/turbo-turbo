@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 using UnityEngine;
@@ -15,8 +16,14 @@ public sealed class CombustionModel
     [XmlType("CombustionSettings")]
     public sealed class Settings
     {
-        public float RpmTorqueExponent { get; set; } = 0f;
-        public float TorqueLambdaFloor { get; set; } = 0.7f;
+        internal const float DefaultRpmTorqueExponent = 0f;
+        internal const float DefaultTorqueLambdaFloor = 0.7f;
+
+        [DefaultValue(DefaultRpmTorqueExponent)]
+        public float RpmTorqueExponent { get; set; } = DefaultRpmTorqueExponent;
+
+        [DefaultValue(DefaultTorqueLambdaFloor)]
+        public float TorqueLambdaFloor { get; set; } = DefaultTorqueLambdaFloor;
 
         public Settings()
         {

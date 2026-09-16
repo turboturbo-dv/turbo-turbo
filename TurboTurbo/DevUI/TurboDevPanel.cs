@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using TurboTurbo.Assets;
 using TurboTurbo.Modeling;
+using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 using TurboTurbo.WorkBench;
 
@@ -135,6 +136,31 @@ internal sealed class TurboDevPanel : MonoBehaviour
         {
             PlayerTrainInspector.DumpTarget();
         }
+        if (GUILayout.Button("save profile to settings"))
+        {
+            SaveProfile();
+        }
+    }
+
+    private void SaveProfile()
+    {
+        var host = CurrentHost();
+        if (host == null)
+        {
+            _log.Warn("no car targeted for inspection");
+            return;
+        }
+
+        var profile = host.CloneProfile();
+
+        var error = ProfileRepository.SaveProfile(profile);
+        if (error != null)
+        {
+            _log.Warn($"could not save profile '{profile.LiveryId}': {error}");
+            return;
+        }
+
+        _log.Info($"saved profile '{profile.LiveryId}' to settings");
     }
 
     private void DumpParticleSystems()
@@ -486,15 +512,15 @@ internal sealed class TurboDevPanel : MonoBehaviour
             section.AddFloat($"exhaust{i}OffsetX", "Exhaust placement offset [m], lateral.",
                 -1f, 1f, false,
                 () => e.Offset.x,
-                v => { e.Offset.x = v; e.Reposition(); });
+                v => { e.Offset.x = v; e.Source.Offset = e.Offset; e.Reposition(); });
             section.AddFloat($"exhaust{i}OffsetY", "Exhaust placement offset [m], vertical.",
                 -1f, 2f, false,
                 () => e.Offset.y,
-                v => { e.Offset.y = v; e.Reposition(); });
+                v => { e.Offset.y = v; e.Source.Offset = e.Offset; e.Reposition(); });
             section.AddFloat($"exhaust{i}OffsetZ", "Exhaust placement offset [m], fore/aft.",
                 -1f, 1f, false,
                 () => e.Offset.z,
-                v => { e.Offset.z = v; e.Reposition(); });
+                v => { e.Offset.z = v; e.Source.Offset = e.Offset; e.Reposition(); });
         }
         section.AddBool("showMarkers", "Debug: show axis crosses at the modded emitter positions.",
             false, () => _showOffsetMarkers, v => { _showOffsetMarkers = v; _debugView.SetVisible(v); });
