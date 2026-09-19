@@ -83,7 +83,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         // per-car context: logs from multiple locos stay distinguishable
         var car = GetComponent<TrainCar>();
-        _log = Log.ForContext(car != null ? $"host:{car.ID}" : "host");
+        _log = Log.ForContext(car != null ? $"host:{car.LogIdentifier()}" : "host");
 
         return this;
     }
@@ -121,13 +121,13 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             if (!_loggedNoSim)
             {
                 _loggedNoSim = true;
-                _log.Info($"no SimController (yet) on '{name}'");
+                _log.Info("no SimController (yet)");
             }
             return;
         }
 
         _simBound = true;
-        _log.Info($"sim bound on '{name}' ({_configuration.ChargerKind} charger, " +
+        _log.Info($"sim bound ({_configuration.ChargerKind} charger, " +
                      $"{_configuration.Exhausts.Count} exhaust(s))");
 
         TryBindCombustion();
@@ -146,7 +146,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         var engine = flow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
         if (engine == null)
         {
-            _log.Warn($"no DieselEngineDirect on '{name}' - engine model not bound");
+            _log.Warn("no DieselEngineDirect, engine model not bound");
             return;
         }
 
@@ -166,7 +166,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         if (_throttlePort == null || rpmPort == null)
         {
-            _log.Warn($"could not resolve throttle/rpm ports on '{name}' - engine model not bound");
+            _log.Warn("could not resolve throttle/rpm ports, engine model not bound");
             return;
         }
 
@@ -184,7 +184,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             () => rpmPort.Value,
             _configuration.BuildCharger());
 
-        _log.Info($"combustion bound on '{name}' (throttle: {_throttlePort.id}, " +
+        _log.Info($"combustion bound (throttle: {_throttlePort.id}, " +
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
     }
 
@@ -209,7 +209,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             var exhaustTransform = ResolveExhaustTransform(exhaust);
             if (exhaustTransform == null)
             {
-                _log.Warn($"exhaust {i} ('{exhaust.Name}') resolved to null on '{name}', skipping");
+                _log.Warn($"exhaust {i} ('{exhaust.Name}') resolved to null, skipping");
                 continue;
             }
 
@@ -226,7 +226,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         _effectsBound = true;
-        _log.Info($"effects bound on '{name}' ({Exhausts.Count} exhaust emitter(s))");
+        _log.Info($"effects bound ({Exhausts.Count} exhaust emitter(s))");
     }
 
     private Transform ResolveExhaustTransform(LocoExhaust exhaust)

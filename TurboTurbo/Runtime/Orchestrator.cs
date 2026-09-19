@@ -23,7 +23,7 @@ internal sealed class Orchestrator : MonoBehaviour
     public void Forget(Runtime.EngineSimulationHost host)
     {
         var car = host.TrainCar;
-        _log.Info($"forgetting about '{car.name}' ({car.carType}, id={car.ID})");
+        _log.Info($"forgetting about {car.LogIdentifier()}");
         Hosts.Remove(host);
     }
 
@@ -141,7 +141,7 @@ internal sealed class Orchestrator : MonoBehaviour
             if (car.IsLoco)
             {
                 _log.Info(
-                    $"'{car.name}' ({car.carType}, id={car.ID} liv={car.carLivery.name} livid={car.carLivery.id})) not configured, skipping");
+                    $"{car.LogIdentifier()} not configured, skipping");
             }
             return;
         }
@@ -150,11 +150,11 @@ internal sealed class Orchestrator : MonoBehaviour
         if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
         {
             _log.Info(
-                $"'{car.name}' ({car.carType}, id={car.ID}, already has a simulation host, skipping");
+                $"{car.LogIdentifier()} already has a simulation host, skipping");
             return;
         }
 
-        _log.Info($"attaching simulation host to '{car.name}' ({car.carType}, id={car.ID})");
+        _log.Info($"attaching simulation host to {car.LogIdentifier()}");
 
         // host is a component of the car so it dies along with it if the car is fully removed
         var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
