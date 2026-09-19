@@ -16,11 +16,11 @@ internal sealed class Orchestrator : MonoBehaviour
 {
     private readonly Logger _log = Log.ForContext("orchestrator");
 
-    public List<Runtime.EngineSimulationHost> Hosts { get; } = [];
+    public List<EngineSimulationHost> Hosts { get; } = [];
 
     public bool Enabled { get; private set; } = true;
 
-    public void Forget(Runtime.EngineSimulationHost host)
+    public void Forget(EngineSimulationHost host)
     {
         var car = host.TrainCar;
         _log.Info($"forgetting about {car.LogIdentifier()}");
@@ -147,7 +147,7 @@ internal sealed class Orchestrator : MonoBehaviour
         }
 
         // ensures revived cars don't receive another host
-        if (car.TryGetComponent<Runtime.EngineSimulationHost>(out _))
+        if (car.TryGetComponent<EngineSimulationHost>(out _))
         {
             _log.Info(
                 $"{car.LogIdentifier()} already has a simulation host, skipping");
@@ -157,7 +157,7 @@ internal sealed class Orchestrator : MonoBehaviour
         _log.Info($"attaching simulation host to {car.LogIdentifier()}");
 
         // host is a component of the car so it dies along with it if the car is fully removed
-        var host = car.gameObject.AddComponent<Runtime.EngineSimulationHost>();
+        var host = car.gameObject.AddComponent<EngineSimulationHost>();
         host.Configure(matchingConfiguration);
         Hosts.Add(host);
     }
