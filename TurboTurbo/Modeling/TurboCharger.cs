@@ -13,7 +13,7 @@ public sealed class TurboCharger : ICharger
     [XmlType("TurboChargerSettings")]
     public sealed class Settings
     {
-        internal const float DefaultLambdaCalibration = 1.74f;
+        internal const float DefaultLambdaCalibration = 1.41f;
         internal const float DefaultBoostChargeMultiplier = 1.125f;
         internal const float DefaultRpmBoostExponent = 1.2f;
         internal const float DefaultTauUp = 3.0f;

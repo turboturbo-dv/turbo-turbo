@@ -92,15 +92,15 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
 
-            // full rack from cold: overfuel = 1 - charge/1.74 = 0.425, so
-            // tau = TauUp / (1 + ThermalK x Overfuel) = 3 / 1.340 = 2.238:
-            // boost = 1 x (1 - e^(-1/2.238)) = 0.3603
             _throttle = 1f;
             _fuelNorm = 1f;
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
 
-            model.Boost.ShouldBe(1f - (float)Math.Exp(-1f / 2.238f), tolerance: 0.001f);
+            var overfuel = 1f - 1f / TurboCharger.Settings.DefaultLambdaCalibration;
+            var tau = TurboCharger.Settings.DefaultTauUp
+                / (1f + TurboCharger.Settings.DefaultThermalK * overfuel);
+            model.Boost.ShouldBe(1f - (float)Math.Exp(-1f / tau), tolerance: 0.001f);
         }
 
         [Fact]
@@ -154,13 +154,14 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
 
-            // boost 0 -> charge 1; cap = 1 / (calibration x floor) = 1 / 1.218 = 0.821
             _throttle = 0.9f;
             _fuelNorm = 0.9f;
             _rpmNorm = 1f;
             model.Tick(0.016f, engineOn: true);
 
-            model.EffectiveDemand.ShouldBe(0.821f, tolerance: 0.01f);
+            var cap = 1f / (TurboCharger.Settings.DefaultLambdaCalibration
+                * CombustionModel.Settings.DefaultTorqueLambdaFloor);
+            model.EffectiveDemand.ShouldBe(cap, tolerance: 0.01f);
             model.EffectiveDemand.ShouldBeLessThan(0.9f);
         }
 

@@ -145,7 +145,7 @@ namespace TurboTurboTests
             config.TurboCharger.ShouldNotBeNull();
             config.Atmospheric.ShouldBeNull();
             config.TurboCharger.TauUp.ShouldBe(3f);
-            config.Combustion.TorqueLambdaFloor.ShouldBe(0.7f);
+            config.Combustion.TorqueLambdaFloor.ShouldBe(0.86f);
             config.BuildCharger().ShouldBeOfType<TurboCharger>();
             config.Validate().ShouldBeNull();
         }

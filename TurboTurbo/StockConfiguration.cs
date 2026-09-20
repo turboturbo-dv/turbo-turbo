@@ -28,7 +28,7 @@ internal static class StockConfiguration
             .ConfigureTurboCharger(t =>
             {
                 // the DH4 runs slightly cleaner and has a lighter turbo that spins up faster
-                t.LambdaCalibration = 1.7f;
+                t.LambdaCalibration = 1.38f;
                 t.TauUp = 2;
             })
             .ConfigureSmoke(s =>
@@ -72,7 +72,7 @@ internal static class StockConfiguration
                 // with these parameters, the DM3 starts producing black smoke near the redline
                 c.EtaPeak = 0.83f;
                 c.ChokeK = 0.26f;
-                c.LambdaCalibration = 0.67f;
+                c.LambdaCalibration = 0.55f;
             })
             .ConfigureExhaustVelocity(s =>
             {
@@ -112,7 +112,7 @@ internal static class StockConfiguration
                 // a reasonably clean naturally aspirated engine, shouldn't really generate soot normally
                 c.EtaPeak = 0.86f;
                 c.ChokeK = 0.24f;
-                c.LambdaCalibration = 0.63f;
+                c.LambdaCalibration = 0.51f;
 
             })
             .ConfigureSmoke(s =>
@@ -159,7 +159,7 @@ internal static class StockConfiguration
             {
                 c.EtaPeak = 0.83f;
                 c.ChokeK = 0.26f;
-                c.LambdaCalibration = 0.67f;
+                c.LambdaCalibration = 0.55f;
             })
             .ConfigureExhaustVelocity(s =>
             {

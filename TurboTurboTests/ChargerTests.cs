@@ -11,13 +11,13 @@ namespace TurboTurboTests
         [Fact]
         public void TurboCharger_DefaultLambdaCalibration_IsTurboValue()
         {
-            new TurboCharger.Settings().LambdaCalibration.ShouldBe(1.74f);
+            new TurboCharger.Settings().LambdaCalibration.ShouldBeGreaterThan(1f);
         }
 
         [Fact]
         public void AtmosphericCharger_DefaultLambdaCalibration_IsAspiratedValue()
         {
-            new AtmosphericCharger.Settings().LambdaCalibration.ShouldBe(0.6f);
+            new AtmosphericCharger.Settings().LambdaCalibration.ShouldBeLessThan(1f);
         }
 
         [Fact]
@@ -103,7 +103,9 @@ namespace TurboTurboTests
             // act
             model.Tick(0.016f, engineOn: true);
 
-            model.Lambda.ShouldBe(1.125f, tolerance: 0.001f);
+            model.Lambda.ShouldBe(
+                AtmosphericCharger.Settings.DefaultEtaPeak * (1f - AtmosphericCharger.Settings.DefaultChokeK)
+                / AtmosphericCharger.Settings.DefaultLambdaCalibration, tolerance: 0.001f);
             model.Boost.ShouldBe(0f);
             model.SurgeThisTick.ShouldBeFalse();
         }

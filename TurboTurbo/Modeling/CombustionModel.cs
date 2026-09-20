@@ -17,7 +17,7 @@ public sealed class CombustionModel
     public sealed class Settings
     {
         internal const float DefaultRpmTorqueExponent = 0f;
-        internal const float DefaultTorqueLambdaFloor = 0.7f;
+        internal const float DefaultTorqueLambdaFloor = 0.86f;
 
         [DefaultValue(DefaultRpmTorqueExponent)]
         public float RpmTorqueExponent { get; set; } = DefaultRpmTorqueExponent;
