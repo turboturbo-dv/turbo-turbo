@@ -71,6 +71,22 @@ internal static class ProfileRepository
         return ModProfiles.TryGetValue(liveryId, out var profile) ? profile.Profile : null;
     }
 
+    internal static string TryGetModName(string liveryId)
+    {
+        return ModProfiles.TryGetValue(liveryId, out var profile) ? profile.ModName : null;
+    }
+
+    internal static ProfileStatus TryGetStatus(string liveryId)
+    {
+        UserProfiles.TryGetValue(liveryId, out var user);
+        var hasSupplied = ModProfiles.TryGetValue(liveryId, out var supplied);
+        return ProfileStatus.Resolve(
+            user,
+            hasSupplied ? supplied.Profile : null,
+            hasSupplied ? supplied.ModName : null,
+            Controller.TryGetConfiguration(liveryId));
+    }
+
     internal static ValidationError? SaveProfile(LocoProfile profile)
     {
         var error = profile.Complete();

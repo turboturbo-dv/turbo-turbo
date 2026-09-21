@@ -4,7 +4,7 @@ using System.Globalization;
 
 using UnityEngine;
 
-namespace TurboTurbo.DevUI;
+namespace TurboTurbo.Configuration;
 
 // float equality comp is actually fine here, since we only need to check for exact matches
 // ReSharper disable CompareOfFloatsByEqualityOperator
@@ -17,7 +17,7 @@ internal interface ITweakSpec
     void Draw();
 
     /// <summary>
-    /// Exports the value of this spec as YAML string, null if unchanged
+    /// Exports the value of this spec as YAML-ish string, null if unchanged
     /// </summary>
     string Export();
 }
@@ -77,7 +77,7 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
     {
         var current = _get();
         GUILayout.BeginHorizontal();
-        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        GUILayout.Label(_label, GUILayout.Width(Styles.LabelWidth));
         var sliderV = Mathf.RoundToInt(GUILayout.HorizontalSlider(current, _min, _max));
         if (sliderV != current)
         {
@@ -121,7 +121,7 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
     {
         var current = _get();
         GUILayout.BeginHorizontal();
-        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        GUILayout.Label(_label, GUILayout.Width(Styles.LabelWidth));
         var sliderV = GUILayout.HorizontalSlider(current, _min, _max);
         if (sliderV != current)
         {
@@ -182,7 +182,7 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
     public void Draw()
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(_label, GUILayout.Width(TurboDevPanel.LabelWidth));
+        GUILayout.Label(_label, GUILayout.Width(Styles.LabelWidth));
         var prev = GUI.backgroundColor;
         GUI.backgroundColor = _get();
         if (GUILayout.Button(GUIContent.none, GUILayout.Width(120f), GUILayout.Height(18f))) RequestEdit?.Invoke();

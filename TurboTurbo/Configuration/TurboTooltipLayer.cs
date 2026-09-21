@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace TurboTurbo.DevUI;
+namespace TurboTurbo.Configuration;
 
 internal sealed class TurboTooltipLayer : MonoBehaviour
 {

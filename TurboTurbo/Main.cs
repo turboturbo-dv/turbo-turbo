@@ -15,6 +15,8 @@ public static class Main
 {
     private static Settings _settings;
 
+    internal static Configuration.ProfileEditorPresenter EditPresenter { get; private set; }
+
     public static void Load(UnityModManager.ModEntry entry)
     {
         Log.Init(new UmmLogSink(entry.Logger));
@@ -38,12 +40,29 @@ public static class Main
         Orchestrator.Create();
 
         DevUI.DevPanelPresenter.Create(_settings);
+        EditPresenter = Configuration.ProfileEditorPresenter.Create();
 
         entry.OnToggle = OnToggle;
         entry.OnGUI = SettingsPanel.Draw;
         entry.OnSaveGUI = saveEntry => _settings.Save(saveEntry);
 
+        LogDiscoveredLiveries();
+
         Log.ForContext("main").Info("TurboTurbo ready!");
+    }
+
+    // temporary diagnostic: what the game's livery catalog actually contains, incl. mod-added
+    private static void LogDiscoveredLiveries()
+    {
+        var log = Log.ForContext("liveries");
+        var liveries = LiveryCatalog.All();
+        log.Info($"discovered {liveries.Count} liveries");
+
+        foreach (var livery in liveries)
+        {
+            log.Info($"  {livery.Id} | type={livery.TypeId} | loco={livery.IsLoco} | " +
+                     $"hidden={livery.IsHidden} | key={livery.LocalizationKey}");
+        }
     }
 
     private static bool OnToggle(UnityModManager.ModEntry entry, bool isOn)
@@ -57,9 +76,13 @@ public static class Main
                 DevUI.DevPanelPresenter.Create(_settings);
             }
         }
-        else if (DevUI.DevPanelPresenter.Instance != null)
+        else
         {
-            Object.Destroy(DevUI.DevPanelPresenter.Instance.gameObject);
+            if (DevUI.DevPanelPresenter.Instance != null)
+            {
+                Object.Destroy(DevUI.DevPanelPresenter.Instance.gameObject);
+            }
+            EditPresenter.Close();
         }
 
         return true;

@@ -27,6 +27,16 @@ internal sealed class Orchestrator : MonoBehaviour
         Hosts.Remove(host);
     }
 
+    public EngineSimulationHost FindHost(TrainCar car)
+    {
+        foreach (var host in Hosts)
+        {
+            if (host != null && host.gameObject == car.gameObject) return host;
+        }
+
+        return null;
+    }
+
     private CarSpawner _hookedSpawner;
     private bool _loggedSpawnerLost;
 

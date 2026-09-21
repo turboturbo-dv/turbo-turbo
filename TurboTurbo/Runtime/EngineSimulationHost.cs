@@ -66,6 +66,9 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     /// <summary>Exhaust flow range shared by this host's smoke and shimmer emitters.</summary>
     public ExhaustVelocitySettings Velocity { get; private set; }
 
+    /// <summary>The profile this host is running.</summary>
+    public LocoProfile Profile => _configuration;
+
     public bool Bound => _simBound && CombustionModel != null;
 
     public bool EngineOn => CombustionModel != null && _engineOn();
@@ -306,10 +309,12 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private void OnDestroy()
     {
-        // when destroyed, we should re-enable the stock effects
+        // a successor host may have already claimed these, so restore only
+        // the ones nobody else owns. Full teardown still restores exactly
+        // once, via the last destroyed host.
         foreach (var replacedPs in _replacedExhausts)
         {
-            if (replacedPs == null) continue;
+            if (replacedPs == null || IsClaimedByAnotherHost(replacedPs)) continue;
 
             var emission = replacedPs.emission;
             emission.enabled = true;
@@ -324,5 +329,19 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         Exhausts.Clear();
 
         Orchestrator.Instance?.Forget(this);
+    }
+
+    private bool IsClaimedByAnotherHost(ParticleSystem ps)
+    {
+        var orchestrator = Orchestrator.Instance;
+        if (orchestrator == null) return false;
+
+        foreach (var host in orchestrator.Hosts)
+        {
+            if (host == null || host == this || host.TrainCar != TrainCar) continue;
+            if (host._replacedExhausts.Contains(ps)) return true;
+        }
+
+        return false;
     }
 }

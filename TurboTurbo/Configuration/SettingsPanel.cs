@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 
-using TurboTurbo.DevUI;
-
 using UnityEngine;
 
 using UnityModManagerNet;
@@ -31,5 +29,8 @@ internal static class SettingsPanel
         GUILayout.Label("Toggle dev panel");
         UnityModManager.UI.DrawKeybindingSmart(_settings.ToggleDevPanel, "Toggle dev panel");
         GUILayout.EndHorizontal();
+
+        GUILayout.Space(8f);
+        ProfileOverview.Draw();
     }
 }

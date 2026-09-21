@@ -4,7 +4,7 @@ using System.Text;
 
 using UnityEngine;
 
-namespace TurboTurbo.DevUI;
+namespace TurboTurbo.Configuration;
 
 internal sealed class Section
 {
@@ -97,10 +97,12 @@ internal sealed class Section
         Open = GUILayout.Toggle(Open, (Open ? "▾ " : "▸ ") + Title);
         if (Open != prevOpen && OnToggle != null) OnToggle();
         GUILayout.Label(changed > 0 ? $"{changed} changed" : "", GUILayout.Width(70f));
-        if (changed > 0 && GUILayout.Button("reset", GUILayout.Width(46f)))
+        GUI.enabled = changed > 0;
+        if (GUILayout.Button("reset", GUILayout.Width(46f)))
         {
             foreach (var spec in _specs) spec.Reset();
         }
+        GUI.enabled = true;
         GUILayout.EndHorizontal();
 
         if (Open)
