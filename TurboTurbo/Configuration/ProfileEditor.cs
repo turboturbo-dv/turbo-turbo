@@ -69,7 +69,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     {
         TelemetryView.Draw(_host);
         DrawChargerRow();
-        DrawChargerSection();
+        DrawSections();
         DrawFooter();
 
         // GUI.tooltip is only populated during repaint; capture then, so
@@ -89,7 +89,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         if (next != selected) SwitchCharger(next == 1 ? ChargerKind.Atmospheric : ChargerKind.Turbo);
     }
 
-    private void DrawChargerSection()
+    private void DrawSections()
     {
         if (_host != _boundHost)
         {
@@ -99,7 +99,7 @@ internal sealed class ProfileEditor : MonoBehaviour
 
         if (_sections.Count == 0 && _host.Bound)
         {
-            _sections.Add(ChargerSection.Build(_host, null, () => _needsShrink = true));
+            BuildSections();
         }
 
         if (_sections.Count == 0)
@@ -112,6 +112,21 @@ internal sealed class ProfileEditor : MonoBehaviour
         {
             section.Draw();
         }
+    }
+
+    private void BuildSections()
+    {
+        var host = _host;
+        _sections.Add(ChargerSection.Build(host, null, () => _needsShrink = true));
+        AddSection(SmokeModelSection.Build(host, null, () => _needsShrink = true));
+        _sections.Add(VelocitySection.Build(host, () => _needsShrink = true));
+        AddSection(SmokeEmitterSection.Build(host, null, () => _needsShrink = true));
+        AddSection(ShimmerEmitterSection.Build(host, null, () => _needsShrink = true));
+    }
+
+    private void AddSection(Section section)
+    {
+        if (section != null) _sections.Add(section);
     }
 
     private void DrawFooter()
