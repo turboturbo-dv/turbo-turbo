@@ -96,6 +96,7 @@ internal static class StockConfiguration
             .ConfigureShimmerEmitter(e =>
             {
                 // slight down rating again to match engine power
+                e.strength = 0.008f;
                 e.lifetime = 1.2f;
                 e.startSizeMin = 0.4f;
                 e.startSizeMax = 0.4f;
