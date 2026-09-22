@@ -10,10 +10,6 @@ using UnityEngine;
 
 namespace TurboTurbo.Configuration;
 
-/// <summary>
-/// Minimal v1 profile editor: charger kind, lambda calibration, save/discard.
-/// Acts on the boarded loco; creates a scratch host when it has none.
-/// </summary>
 internal sealed class ProfileEditor : MonoBehaviour
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("editor");
@@ -30,6 +26,8 @@ internal sealed class ProfileEditor : MonoBehaviour
     private EngineSimulationHost _boundHost;
     private readonly List<Section> _sections = new();
     private bool _needsShrink;
+
+    public Rect WindowRect => _windowRect;
 
     public void Initialize(TrainCar car, EngineSimulationHost host, string liveryId, bool isCreate)
     {

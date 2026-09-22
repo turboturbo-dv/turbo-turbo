@@ -54,6 +54,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
         var editor = go.AddComponent<ProfileEditor>();
         editor.Initialize(car, host, car.carLivery.id, isCreate);
         editor.Closed += OnEditorClosed;
+        go.AddComponent<WindowBlocker>().Track(() => editor.WindowRect);
         _editor = editor;
     }
 
