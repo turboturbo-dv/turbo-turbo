@@ -41,9 +41,9 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
         }
 
         var host = Orchestrator.Instance.FindHost(car);
-        var isCreate = host == null;
-        if (isCreate)
+        if (host == null)
         {
+            // will be null if creation fails
             host = ScratchHost.Create(car);
             if (host == null) return;
         }
@@ -52,7 +52,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
         var editor = go.AddComponent<ProfileEditor>();
-        editor.Initialize(car, host, car.carLivery.id, isCreate);
+        editor.Initialize(car, host, car.carLivery.id);
         editor.Closed += OnEditorClosed;
         go.AddComponent<WindowBlocker>().Track(() => editor.WindowRect);
         _editor = editor;

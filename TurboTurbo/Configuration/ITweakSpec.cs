@@ -13,6 +13,7 @@ internal interface ITweakSpec
 {
     string Key { get; }
     bool Changed { get; }
+    TweakGrade Grade { get; }
     void Reset();
     void Draw();
 
@@ -35,9 +36,12 @@ internal abstract class SpecBase<T>
 
     public bool Changed => !EqualityComparer<T>.Default.Equals(_get(), _initial);
 
-    protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onRequiresReconfigure)
+    public TweakGrade Grade { get; }
+
+    protected SpecBase(string key, string tooltip, Func<T> get, Action<T> set, Action onRequiresReconfigure, TweakGrade grade)
     {
         Key = key;
+        Grade = grade;
         _label = new GUIContent(key, tooltip);
         _get = get;
         _set = set;
@@ -66,8 +70,8 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
     private string _editText;
 
     public IntSpec(string key, string tooltip, Func<int> get, Action<int> set,
-        int min, int max, Action onRequiresReconfigure)
-        : base(key, tooltip, get, set, onRequiresReconfigure)
+        int min, int max, Action onRequiresReconfigure, TweakGrade grade)
+        : base(key, tooltip, get, set, onRequiresReconfigure, grade)
     {
         _min = min;
         _max = max;
@@ -86,7 +90,7 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
         }
 
         var shown = _editText ?? current.ToString(CultureInfo.InvariantCulture);
-        var typed = GUILayout.TextField(shown, GUILayout.Width(48f));
+        var typed = GUILayout.TextField(shown, GUILayout.Width(60f));
         if (typed != shown)
         {
             _editText = typed;
@@ -110,8 +114,8 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
     private string _editText;
 
     public FloatSpec(string key, string tooltip, Func<float> get, Action<float> set,
-        float min, float max, Action onRequiresReconfigure)
-        : base(key, tooltip, get, set, onRequiresReconfigure)
+        float min, float max, Action onRequiresReconfigure, TweakGrade grade)
+        : base(key, tooltip, get, set, onRequiresReconfigure, grade)
     {
         _min = min;
         _max = max;
@@ -130,7 +134,7 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
         }
 
         var shown = _editText ?? Format(current);
-        var typed = GUILayout.TextField(shown, GUILayout.Width(48f));
+        var typed = GUILayout.TextField(shown, GUILayout.Width(60f));
         if (typed != shown)
         {
             _editText = typed;
@@ -151,8 +155,8 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
 
 internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
 {
-    public BoolSpec(string key, string tooltip, Func<bool> get, Action<bool> set, Action onRequiresReconfigure)
-        : base(key, tooltip, get, set, onRequiresReconfigure)
+    public BoolSpec(string key, string tooltip, Func<bool> get, Action<bool> set, Action onRequiresReconfigure, TweakGrade grade)
+        : base(key, tooltip, get, set, onRequiresReconfigure, grade)
     {
     }
 
@@ -170,8 +174,8 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
     /// <summary>Raised when the swatch is clicked; the panel opens its shared picker for this spec.</summary>
     public event Action RequestEdit;
 
-    public ColorSpec(string key, string tooltip, Func<Color> get, Action<Color> set)
-        : base(key, tooltip, get, set, null)
+    public ColorSpec(string key, string tooltip, Func<Color> get, Action<Color> set, TweakGrade grade)
+        : base(key, tooltip, get, set, null, grade)
     {
     }
 
@@ -200,14 +204,17 @@ internal sealed class ButtonSpec : ITweakSpec
     private readonly string _tooltip;
     private readonly Action _action;
 
-    public ButtonSpec(string key, string tooltip, Action action)
+    public ButtonSpec(string key, string tooltip, Action action, TweakGrade grade)
     {
         Key = key;
+        Grade = grade;
         _tooltip = tooltip;
         _action = action;
     }
 
     public string Key { get; }
+
+    public TweakGrade Grade { get; }
 
     public bool Changed => false;
 
@@ -217,7 +224,7 @@ internal sealed class ButtonSpec : ITweakSpec
 
     public void Draw()
     {
-        if (GUILayout.Button(new GUIContent(Key, _tooltip))) _action();
+        if (GUILayout.Button(new GUIContent(Key, _tooltip), GUILayout.Width(Styles.LabelWidth))) _action();
     }
 
     public string Export() => null;

@@ -42,7 +42,7 @@ internal sealed class TurboTooltipLayer : MonoBehaviour
         rect.y = Mathf.Min(rect.y, Screen.height - rect.height - 4f);
 
         var oldBg = GUI.backgroundColor;
-        GUI.backgroundColor = new Color(0.08f, 0.08f, 0.10f, 0.97f);
+        GUI.backgroundColor = Styles.TooltipBackground;
         GUI.Box(rect, content, _style);
         GUI.backgroundColor = oldBg;
     }

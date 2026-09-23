@@ -32,6 +32,19 @@ internal static class ProfileOverview
             GUILayout.BeginHorizontal();
             GUILayout.Label(livery.TypeId, GUILayout.Width(LabelWidth));
             GUILayout.Label(ProfileRepository.TryGetStatus(livery.Id).Label);
+            var user = ProfileRepository.TryGetUserProfile(livery.Id);
+            if (user != null)
+            {
+                var enabled = GUILayout.Toggle(user.Enabled, "enabled");
+                if (enabled != user.Enabled)
+                {
+                    ProfileRepository.SetEnabled(livery.Id, enabled);
+                    if (orchestrator != null)
+                    {
+                        orchestrator.ReloadHostsForLivery(livery.Id);
+                    }
+                }
+            }
             if (isBoarded)
             {
                 GUILayout.Label("boarded");

@@ -20,29 +20,40 @@ internal sealed class ProfileEditor : MonoBehaviour
     private TrainCar _car;
     private EngineSimulationHost _host;
     private string _liveryId;
-    private bool _isCreate;
     private Rect _windowRect = new(460f, 20f, 450f, 170f);
 
     private EngineSimulationHost _boundHost;
     private readonly List<Section> _sections = new();
     private bool _needsShrink;
+    private bool _requiresReconfigure;
+    private TweakGrade _grade = TweakGrade.Basic;
 
     public Rect WindowRect => _windowRect;
 
-    public void Initialize(TrainCar car, EngineSimulationHost host, string liveryId, bool isCreate)
+    public void Initialize(TrainCar car, EngineSimulationHost host, string liveryId)
     {
         _car = car;
         _host = host;
         _liveryId = liveryId;
-        _isCreate = isCreate;
-    }
-
-    private void OnDestroy()
-    {
-        Closed?.Invoke();
     }
 
     private void CloseSelf() => Destroy(gameObject);
+
+    private void MarkRequiresReconfigure() => _requiresReconfigure = true;
+
+    private void Update()
+    {
+        if (!_requiresReconfigure) return;
+
+        _requiresReconfigure = false;
+        if (_host == null) return;
+
+        foreach (var e in _host.Exhausts)
+        {
+            e.Smoke.Configure();
+            e.Shimmer.Configure();
+        }
+    }
 
     private void OnGUI()
     {
@@ -66,6 +77,9 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void DrawWindow(int id)
     {
         TelemetryView.Draw(_host);
+        DrawIntro();
+        DrawGradeRow();
+        Styles.Separator();
         DrawChargerRow();
         DrawSections();
         DrawFooter();
@@ -82,9 +96,27 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void DrawChargerRow()
     {
+        GUILayout.Label("Select a charger model to use. Note that the atmospheric model is also applicable to supercharged / roots-blown engines.", Styles.WrappedLabel);
+
         var selected = _host.Profile.ChargerKind == ChargerKind.Atmospheric ? 1 : 0;
         var next = GUILayout.Toolbar(selected, ChargerOptions);
         if (next != selected) SwitchCharger(next == 1 ? ChargerKind.Atmospheric : ChargerKind.Turbo);
+    }
+
+    private void DrawIntro()
+    {
+        GUILayout.Label("Adjust the engine parameters below. Defaults for a new profile are taken from the DE6 tuning.", Styles.WrappedLabel);
+    }
+
+    private void DrawGradeRow()
+    {
+        var advanced = GUILayout.Toggle(_grade == TweakGrade.Advanced, "advanced mode");
+        var next = advanced ? TweakGrade.Advanced : TweakGrade.Basic;
+        if (next == _grade) return;
+
+        _grade = next;
+        _sections.Clear();
+        _needsShrink = true;
     }
 
     private void DrawSections()
@@ -115,16 +147,19 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void BuildSections()
     {
         var host = _host;
-        _sections.Add(ChargerSection.Build(host, null, () => _needsShrink = true));
-        AddSection(SmokeModelSection.Build(host, null, () => _needsShrink = true));
-        _sections.Add(VelocitySection.Build(host, () => _needsShrink = true));
-        AddSection(SmokeEmitterSection.Build(host, null, () => _needsShrink = true));
-        AddSection(ShimmerEmitterSection.Build(host, null, () => _needsShrink = true));
+        AddSection(ChargerSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddSection(SmokeModelSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddSection(VelocitySection.Build(host, () => _needsShrink = true));
+        AddSection(SmokeEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddSection(ShimmerEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
     }
 
     private void AddSection(Section section)
     {
-        if (section != null) _sections.Add(section);
+        if (section == null) return;
+        section.MaxGrade = _grade;
+        section.HeaderWidth = (_windowRect.width - GUI.skin.window.padding.horizontal) * 0.4f;
+        _sections.Add(section);
     }
 
     private void DrawFooter()
@@ -143,15 +178,6 @@ internal sealed class ProfileEditor : MonoBehaviour
 
         if (GUILayout.Button("Discard"))
         {
-            if (_isCreate)
-            {
-                Rebind(null);
-            }
-            else
-            {
-                Rebind(ProfileRepository.TryGetProfile(_car));
-            }
-
             CloseSelf();
         }
 
@@ -181,12 +207,25 @@ internal sealed class ProfileEditor : MonoBehaviour
             _host = null;
         }
 
-        if (profile != null)
-        {
-            _host = _car.gameObject.AddComponent<EngineSimulationHost>();
-            _host.Configure(profile);
-            Orchestrator.Instance.Hosts.Add(_host);
-        }
+        _host = _car.gameObject.AddComponent<EngineSimulationHost>();
+        _host.Configure(profile);
+        Orchestrator.Instance.Hosts.Add(_host);
     }
 
+    private void OnDestroy()
+    {
+        Closed?.Invoke();
+
+        var orchestrator = Orchestrator.Instance;
+        if (_host != null)
+        {
+            Destroy(_host);
+            _host = null;
+        }
+
+        if (orchestrator != null && orchestrator.Enabled && _car != null)
+        {
+            orchestrator.ReloadHost(_car);
+        }
+    }
 }

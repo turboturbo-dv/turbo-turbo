@@ -10,19 +10,28 @@ internal static class ScratchHost
 
     public static EngineSimulationHost Create(TrainCar car)
     {
-        var ps = car.GetFirstComponentInChildren<ParticleSystem>(
-            true, p => p.name.Contains("ExhaustEngineSmoke"));
-        if (ps == null)
-        {
-            Log.Warn($"no exhaust particle system found on '{car.ID}', cannot create a profile");
-            return null;
-        }
+        var liveryId = car.carLivery.id;
 
-        var profile = new LocoProfile
+        // TryGetProfile already returns a fresh instance, the user profile needs a clone
+        var profile = ProfileRepository.TryGetProfile(car)
+            ?? ProfileRepository.TryGetUserProfile(liveryId)?.Clone();
+
+        if (profile == null)
         {
-            LiveryId = car.carLivery.id,
-            Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = ps.name }],
-        };
+            var ps = car.GetFirstComponentInChildren<ParticleSystem>(
+                true, p => p.name.Contains("ExhaustEngineSmoke"));
+            if (ps == null)
+            {
+                Log.Warn($"no exhaust particle system found on '{car.ID}', cannot create a profile");
+                return null;
+            }
+
+            profile = new LocoProfile
+            {
+                LiveryId = liveryId,
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = ps.name }],
+            };
+        }
 
         var error = profile.Complete();
         if (error != null)

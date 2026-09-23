@@ -6,6 +6,83 @@ internal static class Styles
 {
     public const float LabelWidth = 165f;
 
+    private static GUIStyle _separator;
+
+    public static void Separator()
+    {
+        if (_separator == null)
+        {
+            _separator = new GUIStyle
+            {
+                normal = { background = FlatBackground(0x5A) },
+                border = new RectOffset(0, 0, 0, 0),
+                padding = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+            };
+        }
+
+        GUILayout.Space(4f);
+        GUILayout.Box(GUIContent.none, _separator, GUILayout.Height(1f), GUILayout.ExpandWidth(true));
+        GUILayout.Space(4f);
+    }
+
+    private static GUIStyle _wrappedLabel;
+
+    public static GUIStyle WrappedLabel
+    {
+        get
+        {
+            if (_wrappedLabel == null)
+            {
+                _wrappedLabel = new GUIStyle(GUI.skin.label) { wordWrap = true };
+            }
+
+            return _wrappedLabel;
+        }
+    }
+
+    private static GUIStyle _sectionHeader;
+
+    public static GUIStyle SectionHeader
+    {
+        get
+        {
+            if (_sectionHeader == null)
+            {
+                _sectionHeader = new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft };
+            }
+
+            return _sectionHeader;
+        }
+    }
+
+    public static readonly Color TooltipBackground = new Color32(0x1F, 0x1F, 0x1F, 0xF7);
+
+    private static GUIStyle _telemetryBox;
+
+    public static GUIStyle TelemetryBox
+    {
+        get
+        {
+            if (_telemetryBox == null)
+            {
+                _telemetryBox = new GUIStyle(GUI.skin.box);
+                _telemetryBox.normal.background = FlatBackground(0x28);
+            }
+
+            return _telemetryBox;
+        }
+    }
+
+    private static Texture2D FlatBackground(byte shade)
+    {
+        var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        texture.hideFlags = HideFlags.HideAndDontSave;
+        texture.SetPixel(0, 0, new Color32(shade, shade, shade, 0xFF));
+        texture.Apply();
+        return texture;
+    }
+
     private const byte BackgroundShade = 0x32;
 
     private static Texture2D _background;

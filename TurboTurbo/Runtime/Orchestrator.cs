@@ -15,17 +15,13 @@ namespace TurboTurbo.Runtime;
 internal sealed class Orchestrator : MonoBehaviour
 {
     private readonly Logger _log = Log.ForContext("orchestrator");
+    private CarSpawner _hookedSpawner;
+    private bool _loggedSpawnerLost;
 
     public List<EngineSimulationHost> Hosts { get; } = [];
 
     public bool Enabled { get; private set; } = true;
 
-    public void Forget(EngineSimulationHost host)
-    {
-        var car = host.TrainCar;
-        _log.Info($"forgetting about {car.LogIdentifier()}");
-        Hosts.Remove(host);
-    }
 
     public EngineSimulationHost FindHost(TrainCar car)
     {
@@ -37,9 +33,6 @@ internal sealed class Orchestrator : MonoBehaviour
         return null;
     }
 
-    private CarSpawner _hookedSpawner;
-    private bool _loggedSpawnerLost;
-
     public static Orchestrator Instance { get; private set; }
 
     public static Orchestrator Create()
@@ -50,6 +43,64 @@ internal sealed class Orchestrator : MonoBehaviour
         var orchestrator = go.AddComponent<Orchestrator>();
         Instance = orchestrator;
         return orchestrator;
+    }
+
+    public void SetActive(bool isOn)
+    {
+        if (Enabled == isOn) return;
+
+        Enabled = isOn;
+        _log.Info($"{(isOn ? "enabled" : "disabled")}");
+
+        if (isOn)
+        {
+            AttachToExistingCars();
+        }
+        else
+        {
+            TeardownHosts();
+        }
+    }
+
+    /// <summary>Reloads the profiles for every spawned car of the given livery.</summary>
+    public void ReloadHostsForLivery(string liveryId)
+    {
+        if (!Enabled) return;
+
+        var spawner = CarSpawner.Instance;
+        if (spawner == null) return;
+
+        foreach (var car in spawner.AllCars)
+        {
+            if (car != null && car.carLivery != null && car.carLivery?.id == liveryId) ReloadHost(car);
+        }
+    }
+
+    /// <summary> Drops whatever host a car may have and reloads it from the repository. </summary>
+    public void ReloadHost(TrainCar car)
+    {
+        if (car == null || car.carLivery == null || !Enabled) return;
+
+        foreach (var host in Hosts.ToArray())
+        {
+            if (host != null && host.gameObject == car.gameObject)
+            {
+                Hosts.Remove(host);
+                Destroy(host);
+            }
+        }
+
+        Track(car);
+    }
+
+    /// <summary> Forgets about a host, without explicitly deleting it. </summary>
+    public void Forget(EngineSimulationHost host)
+    {
+        var car = host.TrainCar;
+        if (Hosts.Remove(host))
+        {
+            _log.Info($"forgot about {car.LogIdentifier()}");
+        }
     }
 
     private void Update()
@@ -96,23 +147,6 @@ internal sealed class Orchestrator : MonoBehaviour
     private void OnCarSpawned(TrainCar car)
     {
         Track(car);
-    }
-
-    public void SetActive(bool isOn)
-    {
-        if (Enabled == isOn) return;
-
-        Enabled = isOn;
-        _log.Info($"{(isOn ? "enabled" : "disabled")}");
-
-        if (isOn)
-        {
-            AttachToExistingCars();
-        }
-        else
-        {
-            TeardownHosts();
-        }
     }
 
     private void AttachToExistingCars()
@@ -164,6 +198,11 @@ internal sealed class Orchestrator : MonoBehaviour
             return;
         }
 
+        Attach(car, matchingConfiguration);
+    }
+
+    private void Attach(TrainCar car, LocoProfile matchingConfiguration)
+    {
         _log.Info($"attaching simulation host to {car.LogIdentifier()}");
 
         // host is a component of the car so it dies along with it if the car is fully removed

@@ -51,13 +51,14 @@ internal static class StockConfiguration
             .ConfigureSmokeEmitter(e =>
             {
                 // bigger exhaust opening means particles start out bigger too
-                e.startSizeMin = 0.4f;
-                e.startSizeMax = 0.6f;
+                e.startSize = 0.49f;
+                e.startSizeVariance = 0.22f;
+                e.sizeOverLifetimeEnd = 4.8f;
             })
             .ConfigureShimmerEmitter(e =>
             {
-                e.startSizeMin = 0.6f;
-                e.startSizeMax = 0.6f;
+                e.startSize = 0.6f;
+                e.sizeOverLifetimeEnd = 3.6f;
                 // less engine power means less intense shimmer
                 e.strength = 0.01f;
             }));
@@ -89,18 +90,17 @@ internal static class StockConfiguration
             .ConfigureSmokeEmitter(e =>
             {
                 // sized to match the exhaust pipe
-                e.startSizeMin = 0.25f;
-                e.startSizeMax = 0.4f;
-                e.sizeOverLifetimeEnd = 11;
+                e.startSize = 0.32f;
+                e.startSizeVariance = 0.26f;
+                e.sizeOverLifetimeEnd = 3.6f;
             })
             .ConfigureShimmerEmitter(e =>
             {
                 // slight down rating again to match engine power
                 e.strength = 0.008f;
                 e.lifetime = 1.2f;
-                e.startSizeMin = 0.4f;
-                e.startSizeMax = 0.4f;
-                e.sizeOverLifetimeEnd = 8;
+                e.startSize = 0.4f;
+                e.sizeOverLifetimeEnd = 3.2f;
             }));
     }
 
@@ -130,16 +130,15 @@ internal static class StockConfiguration
             })
             .ConfigureSmokeEmitter(e =>
             {
-                e.sizeOverLifetimeEnd = 12f;
+                e.sizeOverLifetimeEnd = 4.8f;
                 e.minFadeDist = 2f;
                 e.maxFadeDist = 3.5f;
             })
             .ConfigureShimmerEmitter(e =>
             {
                 // exhaust pipe is quite thin, so shimmer starts out small and rapidly grows bigger
-                e.startSizeMin = 0.35f;
-                e.startSizeMax = 0.35f;
-                e.sizeOverLifetimeEnd = 9;
+                e.startSize = 0.35f;
+                e.sizeOverLifetimeEnd = 3.2f;
 
                 // lower power, so shimmer is less intense and disperses more quickly
                 e.lifetime = 1f;
@@ -174,16 +173,15 @@ internal static class StockConfiguration
             })
             .ConfigureSmokeEmitter(e =>
             {
-                e.startSizeMin = 0.25f;
-                e.startSizeMax = 0.35f;
-                e.sizeOverLifetimeEnd = 12;
+                e.startSize = 0.3f;
+                e.startSizeVariance = 0.18f;
+                e.sizeOverLifetimeEnd = 3.6f;
             })
             .ConfigureShimmerEmitter(e =>
             {
                 e.lifetime = 1.2f;
-                e.startSizeMin = 0.3f;
-                e.startSizeMax = 0.3f;
-                e.sizeOverLifetimeEnd = 8;
+                e.startSize = 0.3f;
+                e.sizeOverLifetimeEnd = 2.4f;
                 e.strength = 0.008f;
             }));
     }

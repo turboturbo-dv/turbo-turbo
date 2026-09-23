@@ -21,10 +21,9 @@ namespace TurboTurbo.WorkBench
             internal const float DefaultIdleEmissionRate = 15f;
             internal const float DefaultFullEmissionRate = 75f;
             internal const float DefaultLifetime = 3f;
-            internal const float DefaultStartSizeMin = 0.3f;
-            internal const float DefaultStartSizeMax = 0.5f;
-            internal const float DefaultSizeOverLifetimeStart = 1f;
-            internal const float DefaultSizeOverLifetimeEnd = 9.5f;
+            internal const float DefaultStartSize = 0.39f;
+            internal const float DefaultStartSizeVariance = 0.29f;
+            internal const float DefaultSizeOverLifetimeEnd = 3.8f;
             internal const float DefaultBuoyancy = 0.1f;
             internal const float DefaultDrag = 0.6f;
             internal const float DefaultAngularVelocityMax = 20f;
@@ -48,14 +47,11 @@ namespace TurboTurbo.WorkBench
             [DefaultValue(DefaultLifetime)]
             public float lifetime = DefaultLifetime;
 
-            [DefaultValue(DefaultStartSizeMin)]
-            public float startSizeMin = DefaultStartSizeMin;
+            [DefaultValue(DefaultStartSize)]
+            public float startSize = DefaultStartSize;
 
-            [DefaultValue(DefaultStartSizeMax)]
-            public float startSizeMax = DefaultStartSizeMax;
-
-            [DefaultValue(DefaultSizeOverLifetimeStart)]
-            public float sizeOverLifetimeStart = DefaultSizeOverLifetimeStart;
+            [DefaultValue(DefaultStartSizeVariance)]
+            public float startSizeVariance = DefaultStartSizeVariance;
 
             [DefaultValue(DefaultSizeOverLifetimeEnd)]
             public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
@@ -108,9 +104,8 @@ namespace TurboTurbo.WorkBench
                 idleEmissionRate = other.idleEmissionRate;
                 fullEmissionRate = other.fullEmissionRate;
                 lifetime = other.lifetime;
-                startSizeMin = other.startSizeMin;
-                startSizeMax = other.startSizeMax;
-                sizeOverLifetimeStart = other.sizeOverLifetimeStart;
+                startSize = other.startSize;
+                startSizeVariance = other.startSizeVariance;
                 sizeOverLifetimeEnd = other.sizeOverLifetimeEnd;
                 buoyancy = other.buoyancy;
                 drag = other.drag;
@@ -198,7 +193,7 @@ namespace TurboTurbo.WorkBench
             main.gravityModifier = 0f;
 
             // growth: smoke expands as it disperses
-            _sizeCurve = AnimationCurve.Linear(0f, s.sizeOverLifetimeStart, 1f, s.sizeOverLifetimeEnd);
+            _sizeCurve = AnimationCurve.Linear(0f, 1f, 1f, Mathf.Max(0.01f, s.sizeOverLifetimeEnd / Mathf.Max(0.01f, s.startSize)));
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
@@ -354,13 +349,16 @@ namespace TurboTurbo.WorkBench
 
                     var simSpaceVelocity = ParticleSimSpace.Direction(customSimulationSpace, worldVelocity);
 
+                    var baseSize = Mathf.Max(0.01f, s.startSize);
+                    var spread = 1f + Mathf.Max(0f, s.startSizeVariance);
+
                     var ep = new ParticleSystem.EmitParams
                     {
                         // unity will perform one velocity integration step before drawing the particle,
                         // offsetting its spawn point at high speeds and/or low frame rates: back-date it
                         position = simPos - simSpaceVelocity * dt,
                         velocity = simSpaceVelocity,
-                        startSize = Random.Range(s.startSizeMin, s.startSizeMax),
+                        startSize = Random.Range(baseSize / spread, baseSize * spread),
                         startColor = _model.Color,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
                         // random orientation + slow spin gives the appearance of a turbulent smoke column
