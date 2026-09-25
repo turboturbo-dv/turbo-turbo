@@ -16,11 +16,6 @@ internal interface ITweakSpec
     TweakGrade Grade { get; }
     void Reset();
     void Draw();
-
-    /// <summary>
-    /// Exports the value of this spec as YAML-ish string, null if unchanged
-    /// </summary>
-    string Export();
 }
 
 internal abstract class SpecBase<T>
@@ -104,7 +99,6 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
         GUILayout.EndHorizontal();
     }
 
-    public string Export() => Changed ? $"  {Key}: {_get()}" : null;
 }
 
 internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
@@ -148,8 +142,6 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
         GUILayout.EndHorizontal();
     }
 
-    public string Export() => Changed ? $"  {Key}: {Format(_get())}" : null;
-
     private static string Format(float v) => v.ToString("0.#####", CultureInfo.InvariantCulture);
 }
 
@@ -166,7 +158,6 @@ internal sealed class BoolSpec : SpecBase<bool>, ITweakSpec
         if (value != _get()) Commit(value);
     }
 
-    public string Export() => Changed ? $"  {Key}: {_get().ToString().ToLowerInvariant()}" : null;
 }
 
 internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
@@ -194,9 +185,6 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
         GUILayout.EndHorizontal();
     }
 
-    public string Export() => Changed
-        ? $"  {Key}: #{ColorUtility.ToHtmlStringRGBA(_get())}"
-        : null;
 }
 
 internal sealed class ButtonSpec : ITweakSpec
@@ -226,6 +214,4 @@ internal sealed class ButtonSpec : ITweakSpec
     {
         if (GUILayout.Button(new GUIContent(Key, _tooltip), GUILayout.Width(Styles.LabelWidth))) _action();
     }
-
-    public string Export() => null;
 }

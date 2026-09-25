@@ -17,8 +17,7 @@ internal static class ChargerSection
     {
         var model = host.CombustionModel;
         var aspirated = model.Charger is AtmosphericCharger;
-        var section = new Section(aspirated ? "Atmospheric charger" : "Turbocharger", aspirated ? "aspirated" : "turbo",
-            onRequiresReconfigure)
+        var section = new Section(aspirated ? "Atmospheric charger" : "Turbocharger", onRequiresReconfigure)
         {
             Open = true,
             OnToggle = onToggle,

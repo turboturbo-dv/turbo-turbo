@@ -18,7 +18,7 @@ internal static class SmokeModelSection
 
         if (models.Count == 0) return null;
 
-        var section = new Section("Smoke model", "smokeModel", onRequiresReconfigure) { OnToggle = onToggle };
+        var section = new Section("Smoke model", onRequiresReconfigure) { OnToggle = onToggle };
         var first = models[0];
 
         Add("Clean burn load", "Load at which the idle haze is fully gone.", 0.05f, 1f,

@@ -18,7 +18,7 @@ internal static class SmokeEmitterSection
 
         if (smokes.Count == 0) return null;
 
-        var section = new Section("Smoke emitter", "smokeEmitter", onRequiresReconfigure) { OnToggle = onToggle };
+        var section = new Section("Smoke emitter", onRequiresReconfigure) { OnToggle = onToggle };
         var f = smokes[0];
         section.AddFloat("Start size", "Particle size [m] at emission.",
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in smokes) s.tuning.startSize = v; }, TweakGrade.Basic);

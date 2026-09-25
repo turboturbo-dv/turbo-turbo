@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 using UnityEngine;
 
@@ -14,7 +13,6 @@ internal sealed class Section
     private readonly List<ITweakSpec> _specs = new();
 
     public readonly string Title;
-    public readonly string YamlKey;
     public bool Open;
     public Action OnToggle;
     public TweakGrade MaxGrade { get; set; } = TweakGrade.Advanced;
@@ -22,10 +20,9 @@ internal sealed class Section
     /// <summary>Fixed header width, or 0 to stretch across the row.</summary>
     public float HeaderWidth { get; set; }
 
-    public Section(string title, string yamlKey, Action onRequiresReconfigure = null)
+    public Section(string title, Action onRequiresReconfigure = null)
     {
         Title = title;
-        YamlKey = yamlKey;
         _onRequiresReconfigure = onRequiresReconfigure;
     }
 
@@ -61,36 +58,6 @@ internal sealed class Section
     {
         _specs.Add(new IntSpec(key, tooltip, get, set, min, max,
             requiresReconfigure ? _onRequiresReconfigure : null, grade));
-    }
-
-    public int ChangedCount
-    {
-        get
-        {
-            var n = 0;
-            foreach (var spec in _specs)
-            {
-                if (spec.Changed) n++;
-            }
-            return n;
-        }
-    }
-
-    public void ExportYaml(StringBuilder sb)
-    {
-        var lines = new List<string>();
-        foreach (var spec in _specs)
-        {
-            var line = spec.Export();
-            if (line != null) lines.Add(line);
-        }
-        if (lines.Count == 0) return;
-
-        sb.Append(YamlKey).AppendLine(":");
-        foreach (var line in lines)
-        {
-            sb.AppendLine(line);
-        }
     }
 
     public void Draw()

@@ -14,7 +14,6 @@ namespace TurboTurbo.DevUI;
 internal sealed class TurboDevPanel : MonoBehaviour
 {
     private int _selected;
-    private bool _requiresReconfigure;
     private readonly Logger _log = Log.ForContext("devpanel");
 
     private EngineSimulationHost _boundHost;
@@ -50,19 +49,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private void Update()
     {
         RefreshDiagnostics();
-
-        if (_requiresReconfigure)
-        {
-            _requiresReconfigure = false;
-            if (_boundHost != null)
-            {
-                foreach (var e in _boundHost.Exhausts)
-                {
-                    e.Smoke.Configure();
-                    e.Shimmer.Configure();
-                }
-            }
-        }
     }
 
     private void OnGUI()
@@ -89,8 +75,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Space(6f);
         DrawSections();
         GUILayout.Space(4f);
-        DrawDumpButtons();
-        GUILayout.Space(2f);
         DrawDiagnosticsButtons();
 
         // GUI.tooltip is only populated during repaint; capture then, so
@@ -102,8 +86,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         GUI.DragWindow();
     }
-
-    private void MarkRequiresReconfigure() => _requiresReconfigure = true;
 
     private void RefreshDiagnostics()
     {
@@ -209,13 +191,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
         _colorPicker.Close();
         if (host == null) return;
 
-        _sections.Add(ChargerSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddSection(SmokeModelSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        _sections.Add(VelocitySection.Build(host, () => _needsShrink = true));
         AddSection(ColorsSection.Build(host, () => _needsShrink = true,
             spec => spec.RequestEdit += () => _colorPicker.Open(spec)));
-        AddSection(SmokeEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddSection(ShimmerEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddSection(PlacementSection.Build(host, () => _needsShrink = true,
             () => _showOffsetMarkers, v => { _showOffsetMarkers = v; _debugView.SetVisible(v); }));
     }
@@ -223,35 +200,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private void AddSection(Section section)
     {
         if (section != null) _sections.Add(section);
-    }
-
-    private void DrawDumpButtons()
-    {
-        var total = 0;
-        foreach (var section in _sections)
-        {
-            total += section.ChangedCount;
-        }
-
-        GUILayout.BeginHorizontal();
-        GUI.enabled = total > 0;
-        if (GUILayout.Button($"copy changes ({total})"))
-        {
-            GUIUtility.systemCopyBuffer = BuildYaml();
-        }
-        GUI.enabled = true;
-        GUILayout.EndHorizontal();
-    }
-
-    private string BuildYaml()
-    {
-        // poor man's YAML. only really intended to give you a simple, clipboardable representation of changed settings
-        var sb = new System.Text.StringBuilder();
-        foreach (var section in _sections)
-        {
-            section.ExportYaml(sb);
-        }
-        return sb.ToString();
     }
 
     private void PickDefaultTarget()

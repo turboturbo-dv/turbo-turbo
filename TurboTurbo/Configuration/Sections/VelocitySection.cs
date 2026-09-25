@@ -8,7 +8,7 @@ internal static class VelocitySection
 {
     public static Section Build(EngineSimulationHost host, Action onToggle)
     {
-        var section = new Section("Exhaust velocity", "exhaustVelocity") { OnToggle = onToggle };
+        var section = new Section("Exhaust velocity") { OnToggle = onToggle };
         section.AddFloat("Min load", "Exhaust plume speed [m/s] at zero load.",
             0f, 5f, false, () => host.Velocity.Idle, v => host.Velocity.Idle = v, TweakGrade.Basic);
         section.AddFloat("Max load", "Exhaust plume speed [m/s] at full load.",

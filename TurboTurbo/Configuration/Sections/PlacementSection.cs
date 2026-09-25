@@ -11,7 +11,7 @@ internal static class PlacementSection
         var exhausts = host.Exhausts;
         if (exhausts.Count == 0) return null;
 
-        var section = new Section("exhaust placement", "exhaustPlacement") { OnToggle = onToggle };
+        var section = new Section("exhaust placement") { OnToggle = onToggle };
         for (var i = 0; i < exhausts.Count; i++)
         {
             var e = exhausts[i];

@@ -17,7 +17,7 @@ internal static class ShimmerEmitterSection
 
         if (shimmers.Count == 0) return null;
 
-        var section = new Section("Shimmer emitter", "shimmerEmitter", onRequiresReconfigure) { OnToggle = onToggle };
+        var section = new Section("Shimmer emitter", onRequiresReconfigure) { OnToggle = onToggle };
         var f = shimmers[0];
         section.AddFloat("Start size", "Particle size [m] at emission.",
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in shimmers) s.tuning.startSize = v; }, TweakGrade.Basic);
