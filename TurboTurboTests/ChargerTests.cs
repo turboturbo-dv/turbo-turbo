@@ -82,20 +82,9 @@ namespace TurboTurboTests
         }
 
         [Fact]
-        public void CombustionModel_Settings_CopyConstructor_IsIndependent()
-        {
-            var template = new CombustionModel.Settings { TorqueLambdaFloor = 0.6f };
-            var clone = new CombustionModel.Settings(template);
-
-            clone.TorqueLambdaFloor.ShouldBe(0.6f);
-            clone.TorqueLambdaFloor = 0.9f;
-            template.TorqueLambdaFloor.ShouldBe(0.6f);
-        }
-
-        [Fact]
         public void CombustionModel_WithAtmosphericCharger_Lambda_UsesAspiratedCalibration()
         {
-            var model = new CombustionModel(new CombustionModel.Settings(), () => 1f, () => 1f, () => 1f,
+            var model = new CombustionModel(() => 1f, () => 1f, () => 1f,
                 new AtmosphericCharger(new AtmosphericCharger.Settings()));
             // arrange: settle the charger
             model.Tick(0.016f, engineOn: true);

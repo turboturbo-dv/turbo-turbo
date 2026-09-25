@@ -22,13 +22,6 @@ internal static class ChargerSection
             Open = true,
             OnToggle = onToggle,
         };
-        var s = model.Tuning;
-        section.AddFloat("rpmTorqueExponent",
-            "Scales max torque capacity with engine speed. 0 = torque cap depends purely on cylinder charge density; 1 = torque cap scales linearly with RPM.",
-            0f, 3f, false, () => s.RpmTorqueExponent, v => s.RpmTorqueExponent = v);
-        section.AddFloat("torqueLambdaFloor",
-            "Lambda below which extra fuel contributes no torque.",
-            0.3f, 1f, false, () => s.TorqueLambdaFloor, v => s.TorqueLambdaFloor = v);
         if (model.Charger is TurboCharger turbo)
         {
             var t = turbo.Tuning;

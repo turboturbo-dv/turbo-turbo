@@ -137,7 +137,6 @@ namespace TurboTurboTests
             config.LiveryId.ShouldBe("test-livery");
             config.ChargerKind.ShouldBe(ChargerKind.Turbo);
             config.Exhausts.Count.ShouldBe(1);
-            config.Combustion.ShouldNotBeNull();
             config.Smoke.ShouldNotBeNull();
             config.SmokeEmitter.ShouldNotBeNull();
             config.ShimmerEmitter.ShouldNotBeNull();
@@ -145,7 +144,6 @@ namespace TurboTurboTests
             config.TurboCharger.ShouldNotBeNull();
             config.Atmospheric.ShouldBeNull();
             config.TurboCharger.TauUp.ShouldBe(3f);
-            config.Combustion.TorqueLambdaFloor.ShouldBe(0.86f);
             config.BuildCharger().ShouldBeOfType<TurboCharger>();
             config.Validate().ShouldBeNull();
         }
@@ -220,7 +218,6 @@ namespace TurboTurboTests
             completed.LiveryId.ShouldBe("sparse");
             completed.Enabled.ShouldBeFalse();
             completed.ChargerKind.ShouldBe(ChargerKind.Turbo);
-            completed.Combustion.ShouldNotBeNull();
             completed.Smoke.ShouldNotBeNull();
             completed.SmokeEmitter.ShouldNotBeNull();
             completed.ShimmerEmitter.ShouldNotBeNull();
@@ -271,7 +268,6 @@ namespace TurboTurboTests
         {
             var clone = ValidProfile("clone").Clone();
 
-            clone.Combustion.ShouldBeNull();
             clone.Velocity.ShouldBeNull();
         }
 
@@ -280,7 +276,6 @@ namespace TurboTurboTests
         {
             var xml = Serialize(ValidProfile());
 
-            xml.ShouldNotContain("<Combustion>");
             xml.ShouldNotContain("<TurboCharger>");
         }
 
@@ -288,37 +283,37 @@ namespace TurboTurboTests
         public void Xml_DefaultValuedBlock_OmitsMembers()
         {
             var profile = ValidProfile("sparse");
-            profile.Combustion = new CombustionModel.Settings();
+            profile.TurboCharger = new TurboCharger.Settings();
 
             var xml = Serialize(profile);
 
-            xml.ShouldContain("<Combustion");
-            xml.ShouldNotContain("RpmTorqueExponent");
-            xml.ShouldNotContain("TorqueLambdaFloor");
+            xml.ShouldContain("<TurboCharger");
+            xml.ShouldNotContain("TauUp");
+            xml.ShouldNotContain("TauDown");
         }
 
         [Fact]
         public void Xml_PartiallyTunedBlock_WritesOnlyTunedMembers()
         {
             var profile = ValidProfile("sparse");
-            profile.Combustion = new CombustionModel.Settings { TorqueLambdaFloor = 0.9f };
+            profile.TurboCharger = new TurboCharger.Settings { TauUp = 5f };
 
             var xml = Serialize(profile);
 
-            xml.ShouldContain("TorqueLambdaFloor");
-            xml.ShouldNotContain("RpmTorqueExponent");
+            xml.ShouldContain("TauUp");
+            xml.ShouldNotContain("TauDown");
         }
 
         [Fact]
         public void Xml_SparseBlock_RoundTripsWithDefaults()
         {
             var profile = ValidProfile("sparse");
-            profile.Combustion = new CombustionModel.Settings { TorqueLambdaFloor = 0.9f };
+            profile.TurboCharger = new TurboCharger.Settings { TauUp = 5f };
 
             var restored = Deserialize(Serialize(profile));
 
-            restored.Combustion.TorqueLambdaFloor.ShouldBe(0.9f);
-            restored.Combustion.RpmTorqueExponent.ShouldBe(CombustionModel.Settings.DefaultRpmTorqueExponent);
+            restored.TurboCharger.TauUp.ShouldBe(5f);
+            restored.TurboCharger.TauDown.ShouldBe(TurboCharger.Settings.DefaultTauDown);
         }
 
         [Fact]
@@ -429,7 +424,6 @@ namespace TurboTurboTests
             restored.Exhausts[0].Offset.ShouldBe(new Vector3(1f, 2f, 3f));
             restored.Exhausts[1].Kind.ShouldBe(ExhaustKind.Independent);
             restored.TurboCharger.TauUp.ShouldBe(5f);
-            restored.Combustion.ShouldBeNull();
             restored.Validate().ShouldBeNull();
         }
 
@@ -445,7 +439,6 @@ namespace TurboTurboTests
 
             restored.TurboCharger.TauUp.ShouldBe(5f);
             restored.TurboCharger.TauDown.ShouldBe(1f);
-            restored.Combustion.ShouldBeNull();
             restored.Exhausts[0].Offset.ShouldBe(Vector3.zero);
             restored.Validate().ShouldBeNull();
         }

@@ -15,7 +15,7 @@ public interface ICharger
     float LambdaCalibration { get; }
     float ExhaustHeat { get; }
 
-    void Tick(float delta, float fuelDemand, float overfuel, float rpmNorm, float throttle, bool engineOn);
+    void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn);
 
     ICharger Clone();
 }

@@ -39,7 +39,7 @@ internal static class TelemetryView
         else
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label(new GUIContent($"Governor {model.Demand * 100f:0}%", GovernorValueTooltip));
+            GUILayout.Label(new GUIContent($"Governor {model.GovernorNorm * 100f:0}%", GovernorValueTooltip));
             GUILayout.Label($"RPM {model.RpmNorm * 100f:0}%");
             GUILayout.EndHorizontal();
 

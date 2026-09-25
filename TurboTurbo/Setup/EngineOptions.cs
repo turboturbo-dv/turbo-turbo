@@ -12,7 +12,6 @@ namespace TurboTurbo.Setup;
 public class EngineOptions
 {
     private readonly List<LocoExhaust> _exhausts = new();
-    private readonly CombustionModel.Settings _combustion = new();
     private readonly TurboCharger.Settings _turboCharger = new();
     private readonly AtmosphericCharger.Settings _atmospheric = new();
     private readonly ExhaustSmokeModel.Settings _smoke = new();
@@ -47,13 +46,6 @@ public class EngineOptions
     {
         _chargerKind = ChargerKind.Atmospheric;
         configure(_atmospheric);
-        return this;
-    }
-
-    /// <summary>Tunes the combustion model from its defaults.</summary>
-    public EngineOptions ConfigureCombustion(Action<CombustionModel.Settings> configure)
-    {
-        configure(_combustion);
         return this;
     }
 
@@ -103,7 +95,6 @@ public class EngineOptions
             LiveryId = liveryId,
             ChargerKind = _chargerKind,
             Exhausts = _exhausts,
-            Combustion = _combustion,
             TurboCharger = _turboCharger,
             Atmospheric = _atmospheric,
             Smoke = _smoke,

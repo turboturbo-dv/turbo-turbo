@@ -265,8 +265,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
         var m = host.CombustionModel;
         GUILayout.Label($"{host.CarId}   engineOn: {host.EngineOn}");
-        GUILayout.Label($"throttle {m.Demand:0.000}   fuel/t {m.FuelNorm:0.000}   fuel/s {m.FuelPerStroke:0.000}");
-        GUILayout.Label($"charge {m.Charge:0.000}   effDemand {m.EffectiveDemand:0.000}");
+        GUILayout.Label($"governor {m.GovernorNorm:0.000}   fuel/time {m.FuelNorm:0.000}   fuel/stroke {m.FuelPerStroke:0.000}");
+        GUILayout.Label($"charge {m.Charge:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}   boost {m.Boost:0.000}");
         GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * 3.6f:0.0} km/h)");

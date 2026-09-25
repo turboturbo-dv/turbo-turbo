@@ -24,7 +24,6 @@ public sealed class LocoProfile
     public ChargerKind ChargerKind { get; set; } = ChargerKind.Turbo;
 
     // XmlSerializer needs unique type names, so each nested settings class needs an XmlType attribute
-    public CombustionModel.Settings Combustion { get; set; }
     public TurboCharger.Settings TurboCharger { get; set; }
     public AtmosphericCharger.Settings Atmospheric { get; set; }
     public ExhaustSmokeModel.Settings Smoke { get; set; }
@@ -50,7 +49,6 @@ public sealed class LocoProfile
             Enabled = Enabled,
             ChargerKind = ChargerKind,
             Exhausts = Exhausts?.Select(e => e.Clone()).ToList() ?? new List<LocoExhaust>(),
-            Combustion = Combustion != null ? new CombustionModel.Settings(Combustion) : null,
             TurboCharger = TurboCharger != null ? new TurboCharger.Settings(TurboCharger) : null,
             Atmospheric = Atmospheric != null ? new AtmosphericCharger.Settings(Atmospheric) : null,
             Smoke = Smoke != null ? new ExhaustSmokeModel.Settings(Smoke) : null,
@@ -106,7 +104,6 @@ public sealed class LocoProfile
         var error = Validate();
         if (error != null) return error;
 
-        Combustion ??= new CombustionModel.Settings();
         Smoke ??= new ExhaustSmokeModel.Settings();
         SmokeEmitter ??= new SmokeParticles.Settings();
         ShimmerEmitter ??= new ShimmerParticles.Settings();

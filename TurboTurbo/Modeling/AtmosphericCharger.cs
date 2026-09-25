@@ -73,13 +73,13 @@ public sealed class AtmosphericCharger : ICharger
         Charge = settings.EtaPeak;
     }
 
-    public void Tick(float delta, float fuelDemand, float overfuel, float rpmNorm, float throttle, bool engineOn)
+    public void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn)
     {
         var s = _tuning;
 
         var chokeFactor = (1f - s.ChokeK * Mathf.Pow(rpmNorm, s.ChokeBeta));
         Charge = s.EtaPeak * chokeFactor;
-        ExhaustHeat = fuelDemand * Charge;
+        ExhaustHeat = fuelPerStroke * Charge;
     }
 
     public ICharger Clone() => new AtmosphericCharger(new Settings(_tuning));

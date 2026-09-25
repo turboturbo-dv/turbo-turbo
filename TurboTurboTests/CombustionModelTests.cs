@@ -10,15 +10,14 @@ namespace TurboTurboTests
 {
     public class CombustionModelTests
     {
-        private readonly CombustionModel.Settings _settings = new CombustionModel.Settings();
         private readonly TurboCharger.Settings _chargerSettings = new TurboCharger.Settings();
-        private float _throttle;
+        private float _governor;
         private float _fuelNorm;
         private float _rpmNorm = 1f;
 
         private CombustionModel CreateModel()
         {
-            return new CombustionModel(_settings, () => _throttle, () => _fuelNorm, () => _rpmNorm, new TurboCharger(_chargerSettings));
+            return new CombustionModel(() => _governor, () => _fuelNorm, () => _rpmNorm, new TurboCharger(_chargerSettings));
         }
 
         [Fact]
@@ -40,7 +39,6 @@ namespace TurboTurboTests
         public void Charge_AtZeroBoost_IsUnity()
         {
             var model = CreateModel();
-            _throttle = 0.4f;
             _fuelNorm = 0.4f;
             _rpmNorm = 1f;
             model.Tick(0.016f, engineOn: true);
@@ -55,7 +53,6 @@ namespace TurboTurboTests
             var model = CreateModel();
 
             // hold full load long enough for boost to reach equilibrium
-            _throttle = 1f;
             _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 600; i++)
@@ -68,6 +65,21 @@ namespace TurboTurboTests
         }
 
         // ------------------------------------------------------------
+        // fuel
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void FuelPerStroke_DividesFuelNormByRpm()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 0.5f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.FuelPerStroke.ShouldBe(1f, tolerance: 0.001f);
+        }
+
+        // ------------------------------------------------------------
         // boost dynamics
         // ------------------------------------------------------------
 
@@ -76,10 +88,9 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
 
-            // clean partial load: demand 0.4 = charge/calibration -> overfuel 0:
-            // target 0.4, tau = TauUp = 3, delta 1s:
+            // clean partial load: fuel per stroke 0.4, below charge/calibration
+            // so overfuel 0, tau = TauUp = 3, delta 1s:
             // boost = 0.4 x (1 - e^(-1/3)) = 0.1134
-            _throttle = 0.4f;
             _fuelNorm = 0.4f;
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
@@ -92,7 +103,6 @@ namespace TurboTurboTests
         {
             var model = CreateModel();
 
-            _throttle = 1f;
             _fuelNorm = 1f;
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
@@ -107,7 +117,6 @@ namespace TurboTurboTests
         public void Boost_Rises_Monotonically_UnderSustainedFullLoad()
         {
             var model = CreateModel();
-            _throttle = 1f;
             _fuelNorm = 1f;
             _rpmNorm = 1f;
 
@@ -121,12 +130,11 @@ namespace TurboTurboTests
         }
 
         [Fact]
-        public void Boost_Decays_AfterDemandDrops()
+        public void Boost_Decays_AfterFuelDrops()
         {
             var model = CreateModel();
 
             // spool up first
-            _throttle = 1f;
             _fuelNorm = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 600; i++)
@@ -135,8 +143,7 @@ namespace TurboTurboTests
             }
             var peak = model.Boost;
 
-            // cut the throttle: boost must bleed off through TauDown
-            _throttle = 0f;
+            // cut fuel: boost must bleed off through TauDown
             _fuelNorm = 0f;
             for (var i = 0; i < 5; i++)
             {
@@ -146,82 +153,17 @@ namespace TurboTurboTests
         }
 
         // ------------------------------------------------------------
-        // torque cap
-        // ------------------------------------------------------------
-
-        [Fact]
-        public void TorqueCap_LimitsEffectiveDemand_AtHighThrottle()
-        {
-            var model = CreateModel();
-
-            _throttle = 0.9f;
-            _fuelNorm = 0.9f;
-            _rpmNorm = 1f;
-            model.Tick(0.016f, engineOn: true);
-
-            var cap = 1f / (TurboCharger.Settings.DefaultLambdaCalibration
-                * CombustionModel.Settings.DefaultTorqueLambdaFloor);
-            model.EffectiveDemand.ShouldBe(cap, tolerance: 0.01f);
-            model.EffectiveDemand.ShouldBeLessThan(0.9f);
-        }
-
-        [Fact]
-        public void TorqueCap_DoesNotLimit_LowThrottle()
-        {
-            var model = CreateModel();
-
-            _throttle = 0.3f;
-            _fuelNorm = 0.3f;
-            _rpmNorm = 1f;
-            model.Tick(0.016f, engineOn: true);
-
-            model.EffectiveDemand.ShouldBe(0.3f, tolerance: 0.001f);
-        }
-
-        [Fact]
-        public void EffectiveDemand_NeverExceedsThrottle_AcrossSweep()
-        {
-            var model = CreateModel();
-            _rpmNorm = 1f;
-
-            for (var throttle = 0f; throttle <= 1f; throttle += 0.05f)
-            {
-                _throttle = throttle;
-                _fuelNorm = throttle;
-                model.Tick(0.016f, engineOn: true);
-                model.EffectiveDemand.ShouldBeLessThanOrEqualTo(throttle + 0.0001f);
-            }
-        }
-
-        // ------------------------------------------------------------
-        // engine off
-        // ------------------------------------------------------------
-
-        [Fact]
-        public void EngineOff_ZeroesEffectiveDemand()
-        {
-            var model = CreateModel();
-            _throttle = 0.9f;
-
-            // combustion follows measured fuel; a stopped engine reads no fuel
-            _fuelNorm = 0f;
-            model.Tick(0.016f, engineOn: false);
-
-            model.EffectiveDemand.ShouldBe(0f, tolerance: 0.0001f);
-        }
-
-        // ------------------------------------------------------------
         // surge detection
         // ------------------------------------------------------------
 
         [Fact]
-        public void Surge_Detected_OnSharpPartialDemandDropAtHighBoost()
+        public void Surge_Detected_OnSharpGovernorDropAtHighBoost()
         {
             var model = CreateModel();
 
             // spool boost above 0.75: 5 ticks of 1s at full load
-            _throttle = 1f;
             _fuelNorm = 1f;
+            _governor = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {
@@ -229,22 +171,21 @@ namespace TurboTurboTests
             }
             model.Boost.ShouldBeGreaterThan(0.75f);
 
-            // slam to 0.69 in one 16ms frame: rate = 0.31 / 0.016 = 19.4/s
+            // slam governor to 0.69 in one 16ms frame: rate = 0.31 / 0.016 = 19.4/s
             // beats the 15/s threshold, and the 16ms decay leaves boost above
             // the 0.75 gate.
-            _throttle = 0.69f;
-            _fuelNorm = 0.69f;
+            _governor = 0.69f;
             model.Tick(0.016f, engineOn: true);
             model.SurgeThisTick.ShouldBeTrue();
         }
 
         [Fact]
-        public void NoSurge_WhenDemandDropIsGradual()
+        public void NoSurge_WhenGovernorDropIsGradual()
         {
             var model = CreateModel();
 
-            _throttle = 1f;
             _fuelNorm = 1f;
+            _governor = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {
@@ -255,20 +196,19 @@ namespace TurboTurboTests
             // below the threshold even though the total drop matches
             for (var i = 0; i < 20; i++)
             {
-                _throttle = 1f - 0.31f * (i + 1) / 20f;
-                _fuelNorm = _throttle;
+                _governor = 1f - 0.31f * (i + 1) / 20f;
                 model.Tick(0.016f, engineOn: true);
                 model.SurgeThisTick.ShouldBeFalse();
             }
         }
 
         [Fact]
-        public void NoSurge_WhenDemandIsSteady()
+        public void NoSurge_WhenGovernorIsSteady()
         {
             var model = CreateModel();
 
-            _throttle = 1f;
             _fuelNorm = 1f;
+            _governor = 1f;
             _rpmNorm = 1f;
             for (var i = 0; i < 5; i++)
             {

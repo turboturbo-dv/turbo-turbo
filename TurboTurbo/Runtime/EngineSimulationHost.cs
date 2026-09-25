@@ -108,7 +108,9 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         // then we can apply the combustion model's torque limit, but that
         // will also involve tuning the engine torque curves, which has gameplay
         // implications. For now, keep it purely visual.
-        // _throttlePort.Value = TurboModel.EffectiveDemand;
+        // When that lands, the model should expose the limited value already in
+        // port units (writable straight to the governor port), so the adapter
+        // does not have to invert the game's fuel-per-stroke mapping itself.
 
         if (_effectsBound)
         {
@@ -181,7 +183,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             ? () => engineOnPort.Value > 0.5f
             : () => rpmPort.Value > 0.05f;
 
-        CombustionModel = new CombustionModel(_configuration.Combustion,
+        CombustionModel = new CombustionModel(
             () => _throttlePort.Value,
             _fuelNorm,
             () => rpmPort.Value,

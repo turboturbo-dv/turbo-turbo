@@ -43,7 +43,7 @@ public sealed class TurboCharger : ICharger
         [DefaultValue(DefaultThermalK)]
         public float ThermalK { get; set; } = DefaultThermalK;
 
-        /// <summary>Demand drop rate [1/s] that triggers a surge while boost is high.</summary>
+        /// <summary>Governor drop rate [1/s] that triggers a surge while boost is high.</summary>
         [DefaultValue(DefaultSurgeRateThreshold)]
         public float SurgeRateThreshold { get; set; } = DefaultSurgeRateThreshold;
 
@@ -65,7 +65,7 @@ public sealed class TurboCharger : ICharger
     }
 
     private readonly Settings _tuning;
-    private float _prevDemand;
+    private float _prevGovernor;
 
     public Settings Tuning => _tuning;
 
@@ -89,21 +89,21 @@ public sealed class TurboCharger : ICharger
         _tuning = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-    public void Tick(float delta, float fuelDemand, float overfuel, float rpmNorm, float throttle, bool engineOn)
+    public void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn)
     {
         var s = _tuning;
 
-        var target = fuelDemand * Mathf.Pow(rpmNorm, s.RpmBoostExponent);
+        var target = fuelPerStroke * Mathf.Pow(rpmNorm, s.RpmBoostExponent);
         ExhaustHeat = target;
 
-        var tau = fuelDemand > Boost
+        var tau = fuelPerStroke > Boost
             ? Mathf.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * overfuel))
             : s.TauDown;
         Boost += (target - Boost) * (1f - Mathf.Exp(-delta / tau));
 
-        var demandRate = (_prevDemand - throttle) / Mathf.Max(0.001f, delta);
-        Surging = engineOn && demandRate > s.SurgeRateThreshold && Boost > 0.75f;
-        _prevDemand = throttle;
+        var governorRate = (_prevGovernor - governorNorm) / Mathf.Max(0.001f, delta);
+        Surging = engineOn && governorRate > s.SurgeRateThreshold && Boost > 0.75f;
+        _prevGovernor = governorNorm;
     }
 
     public ICharger Clone() => new TurboCharger(new Settings(_tuning));
