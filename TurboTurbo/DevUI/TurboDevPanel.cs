@@ -1,8 +1,5 @@
-using System;
-
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
-using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
@@ -70,17 +67,16 @@ internal sealed class TurboDevPanel : MonoBehaviour
         if (_diagTimer > 0f) return;
         _diagTimer = 1f;
 
-        if (ReferenceEquals(Orchestrator.Instance, null))
+        var orchestrator = Orchestrator.Instance;
+        if (orchestrator == null)
         {
             _diagLine = "orchestrator: no instance\nspawner: ?";
             return;
         }
 
-        var self = Orchestrator.Instance == null
-            ? "destroyed"
-            : $"alive (id {Orchestrator.Instance.GetInstanceID()})";
         var assets = ModAssets.ShadersValid && GameAssets.SmokeAtlas != null ? "ok" : "lost";
-        _diagLine = $"orchestrator: {self}; assets: {assets}\n{Orchestrator.Instance.DescribeDiagnostics()}";
+        _diagLine = $"orchestrator: alive (id {orchestrator.GetInstanceID()}); assets: {assets}\n" +
+                    orchestrator.DescribeDiagnostics();
     }
 
     private void DrawDiagnosticsButtons()
@@ -93,31 +89,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
         {
             PlayerTrainInspector.DumpTarget();
         }
-        if (GUILayout.Button("save profile to settings"))
-        {
-            SaveProfile();
-        }
-    }
-
-    private void SaveProfile()
-    {
-        var host = CurrentHost();
-        if (host == null)
-        {
-            _log.Warn("no car targeted for inspection");
-            return;
-        }
-
-        var profile = host.Profile.Clone();
-
-        var error = ProfileRepository.SaveProfile(profile);
-        if (error != null)
-        {
-            _log.Warn($"could not save profile '{profile.LiveryId}': {error}");
-            return;
-        }
-
-        _log.Info($"saved profile '{profile.LiveryId}' to settings");
     }
 
     private void DumpParticleSystems()
