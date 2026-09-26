@@ -1,8 +1,20 @@
 ## Unreleased
 
+### Added
+- User profiles: These can be created in-game and are saved to user settings
+- Mod profiles: Custom vehicle mods can supply a profile alongside their files
+  to instruct TurboTurbo how to apply its effects
+- A new profile editor provides an intuitive way to create and edit profiles
+
 ### Changed
-- Smoke now fades when close to the camera, to prevent it clipping through the cab when inside
-- Adjusted clean smoke opacity calculations
+- Smoke now fades when close to the camera, to prevent it from clipping through the cab when inside
+- Adjusted clean smoke opacity calculations to be more intuitive
+- Slightly reduced max shimmer intensity on the DM3
+- Minor tweaks to the combustion simulation model
+
+## v0.2.2
+
+Fixed info.json encoding issue causing UnityModManager read failures.
 
 ## v0.2.1
 
