@@ -13,7 +13,7 @@ internal sealed class Section : IEditorPanel
     private readonly List<ITweakSpec> _specs = new();
 
     public readonly string Title;
-    public bool Open;
+    public bool Open { get; set; }
     public Action OnToggle;
     public TweakGrade MaxGrade { get; set; } = TweakGrade.Advanced;
 

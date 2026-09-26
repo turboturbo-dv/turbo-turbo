@@ -90,7 +90,7 @@ internal sealed class Orchestrator : MonoBehaviour
             }
         }
 
-        Track(car);
+        Track(car, replaceExisting: true);
     }
 
     /// <summary> Forgets about a host, without explicitly deleting it. </summary>
@@ -138,10 +138,7 @@ internal sealed class Orchestrator : MonoBehaviour
 
         // if the spawner already has cars before we discover it, track those too.
         // slight race condition here, but track is idempotent so that's fine
-        foreach (var car in spawner.AllCars)
-        {
-            Track(car);
-        }
+        AttachToExistingCars();
     }
 
     private void OnCarSpawned(TrainCar car)
@@ -173,7 +170,7 @@ internal sealed class Orchestrator : MonoBehaviour
         }
     }
 
-    private void Track(TrainCar car)
+    private void Track(TrainCar car, bool replaceExisting = false)
     {
         if (!Enabled) return;
 
@@ -190,12 +187,19 @@ internal sealed class Orchestrator : MonoBehaviour
             return;
         }
 
-        // ensures revived cars don't receive another host
-        if (car.TryGetComponent<EngineSimulationHost>(out _))
+        if (car.TryGetComponent<EngineSimulationHost>(out var existing))
         {
-            _log.Info(
-                $"{car.LogIdentifier()} already has a simulation host, skipping");
-            return;
+            if (!replaceExisting)
+            {
+                // ensures revived cars don't receive another host
+                _log.Info(
+                    $"{car.LogIdentifier()} already has a simulation host, skipping");
+                return;
+            }
+
+            // this will generally be a no-op as the host is likely to have been
+            // destroyed in a different path already, but it's idempotent; harmless
+            Destroy(existing);
         }
 
         Attach(car, matchingConfiguration);

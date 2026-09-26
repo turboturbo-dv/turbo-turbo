@@ -55,6 +55,20 @@ internal static class ExhaustTargets
         return candidates;
     }
 
+    /// <summary>
+    /// Picks a default replacement target from the car's candidates, or null when
+    /// there are none.
+    /// </summary>
+    public static string TryDefault(TrainCar car)
+    {
+        var candidates = FindCandidates(car);
+        var names = new List<string>(candidates.Count);
+        foreach (var candidate in candidates) names.Add(candidate.Name);
+
+        var pick = PickDefault(names);
+        return pick >= 0 ? candidates[pick].Name : null;
+    }
+
     private static bool Contains(string name, string token) =>
         name != null && name.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
 

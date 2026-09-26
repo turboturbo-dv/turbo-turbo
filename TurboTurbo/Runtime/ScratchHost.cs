@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-
 using TurboTurbo.Profiles;
 
 namespace TurboTurbo.Runtime;
@@ -41,14 +38,8 @@ internal static class ScratchHost
 
     private static LocoExhaust DefaultExhaust(TrainCar car)
     {
-        var candidates = ExhaustTargets.FindCandidates(car);
-        var names = candidates.Select(candidate => candidate.Name).ToList();
-
-        var pick = ExhaustTargets.PickDefault(names);
-        if (pick >= 0)
-        {
-            return LocoExhaust.Replacement(candidates[pick].Name);
-        }
+        var name = ExhaustTargets.TryDefault(car);
+        if (name != null) return LocoExhaust.Replacement(name);
 
         Log.Info($"no exhaust particle system on '{car.ID}', adding an independent exhaust");
         return LocoExhaust.Independent();

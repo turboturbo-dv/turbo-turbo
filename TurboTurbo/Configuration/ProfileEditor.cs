@@ -23,7 +23,9 @@ internal sealed class ProfileEditor : MonoBehaviour
     private Rect _windowRect = new(460f, 20f, 450f, 170f);
 
     private EngineSimulationHost _boundHost;
-    private readonly List<IEditorPanel> _sections = new();
+    private readonly List<(string Key, IEditorPanel Panel)> _sections = new();
+    private readonly Dictionary<string, bool> _openState = new();
+    private ExhaustMarkerController _markerController;
     private bool _needsShrink;
     private bool _requiresReconfigure;
     private TweakGrade _grade = TweakGrade.Basic;
@@ -35,6 +37,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         _car = car;
         _host = host;
         _liveryId = liveryId;
+        _markerController = new ExhaustMarkerController(() => _host);
     }
 
     private void CloseSelf() => Destroy(gameObject);
@@ -43,6 +46,8 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void Update()
     {
+        _markerController?.Sync();
+
         if (!_requiresReconfigure) return;
 
         _requiresReconfigure = false;
@@ -115,6 +120,8 @@ internal sealed class ProfileEditor : MonoBehaviour
         if (next == _grade) return;
 
         _grade = next;
+        SnapshotOpenState();
+        _markerController?.Clear();
         _sections.Clear();
         _needsShrink = true;
     }
@@ -123,6 +130,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     {
         if (_host != _boundHost)
         {
+            SnapshotOpenState();
             _boundHost = _host;
             _sections.Clear();
         }
@@ -130,6 +138,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         if (_sections.Count == 0 && _host.Bound)
         {
             BuildSections();
+            RestoreOpenState();
         }
 
         if (_sections.Count == 0)
@@ -138,23 +147,27 @@ internal sealed class ProfileEditor : MonoBehaviour
             return;
         }
 
-        foreach (var section in _sections)
+        foreach (var (_, panel) in _sections)
         {
-            section.Draw();
+            panel.Draw();
         }
     }
 
     private void BuildSections()
     {
-        var host = _host;
-        AddSection(ChargerSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddSection(SmokeModelSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddSection(VelocitySection.Build(host, () => _needsShrink = true));
-        AddSection(SmokeEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddSection(ShimmerEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("exhausts", new ExhaustsPanel(
+            () => _host,
+            () => Rebind(_host.Profile),
+            () => _needsShrink = true,
+            _markerController.SetTarget));
+        AddPanel("charger", ChargerSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("smoke-model", SmokeModelSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("velocity", VelocitySection.Build(_host, () => _needsShrink = true));
+        AddPanel("smoke-emitter", SmokeEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("shimmer-emitter", ShimmerEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
     }
 
-    private void AddSection(IEditorPanel panel)
+    private void AddPanel(string key, IEditorPanel panel)
     {
         if (panel == null) return;
         if (panel is Section section)
@@ -162,7 +175,20 @@ internal sealed class ProfileEditor : MonoBehaviour
             section.MaxGrade = _grade;
             section.HeaderWidth = (_windowRect.width - GUI.skin.window.padding.horizontal) * 0.4f;
         }
-        _sections.Add(panel);
+        _sections.Add((key, panel));
+    }
+
+    private void SnapshotOpenState()
+    {
+        foreach (var (key, panel) in _sections) _openState[key] = panel.Open;
+    }
+
+    private void RestoreOpenState()
+    {
+        foreach (var (key, panel) in _sections)
+        {
+            if (_openState.TryGetValue(key, out var open)) panel.Open = open;
+        }
     }
 
     private void DrawFooter()
@@ -204,6 +230,8 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void Rebind(LocoProfile profile)
     {
+        _markerController?.Clear();
+
         if (_host != null)
         {
             Destroy(_host);
@@ -218,6 +246,8 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void OnDestroy()
     {
         Closed?.Invoke();
+
+        _markerController?.Clear();
 
         var orchestrator = Orchestrator.Instance;
         if (_host != null)
