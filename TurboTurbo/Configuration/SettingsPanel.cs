@@ -16,7 +16,6 @@ namespace TurboTurbo.Configuration;
 internal static class SettingsPanel
 {
     private static readonly List<Section> Sections = new();
-    private static Settings _settings;
     private static bool _targetOpen;
     private static GUIStyle _toggle;
     private static TurboTooltipLayer _tooltip;
@@ -26,10 +25,8 @@ internal static class SettingsPanel
     // UMM indents GUI.skin.toggle by ~10px; drop that so our toggle aligns with the labels.
     private static GUIStyle Toggle => _toggle ??= new GUIStyle(GUI.skin.toggle) { margin = new RectOffset(0, 0, 0, 0) };
 
-    internal static void Initialize(Settings settings)
+    internal static void Initialize()
     {
-        _settings = settings;
-
         var go = new GameObject(Naming.Create("TooltipLayer"));
         Object.DontDestroyOnLoad(go);
         _tooltip = go.AddComponent<TurboTooltipLayer>();
@@ -43,7 +40,7 @@ internal static class SettingsPanel
         }
         GUILayout.BeginHorizontal();
         GUILayout.Label("Toggle dev panel");
-        UnityModManager.UI.DrawKeybindingSmart(_settings.ToggleDevPanel, "Toggle dev panel");
+        UnityModManager.UI.DrawKeybindingSmart(SettingsStore.Current.ToggleDevPanel, "Toggle dev panel");
         GUILayout.EndHorizontal();
 
         DrawAuthoring(entry);
@@ -61,7 +58,8 @@ internal static class SettingsPanel
 
     private static void DrawAuthoring(UnityModManager.ModEntry entry)
     {
-        var mode = GUILayout.Toggle(_settings.AuthoringMode,
+        var settings = SettingsStore.Current;
+        var mode = GUILayout.Toggle(settings.AuthoringMode,
             new GUIContent("Vehicle author mode",
                 "When vehicle author mode is enabled, profiles that you create are saved directly to a TurboConfig.xml " +
                 "file belonging to the selected mod.\n" +
@@ -69,18 +67,18 @@ internal static class SettingsPanel
                 "files in your mod's directory. Users who have TurboTurbo installed will automatically have your " +
                 "profile applied."),
             Toggle);
-        if (mode != _settings.AuthoringMode)
+        if (mode != settings.AuthoringMode)
         {
-            _settings.AuthoringMode = mode;
+            settings.AuthoringMode = mode;
             _targetOpen = false;
-            _settings.Save(entry);
+            settings.Save(entry);
             Orchestrator.Instance?.ReloadAllHosts();
         }
-        if (!_settings.AuthoringMode) return;
+        if (!settings.AuthoringMode) return;
 
-        var mods = CollectTargets(entry);
+        var mods = ModRegistry.EligibleTargets(entry.Info.Id);
 
-        var current = mods.Find(m => m.Info.Id == _settings.AuthoringTargetModId);
+        var current = mods.Find(m => m.Info.Id == settings.AuthoringTargetModId);
         var label = current != null ? current.Info.DisplayName : "(none)";
 
         GUILayout.Label("Save profiles to:");
@@ -89,7 +87,7 @@ internal static class SettingsPanel
         if (_targetOpen) DrawTargetList(entry, mods);
         GUILayout.EndVertical();
 
-        if (string.IsNullOrEmpty(_settings.AuthoringTargetModId)) return;
+        if (string.IsNullOrEmpty(settings.AuthoringTargetModId)) return;
 
         var file = current != null
             ? System.IO.Path.Combine(current.Path, ProfileWriter.ConfigFileName)
@@ -109,30 +107,15 @@ internal static class SettingsPanel
 
         foreach (var mod in mods)
         {
-            var marker = mod.Info.Id == _settings.AuthoringTargetModId ? "* " : "  ";
+            var marker = mod.Info.Id == SettingsStore.Current.AuthoringTargetModId ? "* " : "  ";
             if (GUILayout.Button(marker + mod.Info.DisplayName)) SelectTarget(entry, mod.Info.Id);
         }
     }
 
     private static void SelectTarget(UnityModManager.ModEntry entry, string modId)
     {
-        _settings.AuthoringTargetModId = modId;
+        SettingsStore.Current.AuthoringTargetModId = modId;
         _targetOpen = false;
-        _settings.Save(entry);
-    }
-
-    private static List<UnityModManager.ModEntry> CollectTargets(UnityModManager.ModEntry entry)
-    {
-        var mods = new List<UnityModManager.ModEntry>();
-        if (UnityModManager.modEntries == null) return mods;
-
-        foreach (var mod in UnityModManager.modEntries)
-        {
-            if (!mod.Enabled || mod.Info.Id == entry.Info.Id) continue;
-            if (string.IsNullOrEmpty(mod.Path)) continue;
-            mods.Add(mod);
-        }
-
-        return mods;
+        SettingsStore.Current.Save(entry);
     }
 }

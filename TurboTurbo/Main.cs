@@ -7,14 +7,10 @@ using UnityEngine;
 
 namespace TurboTurbo;
 
-using System.Linq;
-
 using UnityModManagerNet;
 
 public static class Main
 {
-    private static Settings _settings;
-
     internal static Configuration.ProfileEditorPresenter EditPresenter { get; private set; }
 
     public static void Load(UnityModManager.ModEntry entry)
@@ -22,29 +18,19 @@ public static class Main
         Log.Init(new UmmLogSink(entry.Logger));
         ModAssets.Initialize(entry.Path);
 
-        _settings = UnityModManager.ModSettings.Load<Settings>(entry);
-        SettingsPanel.Initialize(_settings);
-
-        ProfileRepository.Initialize(_settings, entry);
-
-        var userProfiles = ProfileLoader.LoadUserProfiles(_settings.LocoProfiles);
-        var modProfiles = ProfileLoader.LoadModProfiles(
-            UnityModManager.modEntries.Select(e => new ProfileLoader.ModSource(e.Info.Id, e.Info.DisplayName, e.Enabled, e.Path)),
-            entry.Info.Id);
-
-        ProfileRepository.SetUserProfiles(userProfiles);
-        ProfileRepository.SetSuppliedProfiles(modProfiles);
+        SettingsStore.Initialize(entry);
+        SettingsPanel.Initialize();
+        ProfileRepository.Initialize();
 
         StockConfiguration.Apply();
 
         Orchestrator.Create();
 
-        DevUI.DevPanelPresenter.Create(_settings);
+        DevUI.DevPanelPresenter.Create();
         EditPresenter = Configuration.ProfileEditorPresenter.Create();
 
         entry.OnToggle = OnToggle;
         entry.OnGUI = SettingsPanel.Draw;
-        entry.OnSaveGUI = saveEntry => _settings.Save(saveEntry);
 
         Log.ForContext("main").Info("TurboTurbo ready!");
     }
@@ -57,7 +43,7 @@ public static class Main
         {
             if (DevUI.DevPanelPresenter.Instance == null)
             {
-                DevUI.DevPanelPresenter.Create(_settings);
+                DevUI.DevPanelPresenter.Create();
             }
         }
         else

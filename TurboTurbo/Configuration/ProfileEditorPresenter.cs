@@ -41,7 +41,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
             return;
         }
 
-        if (ProfileRepository.IsAuthoring)
+        if (SettingsStore.Current.IsAuthoring)
         {
             // switching the authoring target does not reload hosts, so the car
             // may still be running the previous target's profile

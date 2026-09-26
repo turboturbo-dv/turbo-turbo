@@ -18,25 +18,19 @@ internal static class ProfileRepository
     private static readonly Dictionary<string, LocoProfile> UserProfiles = new();
     private static readonly Dictionary<string, ProfileLoader.ModProfile> ModProfiles = new();
 
-    private static Settings _settings;
-    private static UnityModManager.ModEntry _entry;
-    private static string _ownId;
-
-    internal static void Initialize(Settings settings, UnityModManager.ModEntry entry = null)
+    internal static void Initialize()
     {
-        _settings = settings;
-        _entry = entry;
-        _ownId = entry?.Info.Id;
+        SetUserProfiles(ProfileLoader.LoadUserProfiles(SettingsStore.Current?.LocoProfiles));
+
+        var entries = UnityModManager.modEntries;
+        var sources = entries == null
+            ? Enumerable.Empty<ProfileLoader.ModSource>()
+            : entries.Select(e => new ProfileLoader.ModSource(e.Info.Id, e.Info.DisplayName, e.Enabled, e.Path));
+        SetSuppliedProfiles(ProfileLoader.LoadModProfiles(sources, SettingsStore.ModId));
     }
 
     /// <summary>True while a target mod is selected for authoring.</summary>
-    internal static bool IsAuthoring =>
-        _settings != null && _settings.AuthoringMode && !string.IsNullOrEmpty(_settings.AuthoringTargetModId);
-
-    internal static string AuthoringTargetModId => _settings?.AuthoringTargetModId ?? "";
-
-    internal static string AuthoringTargetName =>
-        FindEntry(AuthoringTargetModId)?.Info.DisplayName ?? AuthoringTargetModId;
+    private static bool IsAuthoring => SettingsStore.Current?.IsAuthoring == true;
 
     internal static void SetUserProfiles(Dictionary<string, LocoProfile> profiles)
     {
@@ -83,7 +77,7 @@ internal static class ProfileRepository
     /// </summary>
     internal static LocoProfile TryGetAuthoringProfile(string liveryId)
     {
-        var target = AuthoringTargetModId;
+        var target = SettingsStore.Current.AuthoringTargetModId;
 
         if (ModProfiles.TryGetValue(liveryId, out var authored)
             && authored.SourceId == target
@@ -119,7 +113,7 @@ internal static class ProfileRepository
         if (IsAuthoring)
         {
             if (ModProfiles.TryGetValue(liveryId, out var authored)
-                && authored.SourceId == AuthoringTargetModId
+                && authored.SourceId == SettingsStore.Current.AuthoringTargetModId
                 && authored.Profile.Enabled)
                 return ProfileStatus.Resolve(null, authored.Profile, authored.ModName, builtIn);
 
@@ -142,23 +136,23 @@ internal static class ProfileRepository
         var error = profile.Complete();
         if (error != null) return error;
 
-        var stored = _settings.LocoProfiles;
+        var stored = SettingsStore.Current.LocoProfiles;
         var index = stored.FindIndex(p => p.LiveryId == profile.LiveryId);
         if (index >= 0) stored[index] = profile;
         else stored.Add(profile);
 
         UserProfiles[profile.LiveryId] = profile;
-        Persist();
+        SettingsStore.Save();
         return null;
     }
 
     /// <summary>Writes the profile into the authored mod's config, returning an error or null.</summary>
     internal static string WriteToAuthoringMod(LocoProfile profile)
     {
-        var target = AuthoringTargetModId;
+        var target = SettingsStore.Current.AuthoringTargetModId;
         if (string.IsNullOrEmpty(target)) return "no authoring target mod selected";
 
-        var entry = FindEntry(target);
+        var entry = ModRegistry.Find(target);
         if (entry == null || string.IsNullOrEmpty(entry.Path)) return $"target mod '{target}' not found";
 
         var error = profile.Complete();
@@ -169,15 +163,15 @@ internal static class ProfileRepository
 
     /// <summary>True when the authored mod supplies a profile for the livery.</summary>
     internal static bool ModSuppliesAuthoringLivery(string liveryId) =>
-        ModProfiles.TryGetValue(liveryId, out var profile) && profile.SourceId == AuthoringTargetModId;
+        ModProfiles.TryGetValue(liveryId, out var profile) && profile.SourceId == SettingsStore.Current.AuthoringTargetModId;
 
     /// <summary>Removes the profile for <paramref name="liveryId"/> from the authored mod, returning an error or null.</summary>
     internal static string DeleteFromAuthoringMod(string liveryId)
     {
-        var target = AuthoringTargetModId;
+        var target = SettingsStore.Current.AuthoringTargetModId;
         if (string.IsNullOrEmpty(target)) return "no authoring target mod selected";
 
-        var entry = FindEntry(target);
+        var entry = ModRegistry.Find(target);
         if (entry == null || string.IsNullOrEmpty(entry.Path)) return $"target mod '{target}' not found";
 
         var error = ProfileWriter.Delete(liveryId, entry.Path);
@@ -191,14 +185,14 @@ internal static class ProfileRepository
     internal static List<string> ReloadAuthoringMod()
     {
         var changed = new List<string>();
-        var target = AuthoringTargetModId;
+        var target = SettingsStore.Current.AuthoringTargetModId;
         if (string.IsNullOrEmpty(target)) return changed;
 
-        var entry = FindEntry(target);
+        var entry = ModRegistry.Find(target);
         if (entry == null || string.IsNullOrEmpty(entry.Path)) return changed;
 
         var source = new ProfileLoader.ModSource(entry.Info.Id, entry.Info.DisplayName, entry.Enabled, entry.Path);
-        var loaded = ProfileLoader.LoadModProfile(source, _ownId);
+        var loaded = ProfileLoader.LoadModProfile(source, SettingsStore.ModId);
 
         foreach (var livery in ModProfiles.Where(pair => pair.Value.SourceId == target).Select(pair => pair.Key).ToList())
         {
@@ -218,8 +212,8 @@ internal static class ProfileRepository
     internal static bool DeleteProfile(string liveryId)
     {
         var removed = UserProfiles.Remove(liveryId);
-        _settings.LocoProfiles.RemoveAll(p => p.LiveryId == liveryId);
-        if (removed) Persist();
+        SettingsStore.Current.LocoProfiles.RemoveAll(p => p.LiveryId == liveryId);
+        if (removed) SettingsStore.Save();
         return removed;
     }
 
@@ -227,18 +221,7 @@ internal static class ProfileRepository
     {
         if (!UserProfiles.TryGetValue(liveryId, out var profile)) return false;
         profile.Enabled = enabled;
-        Persist();
+        SettingsStore.Save();
         return true;
-    }
-
-    private static UnityModManager.ModEntry FindEntry(string modId)
-    {
-        if (string.IsNullOrEmpty(modId)) return null;
-        return UnityModManager.modEntries?.FirstOrDefault(e => e.Info.Id == modId);
-    }
-
-    private static void Persist()
-    {
-        if (_entry != null) _settings.Save(_entry);
     }
 }

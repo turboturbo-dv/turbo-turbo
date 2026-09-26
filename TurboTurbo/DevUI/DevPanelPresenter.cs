@@ -10,19 +10,16 @@ namespace TurboTurbo.DevUI;
 /// </summary>
 internal sealed class DevPanelPresenter : MonoBehaviour
 {
-    private Settings _settings;
-
     private Rect _panelRect = new(20f, 20f, 360f, 120f);
     private TurboDevPanel _panel;
 
     public static DevPanelPresenter Instance { get; private set; }
 
-    public static DevPanelPresenter Create(Settings settings)
+    public static DevPanelPresenter Create()
     {
         var go = new GameObject(Naming.Create("DevPanelPresenter"));
         DontDestroyOnLoad(go);
         var presenter = go.AddComponent<DevPanelPresenter>();
-        presenter._settings = settings;
         Instance = presenter;
         return presenter;
     }
@@ -37,7 +34,7 @@ internal sealed class DevPanelPresenter : MonoBehaviour
     {
         DevCommands.TryRegister(this);
 
-        if (_settings.ToggleDevPanel.Down()) Toggle();
+        if (SettingsStore.Current.ToggleDevPanel.Down()) Toggle();
     }
 
     /// <summary>

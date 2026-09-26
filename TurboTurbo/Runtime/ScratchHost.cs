@@ -1,3 +1,4 @@
+using TurboTurbo.Configuration;
 using TurboTurbo.Profiles;
 
 namespace TurboTurbo.Runtime;
@@ -14,7 +15,7 @@ internal static class ScratchHost
         // While authoring, the user tier is skipped entirely, to prevent it from interfering
         // with the authored profiles.
         var profile = ProfileRepository.TryGetProfile(car);
-        if (profile == null && !ProfileRepository.IsAuthoring)
+        if (profile == null && !SettingsStore.Current.IsAuthoring)
         {
             profile = ProfileRepository.TryGetUserProfile(liveryId)?.Clone();
         }

@@ -26,7 +26,7 @@ internal static class ProfileOverview
         GUILayout.Space(2f);
 
         var orchestrator = Orchestrator.Instance;
-        var authoring = ProfileRepository.IsAuthoring;
+        var authoring = SettingsStore.Current.IsAuthoring;
 
         GUILayout.BeginVertical(Styles.OverviewBox);
         foreach (var livery in LiveryCatalog.LocoLiveries())
@@ -72,7 +72,7 @@ internal static class ProfileOverview
     {
         if (!ProfileRepository.ModSuppliesAuthoringLivery(liveryId)) return;
 
-        var target = ProfileRepository.AuthoringTargetName;
+        var target = ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId);
         if (!GUILayout.Button(new GUIContent("delete", $"Remove this profile from '{target}'"))) return;
 
         var error = ProfileRepository.DeleteFromAuthoringMod(liveryId);

@@ -446,7 +446,7 @@ namespace TurboTurboTests
         [Fact]
         public void Repository_SaveAndGet_RoundTrip()
         {
-            ProfileRepository.Initialize(new Settings(), null);
+            SettingsStore.Current = new Settings();
 
             ProfileRepository.SaveProfile(ValidProfile("repo")).ShouldBeNull();
 
@@ -457,7 +457,7 @@ namespace TurboTurboTests
         [Fact]
         public void Repository_SaveInvalid_ReturnsErrorAndStoresNothing()
         {
-            ProfileRepository.Initialize(new Settings(), null);
+            SettingsStore.Current = new Settings();
             var profile = ValidProfile();
             profile.LiveryId = "";
 
@@ -469,7 +469,7 @@ namespace TurboTurboTests
         public void Repository_Save_ReplacesExisting()
         {
             var settings = new Settings();
-            ProfileRepository.Initialize(settings, null);
+            SettingsStore.Current = settings;
             ProfileRepository.SaveProfile(ValidProfile("dup")).ShouldBeNull();
 
             var updated = ValidProfile("dup");
@@ -483,7 +483,7 @@ namespace TurboTurboTests
         [Fact]
         public void Repository_Delete_Removes()
         {
-            ProfileRepository.Initialize(new Settings(), null);
+            SettingsStore.Current = new Settings();
             ProfileRepository.SaveProfile(ValidProfile("gone")).ShouldBeNull();
 
             ProfileRepository.DeleteProfile("gone").ShouldBeTrue();
@@ -495,7 +495,7 @@ namespace TurboTurboTests
         public void Repository_SetEnabled_Toggles()
         {
             var settings = new Settings();
-            ProfileRepository.Initialize(settings, null);
+            SettingsStore.Current = settings;
             ProfileRepository.SaveProfile(ValidProfile("toggle")).ShouldBeNull();
 
             ProfileRepository.SetEnabled("toggle", false).ShouldBeTrue();
@@ -516,9 +516,8 @@ namespace TurboTurboTests
             settings.LocoProfiles.Add(bad);
             settings.LocoProfiles.Add(ValidProfile("good"));
 
-            ProfileRepository.Initialize(settings, null);
-            var user = ProfileLoader.LoadUserProfiles(settings.LocoProfiles);
-            ProfileRepository.SetUserProfiles(user);
+            SettingsStore.Current = settings;
+            ProfileRepository.Initialize();
 
             ProfileRepository.TryGetUserProfile("good").ShouldNotBeNull();
             ProfileRepository.TryGetUserProfile("").ShouldBeNull();
@@ -530,7 +529,8 @@ namespace TurboTurboTests
             var settings = new Settings();
             settings.LocoProfiles = null;
 
-            ProfileRepository.Initialize(settings, null);
+            SettingsStore.Current = settings;
+            ProfileRepository.Initialize();
 
             ProfileRepository.TryGetUserProfile("anything").ShouldBeNull();
         }
