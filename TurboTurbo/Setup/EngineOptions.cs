@@ -26,7 +26,7 @@ public class EngineOptions
     /// </summary>
     public EngineOptions AddEngineExhaust(Vector3 offset = default)
     {
-        _exhausts.Add(new LocoExhaust { Kind = ExhaustKind.Independent, Offset = offset });
+        _exhausts.Add(LocoExhaust.Independent(offset));
         return this;
     }
 
@@ -37,7 +37,7 @@ public class EngineOptions
     /// </summary>
     public EngineOptions ReplaceEngineExhaust(string particleSystemName, Vector3 offset = default)
     {
-        _exhausts.Add(new LocoExhaust { Kind = ExhaustKind.Replacement, Name = particleSystemName, Offset = offset });
+        _exhausts.Add(LocoExhaust.Replacement(particleSystemName, offset));
         return this;
     }
 

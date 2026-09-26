@@ -47,10 +47,10 @@ internal static class ScratchHost
         var pick = ExhaustTargets.PickDefault(names);
         if (pick >= 0)
         {
-            return new LocoExhaust { Kind = ExhaustKind.Replacement, Name = candidates[pick].Name };
+            return LocoExhaust.Replacement(candidates[pick].Name);
         }
 
         Log.Info($"no exhaust particle system on '{car.ID}', adding an independent exhaust");
-        return new LocoExhaust { Kind = ExhaustKind.Independent };
+        return LocoExhaust.Independent();
     }
 }

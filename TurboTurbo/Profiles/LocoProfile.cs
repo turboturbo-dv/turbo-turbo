@@ -139,6 +139,12 @@ public sealed class LocoExhaust
 
     public Vector3 Offset { get; set; }
 
+    public static LocoExhaust Replacement(string name, Vector3 offset = default) =>
+        new() { Kind = ExhaustKind.Replacement, Name = name, Offset = offset };
+
+    public static LocoExhaust Independent(Vector3 offset = default) =>
+        new() { Kind = ExhaustKind.Independent, Offset = offset };
+
     public LocoExhaust Clone() => new() { Kind = Kind, Name = Name, Offset = Offset };
 }
 
