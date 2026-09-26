@@ -83,8 +83,8 @@ public sealed class LocoProfile
         if (!Enum.IsDefined(typeof(ExhaustKind), exhaust.Kind))
             return new ValidationError($"unknown exhaust kind {(int)exhaust.Kind}");
         if (!IsFinite(exhaust.Offset)) return new ValidationError("exhaust offset must be finite");
-        if (exhaust.Kind == ExhaustKind.Replacement && string.IsNullOrWhiteSpace(exhaust.Name))
-            return new ValidationError("replacement exhausts need a particle system name");
+        if (exhaust.Kind == ExhaustKind.Replacement && string.IsNullOrWhiteSpace(exhaust.Path))
+            return new ValidationError("replacement exhausts need a particle system path");
 
         return null;
     }
@@ -132,20 +132,21 @@ public sealed class LocoExhaust
     public ExhaustKind Kind { get; set; } = ExhaustKind.Replacement;
 
     /// <summary>
-    /// Set when declaring a particle system to replace. Leave unset for independent exhausts.
+    /// Car-relative transform path of the particle system to replace. Leave unset
+    /// for independent exhausts.
     /// </summary>
     [DefaultValue("")]
-    public string Name { get; set; } = "";
+    public string Path { get; set; } = "";
 
     public Vector3 Offset { get; set; }
 
-    public static LocoExhaust Replacement(string name, Vector3 offset = default) =>
-        new() { Kind = ExhaustKind.Replacement, Name = name, Offset = offset };
+    public static LocoExhaust Replacement(string path, Vector3 offset = default) =>
+        new() { Kind = ExhaustKind.Replacement, Path = path, Offset = offset };
 
     public static LocoExhaust Independent(Vector3 offset = default) =>
         new() { Kind = ExhaustKind.Independent, Offset = offset };
 
-    public LocoExhaust Clone() => new() { Kind = Kind, Name = Name, Offset = Offset };
+    public LocoExhaust Clone() => new() { Kind = Kind, Path = Path, Offset = Offset };
 }
 
 public enum ExhaustKind

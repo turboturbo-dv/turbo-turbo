@@ -128,7 +128,7 @@ internal sealed class ExhaustsPanel : IEditorPanel
 
         if (replace)
         {
-            DrawDropdown(index, entry.Scope.Name);
+            DrawDropdown(index, entry.Scope.Path);
         }
 
         var position = _openPosition == index;
@@ -157,10 +157,11 @@ internal sealed class ExhaustsPanel : IEditorPanel
             return;
         }
 
+        var selected = FindCandidate(current);
         foreach (var candidate in _candidates)
         {
-            var marker = candidate.Name == current ? "* " : "  ";
-            if (GUILayout.Button(marker + candidate.Path)) SetName(index, candidate.Name);
+            var marker = selected.HasValue && selected.Value.Path == candidate.Path ? "* " : "  ";
+            if (GUILayout.Button(marker + candidate.Path)) SetPath(index, candidate.Path);
         }
     }
 
@@ -209,8 +210,8 @@ internal sealed class ExhaustsPanel : IEditorPanel
 
     private void Add(LocoProfile profile, TrainCar car)
     {
-        var name = car != null ? ExhaustTargets.TryDefault(car) : null;
-        profile.Exhausts.Add(name != null ? LocoExhaust.Replacement(name) : LocoExhaust.Independent());
+        var path = car != null ? ExhaustTargets.TryDefaultPath(car) : null;
+        profile.Exhausts.Add(path != null ? LocoExhaust.Replacement(path) : LocoExhaust.Independent());
         _onStructuralChange();
     }
 
@@ -226,33 +227,33 @@ internal sealed class ExhaustsPanel : IEditorPanel
         var exhaust = _profile.Exhausts[index];
         if (replace)
         {
-            var name = exhaust.Name;
-            if (string.IsNullOrEmpty(name)) name = _boundHost?.TrainCar != null ? ExhaustTargets.TryDefault(_boundHost.TrainCar) : null;
+            var path = exhaust.Path;
+            if (string.IsNullOrEmpty(path)) path = _boundHost?.TrainCar != null ? ExhaustTargets.TryDefaultPath(_boundHost.TrainCar) : null;
 
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(path))
             {
                 // no particle system to replace: keep it independent
                 return;
             }
 
             exhaust.Kind = ExhaustKind.Replacement;
-            exhaust.Name = name;
+            exhaust.Path = path;
         }
         else
         {
             exhaust.Kind = ExhaustKind.Independent;
-            exhaust.Name = "";
+            exhaust.Path = "";
         }
 
         ClearUiState();
         _onStructuralChange();
     }
 
-    private void SetName(int index, string name)
+    private void SetPath(int index, string path)
     {
         var exhaust = _profile.Exhausts[index];
         exhaust.Kind = ExhaustKind.Replacement;
-        exhaust.Name = name;
+        exhaust.Path = path;
 
         _openDropdown = -1;
         _onStructuralChange();
@@ -298,16 +299,29 @@ internal sealed class ExhaustsPanel : IEditorPanel
         _setMarkerTarget(index);
     }
 
-    private string NameLabel(string name)
+    private ExhaustTargets.Candidate? FindCandidate(string stored)
     {
-        if (string.IsNullOrEmpty(name)) return "(choose a particle system)";
+        if (string.IsNullOrEmpty(stored)) return null;
 
         foreach (var candidate in _candidates)
         {
-            if (candidate.Name == name) return candidate.Path;
+            if (candidate.Path == stored) return candidate;
         }
 
-        return $"{name} (missing)";
+        foreach (var candidate in _candidates)
+        {
+            if (candidate.Name == stored) return candidate;
+        }
+
+        return null;
+    }
+
+    private string NameLabel(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return "(choose a particle system)";
+
+        var candidate = FindCandidate(path);
+        return candidate.HasValue ? candidate.Value.Path : $"{path} (missing)";
     }
 
     private void ClearUiState()

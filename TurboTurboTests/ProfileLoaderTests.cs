@@ -19,7 +19,7 @@ namespace TurboTurboTests
             @"<TurboConfig>" +
             @"<LocoProfiles><LocoProfile>" +
             @"<Version>1</Version><LiveryId>test-livery</LiveryId><Enabled>true</Enabled>" +
-            @"<Exhausts><LocoExhaust><Kind>Replacement</Kind><Name>ExhaustEngineSmoke(Clone)</Name></LocoExhaust></Exhausts>" +
+            @"<Exhausts><LocoExhaust><Kind>Replacement</Kind><Path>ExhaustEngineSmoke(Clone)</Path></LocoExhaust></Exhausts>" +
             @"<ChargerKind>Turbo</ChargerKind>" +
             @"<TurboCharger><LambdaCalibration>1.6</LambdaCalibration></TurboCharger>" +
             @"<Velocity><Idle>4.0</Idle></Velocity>" +
@@ -111,7 +111,7 @@ namespace TurboTurboTests
             return new LocoProfile
             {
                 LiveryId = "test-livery",
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustEngineSmoke(Clone)" }],
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustEngineSmoke(Clone)" }],
             };
         }
 

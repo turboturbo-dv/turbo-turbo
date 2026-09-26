@@ -31,13 +31,14 @@ public class EngineOptions
     }
 
     /// <summary>
-    /// Takes over an existing exhaust ParticleSystem found by exact name: its emission
-    /// is disabled so that it is effectively replaced. Supplying <paramref name="offset"/>
-    /// will adjust the position of the replacement relative to the replaced particle system.
+    /// Takes over an existing exhaust ParticleSystem: its emission is disabled so that
+    /// it is effectively replaced. <paramref name="target"/> is the particle system transform path.
+    /// Supplying <paramref name="offset"/> will adjust the position of the replacement
+    /// relative to the replaced particle system.
     /// </summary>
-    public EngineOptions ReplaceEngineExhaust(string particleSystemName, Vector3 offset = default)
+    public EngineOptions ReplaceEngineExhaust(string target, Vector3 offset = default)
     {
-        _exhausts.Add(LocoExhaust.Replacement(particleSystemName, offset));
+        _exhausts.Add(LocoExhaust.Replacement(target, offset));
         return this;
     }
 

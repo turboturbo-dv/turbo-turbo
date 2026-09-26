@@ -38,8 +38,8 @@ internal static class ScratchHost
 
     private static LocoExhaust DefaultExhaust(TrainCar car)
     {
-        var name = ExhaustTargets.TryDefault(car);
-        if (name != null) return LocoExhaust.Replacement(name);
+        var path = ExhaustTargets.TryDefaultPath(car);
+        if (path != null) return LocoExhaust.Replacement(path);
 
         Log.Info($"no exhaust particle system on '{car.ID}', adding an independent exhaust");
         return LocoExhaust.Independent();

@@ -212,7 +212,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             var exhaustTransform = ResolveExhaustTransform(exhaust);
             if (exhaustTransform == null)
             {
-                _log.Warn($"exhaust {i} ('{exhaust.Name}') resolved to null, skipping");
+                _log.Warn($"exhaust {i} ('{exhaust.Path}') resolved to null, skipping");
                 continue;
             }
 
@@ -239,7 +239,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             return TrainCar.transform;
         }
 
-        var existingPs = TrainCar.GetFirstComponentInChildren<ParticleSystem>(true, ps => ps.name == exhaust.Name);
+        var existingPs = ExhaustTargets.Resolve(TrainCar, exhaust.Path);
         if (existingPs == null)
         {
             return null;

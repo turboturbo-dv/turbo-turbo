@@ -14,7 +14,7 @@ namespace TurboTurboTests
             {
                 LiveryId = "test",
                 Enabled = enabled,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustSmoke" }],
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
             };
         }
 

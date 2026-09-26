@@ -25,7 +25,7 @@ namespace TurboTurboTests
                 LiveryId = liveryId,
                 Exhausts =
                 [
-                    new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustSmoke", Offset = new Vector3(0f, 0.1f, 0f) },
+                    new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke", Offset = new Vector3(0f, 0.1f, 0f) },
                     new LocoExhaust { Kind = ExhaustKind.Independent, Offset = new Vector3(1f, 2f, 3f) },
                 ],
             };
@@ -70,19 +70,19 @@ namespace TurboTurboTests
         [Theory]
         [InlineData("")]
         [InlineData("   ")]
-        public void Validate_ReplacementWithoutName_Fails(string name)
+        public void Validate_ReplacementWithoutPath_Fails(string path)
         {
             var profile = ValidProfile();
-            profile.Exhausts[0].Name = name;
+            profile.Exhausts[0].Path = path;
 
             profile.Validate().ShouldNotBeNull();
         }
 
         [Fact]
-        public void Validate_IndependentWithoutName_Passes()
+        public void Validate_IndependentWithoutPath_Passes()
         {
             var profile = ValidProfile();
-            profile.Exhausts[1].Name = "";
+            profile.Exhausts[1].Path = "";
 
             profile.Validate().ShouldBeNull();
         }
@@ -208,7 +208,7 @@ namespace TurboTurboTests
             {
                 LiveryId = "sparse",
                 Enabled = false,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustSmoke" }],
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
             };
 
             var loaded = ProfileLoader.LoadUserProfiles([sparse]);
@@ -234,7 +234,7 @@ namespace TurboTurboTests
             {
                 LiveryId = "sparse-na",
                 ChargerKind = ChargerKind.Atmospheric,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustSmoke" }],
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
             };
 
             var completed = ProfileLoader.LoadUserProfiles([sparse])["sparse-na"];
@@ -256,10 +256,10 @@ namespace TurboTurboTests
             clone.TurboCharger.TauUp.ShouldBe(5f);
 
             // mutating the clone must never touch the original
-            clone.Exhausts[0].Name = "changed";
+            clone.Exhausts[0].Path = "changed";
             clone.TurboCharger.TauUp = 9f;
 
-            profile.Exhausts[0].Name.ShouldNotBe("changed");
+            profile.Exhausts[0].Path.ShouldNotBe("changed");
             profile.TurboCharger.TauUp.ShouldBe(5f);
         }
 
@@ -420,7 +420,7 @@ namespace TurboTurboTests
             restored.ChargerKind.ShouldBe(ChargerKind.Turbo);
             restored.Exhausts.Count.ShouldBe(2);
             restored.Exhausts[0].Kind.ShouldBe(ExhaustKind.Replacement);
-            restored.Exhausts[0].Name.ShouldBe("ExhaustSmoke");
+            restored.Exhausts[0].Path.ShouldBe("ExhaustSmoke");
             restored.Exhausts[0].Offset.ShouldBe(new Vector3(1f, 2f, 3f));
             restored.Exhausts[1].Kind.ShouldBe(ExhaustKind.Independent);
             restored.TurboCharger.TauUp.ShouldBe(5f);
@@ -433,7 +433,7 @@ namespace TurboTurboTests
             var restored = Deserialize(
                 @"<LocoProfile><Version>1</Version><LiveryId>partial</LiveryId>" +
                 @"<Enabled>true</Enabled><Exhausts><LocoExhaust><Kind>Replacement</Kind>" +
-                @"<Name>ExhaustSmoke</Name></LocoExhaust></Exhausts>" +
+                @"<Path>ExhaustSmoke</Path></LocoExhaust></Exhausts>" +
                 @"<ChargerKind>Turbo</ChargerKind>" +
                 @"<TurboCharger><TauUp>5</TauUp></TurboCharger></LocoProfile>");
 

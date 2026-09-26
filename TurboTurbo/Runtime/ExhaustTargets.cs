@@ -56,17 +56,41 @@ internal static class ExhaustTargets
     }
 
     /// <summary>
-    /// Picks a default replacement target from the car's candidates, or null when
-    /// there are none.
+    /// Picks a default replacement target from the car's candidates, returning its
+    /// car-relative path, or null when there are none.
     /// </summary>
-    public static string TryDefault(TrainCar car)
+    public static string TryDefaultPath(TrainCar car)
     {
         var candidates = FindCandidates(car);
         var names = new List<string>(candidates.Count);
         foreach (var candidate in candidates) names.Add(candidate.Name);
 
         var pick = PickDefault(names);
-        return pick >= 0 ? candidates[pick].Name : null;
+        return pick >= 0 ? candidates[pick].Path : null;
+    }
+
+    /// <summary>
+    /// Resolves a stored target string to the particle system it names, or null.
+    /// A car-relative path matches exactly, disambiguating duplicate names; a bare
+    /// particle-system name is accepted as a fallback for hand-authored configs.
+    /// </summary>
+    public static ParticleSystem Resolve(TrainCar car, string path)
+    {
+        if (string.IsNullOrEmpty(path)) return null;
+
+        var candidates = FindCandidates(car);
+
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Path == path) return candidate.Ps;
+        }
+
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Name == path) return candidate.Ps;
+        }
+
+        return null;
     }
 
     private static bool Contains(string name, string token) =>

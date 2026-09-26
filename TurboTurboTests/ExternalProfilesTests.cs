@@ -19,7 +19,7 @@ namespace TurboTurboTests
             var profile = new LocoProfile
             {
                 LiveryId = "test-livery",
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = "ExhaustEngineSmoke(Clone)" }],
+                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustEngineSmoke(Clone)" }],
             };
 
             SetSuppliedProfiles(new Dictionary<string, ModProfile>
@@ -27,7 +27,7 @@ namespace TurboTurboTests
                 ["test-livery"] = new ModProfile(profile, "mod-a"),
             });
 
-            TryGetModProfile("test-livery").Exhausts[0].Name.ShouldBe("ExhaustEngineSmoke(Clone)");
+            TryGetModProfile("test-livery").Exhausts[0].Path.ShouldBe("ExhaustEngineSmoke(Clone)");
             TryGetModProfile("missing").ShouldBeNull();
 
             SetSuppliedProfiles(new Dictionary<string, ModProfile>());
