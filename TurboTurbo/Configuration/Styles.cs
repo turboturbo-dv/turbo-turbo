@@ -74,6 +74,37 @@ internal static class Styles
         }
     }
 
+    private static GUIStyle _overviewBox;
+
+    public static GUIStyle OverviewBox
+    {
+        get
+        {
+            if (_overviewBox == null)
+            {
+                _overviewBox = new GUIStyle(GUI.skin.box);
+                _overviewBox.normal.background = FlatBackground(0x2C);
+            }
+
+            return _overviewBox;
+        }
+    }
+
+    private static GUIStyle _boldLabel;
+
+    public static GUIStyle BoldLabel
+    {
+        get
+        {
+            if (_boldLabel == null)
+            {
+                _boldLabel = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            }
+
+            return _boldLabel;
+        }
+    }
+
     private static Texture2D FlatBackground(byte shade)
     {
         var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);

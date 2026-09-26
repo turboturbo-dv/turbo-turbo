@@ -9,7 +9,7 @@ internal static class ProfileLoader
 {
     internal record struct ModSource(string Id, string ModName, bool Enabled, string Path);
 
-    internal record struct ModProfile(LocoProfile Profile, string ModName);
+    internal record struct ModProfile(LocoProfile Profile, string SourceId, string ModName);
 
     private static readonly Logger Log = TurboTurbo.Log.ForContext("profiles");
     private static readonly XmlSerializer Serializer = new XmlSerializer(typeof(TurboConfig));
@@ -25,6 +25,15 @@ internal static class ProfileLoader
         }
 
         Log.Info($"loaded {loaded.Count} loco profiles from mods");
+        return loaded;
+    }
+
+    /// <summary>Loads the profiles of a single mod, for hot reload after authoring.</summary>
+    internal static Dictionary<string, ModProfile> LoadModProfile(ModSource mod, string ownId)
+    {
+        var loaded = new Dictionary<string, ModProfile>();
+        var config = LoadConfig(mod, ownId);
+        if (config != null) MergeInto(loaded, mod, config);
         return loaded;
     }
 
@@ -92,7 +101,7 @@ internal static class ProfileLoader
                 Log.Info($"added loco profile for '{profile.LiveryId}' from '{source.ModName}'");
             }
 
-            merged[profile.LiveryId] = new ModProfile(profile, source.ModName);
+            merged[profile.LiveryId] = new ModProfile(profile, source.Id, source.ModName);
         }
     }
 }

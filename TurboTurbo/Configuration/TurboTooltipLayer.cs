@@ -4,7 +4,7 @@ namespace TurboTurbo.Configuration;
 
 internal sealed class TurboTooltipLayer : MonoBehaviour
 {
-    public static string Tooltip = "";
+    public string Tooltip = "";
 
     private GUIStyle _style;
 

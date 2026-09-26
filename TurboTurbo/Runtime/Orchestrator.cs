@@ -62,6 +62,20 @@ internal sealed class Orchestrator : MonoBehaviour
         }
     }
 
+    /// <summary>Reloads every tracked car's host from the repository.</summary>
+    public void ReloadAllHosts()
+    {
+        if (!Enabled) return;
+
+        var spawner = CarSpawner.Instance;
+        if (spawner == null) return;
+
+        foreach (var car in spawner.AllCars)
+        {
+            ReloadHost(car);
+        }
+    }
+
     /// <summary>Reloads the profiles for every spawned car of the given livery.</summary>
     public void ReloadHostsForLivery(string liveryId)
     {

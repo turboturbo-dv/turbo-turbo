@@ -24,7 +24,7 @@ namespace TurboTurboTests
 
             SetSuppliedProfiles(new Dictionary<string, ModProfile>
             {
-                ["test-livery"] = new ModProfile(profile, "mod-a"),
+                ["test-livery"] = new ModProfile(profile, "mod-a", "Mod A"),
             });
 
             TryGetModProfile("test-livery").Exhausts[0].Path.ShouldBe("ExhaustEngineSmoke(Clone)");

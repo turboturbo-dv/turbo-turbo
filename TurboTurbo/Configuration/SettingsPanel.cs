@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 
 using TurboTurbo.Configuration.Sections;
+using TurboTurbo.Profiles;
+using TurboTurbo.Runtime;
 
 using UnityEngine;
 
@@ -15,10 +17,22 @@ internal static class SettingsPanel
 {
     private static readonly List<Section> Sections = new();
     private static Settings _settings;
+    private static bool _targetOpen;
+    private static GUIStyle _toggle;
+    private static TurboTooltipLayer _tooltip;
+
+    private const float TargetWidth = 220f;
+
+    // UMM indents GUI.skin.toggle by ~10px; drop that so our toggle aligns with the labels.
+    private static GUIStyle Toggle => _toggle ??= new GUIStyle(GUI.skin.toggle) { margin = new RectOffset(0, 0, 0, 0) };
 
     internal static void Initialize(Settings settings)
     {
         _settings = settings;
+
+        var go = new GameObject(Naming.Create("TooltipLayer"));
+        Object.DontDestroyOnLoad(go);
+        _tooltip = go.AddComponent<TurboTooltipLayer>();
     }
 
     internal static void Draw(UnityModManager.ModEntry entry)
@@ -32,7 +46,93 @@ internal static class SettingsPanel
         UnityModManager.UI.DrawKeybindingSmart(_settings.ToggleDevPanel, "Toggle dev panel");
         GUILayout.EndHorizontal();
 
+        DrawAuthoring(entry);
+
         GUILayout.Space(8f);
         ProfileOverview.Draw();
+
+        // GUI.tooltip is only populated during repaint; capture then, so
+        // other event passes don't overwrite it.
+        if (_tooltip != null && Event.current.type == EventType.Repaint)
+        {
+            _tooltip.Tooltip = GUI.tooltip;
+        }
+    }
+
+    private static void DrawAuthoring(UnityModManager.ModEntry entry)
+    {
+        var mode = GUILayout.Toggle(_settings.AuthoringMode,
+            new GUIContent("Vehicle author mode",
+                "When vehicle author mode is enabled, profiles that you create are saved directly to a TurboConfig.xml " +
+                "file belonging to the selected mod.\n" +
+                "When you've finished your profile(s), distribute the TurboConfig.xml file together with the other " +
+                "files in your mod's directory. Users who have TurboTurbo installed will automatically have your " +
+                "profile applied."),
+            Toggle);
+        if (mode != _settings.AuthoringMode)
+        {
+            _settings.AuthoringMode = mode;
+            _targetOpen = false;
+            _settings.Save(entry);
+            Orchestrator.Instance?.ReloadAllHosts();
+        }
+        if (!_settings.AuthoringMode) return;
+
+        var mods = CollectTargets(entry);
+
+        var current = mods.Find(m => m.Info.Id == _settings.AuthoringTargetModId);
+        var label = current != null ? current.Info.DisplayName : "(none)";
+
+        GUILayout.Label("Save profiles to:");
+        GUILayout.BeginVertical(GUILayout.Width(TargetWidth));
+        if (GUILayout.Button(label + "  ▾")) _targetOpen = !_targetOpen;
+        if (_targetOpen) DrawTargetList(entry, mods);
+        GUILayout.EndVertical();
+
+        if (string.IsNullOrEmpty(_settings.AuthoringTargetModId)) return;
+
+        var file = current != null
+            ? System.IO.Path.Combine(current.Path, ProfileWriter.ConfigFileName)
+            : "(target mod unavailable)";
+        GUILayout.Label($"writing to {file}", Styles.WrappedLabel);
+    }
+
+    private static void DrawTargetList(UnityModManager.ModEntry entry, List<UnityModManager.ModEntry> mods)
+    {
+        if (mods.Count == 0)
+        {
+            GUILayout.Label("no eligible mods");
+            return;
+        }
+
+        if (GUILayout.Button("(none)")) SelectTarget(entry, "");
+
+        foreach (var mod in mods)
+        {
+            var marker = mod.Info.Id == _settings.AuthoringTargetModId ? "* " : "  ";
+            if (GUILayout.Button(marker + mod.Info.DisplayName)) SelectTarget(entry, mod.Info.Id);
+        }
+    }
+
+    private static void SelectTarget(UnityModManager.ModEntry entry, string modId)
+    {
+        _settings.AuthoringTargetModId = modId;
+        _targetOpen = false;
+        _settings.Save(entry);
+    }
+
+    private static List<UnityModManager.ModEntry> CollectTargets(UnityModManager.ModEntry entry)
+    {
+        var mods = new List<UnityModManager.ModEntry>();
+        if (UnityModManager.modEntries == null) return mods;
+
+        foreach (var mod in UnityModManager.modEntries)
+        {
+            if (!mod.Enabled || mod.Info.Id == entry.Info.Id) continue;
+            if (string.IsNullOrEmpty(mod.Path)) continue;
+            mods.Add(mod);
+        }
+
+        return mods;
     }
 }

@@ -39,6 +39,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private readonly Dictionary<string, bool> _openState = new();
     private ExhaustMarkerController _markerController;
     private ColorPickerWindow _colorPicker;
+    private TurboTooltipLayer _tooltip;
     private bool _needsShrink;
     private bool _requiresReconfigure;
     private TweakGrade _grade = TweakGrade.Basic;
@@ -52,6 +53,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         _liveryId = liveryId;
         _markerController = new ExhaustMarkerController(() => _host);
         _colorPicker = gameObject.AddComponent<ColorPickerWindow>();
+        _tooltip = gameObject.AddComponent<TurboTooltipLayer>();
     }
 
     private void CloseSelf() => Destroy(gameObject);
@@ -107,7 +109,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         // other event passes don't overwrite it.
         if (Event.current.type == EventType.Repaint)
         {
-            TurboTooltipLayer.Tooltip = GUI.tooltip;
+            _tooltip.Tooltip = GUI.tooltip;
         }
 
         GUI.DragWindow();
@@ -216,7 +218,17 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void DrawFooter()
     {
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Save"))
+        if (ProfileRepository.IsAuthoring)
+        {
+            if (GUILayout.Button($"Save to '{ProfileRepository.AuthoringTargetName}'")) SaveToAuthoringMod();
+            if (GUILayout.Button(new GUIContent("copy XML",
+                "Copy this profile to the clipboard as a <LocoProfile> XML fragment, ready to paste into a mod's " +
+                "TurboConfig.xml.")))
+            {
+                CopyXml();
+            }
+        }
+        else if (GUILayout.Button("Save"))
         {
             var error = ProfileRepository.SaveProfile(_host.Profile.Clone());
             if (error != null) Log.Warn($"could not save profile '{_liveryId}': {error}");
@@ -233,6 +245,28 @@ internal sealed class ProfileEditor : MonoBehaviour
         }
 
         GUILayout.EndHorizontal();
+    }
+
+    private void SaveToAuthoringMod()
+    {
+        var profile = _host.Profile.Clone();
+        var error = ProfileRepository.WriteToAuthoringMod(profile);
+        if (error != null)
+        {
+            Log.Warn($"could not save to mod: {error}");
+            CopyXml();
+            return;
+        }
+
+        ProfileRepository.ReloadAuthoringMod();
+        Log.Info($"saved profile '{_liveryId}' to '{ProfileRepository.AuthoringTargetName}'");
+        CloseSelf();
+    }
+
+    private void CopyXml()
+    {
+        GUIUtility.systemCopyBuffer = ProfileWriter.SerializeFragment(_host.Profile.Clone());
+        Log.Info("copied profile XML to the clipboard");
     }
 
     private void SwitchCharger(ChargerKind kind)

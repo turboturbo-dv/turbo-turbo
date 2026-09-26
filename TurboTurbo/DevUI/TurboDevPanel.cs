@@ -14,14 +14,16 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private string _diagLine = "orchestrator: ?\nspawner: ?";
     private float _diagTimer;
 
+    private TurboTooltipLayer _tooltip;
+
     public Rect WindowRect { get; private set; } = new(20f, 20f, 360f, 120f);
 
     public static TurboDevPanel Create(Rect initialRect)
     {
         var go = new GameObject(Naming.Create("DevPanel"));
         DontDestroyOnLoad(go);
-        go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();
+        panel._tooltip = go.AddComponent<TurboTooltipLayer>();
         panel.WindowRect = initialRect;
         return panel;
     }
@@ -55,7 +57,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         // other event passes don't overwrite it.
         if (Event.current.type == EventType.Repaint)
         {
-            TurboTooltipLayer.Tooltip = GUI.tooltip;
+            _tooltip.Tooltip = GUI.tooltip;
         }
 
         GUI.DragWindow();

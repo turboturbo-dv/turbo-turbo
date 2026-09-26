@@ -9,6 +9,8 @@ internal static class ProfileOverview
 {
     private const float LabelWidth = 200f;
 
+    private static readonly Logger Log = TurboTurbo.Log.ForContext("overview");
+
     public static void Draw()
     {
         var car = PlayerManager.Car;
@@ -16,7 +18,7 @@ internal static class ProfileOverview
             ? car.carLivery.id
             : null;
 
-        GUILayout.Label("locomotive profiles");
+        GUILayout.Label("Locomotive profiles", Styles.BoldLabel);
         if (boardedLiveryId == null)
         {
             GUILayout.Label("Board a locomotive to create or edit its profile.");
@@ -24,7 +26,9 @@ internal static class ProfileOverview
         GUILayout.Space(2f);
 
         var orchestrator = Orchestrator.Instance;
+        var authoring = ProfileRepository.IsAuthoring;
 
+        GUILayout.BeginVertical(Styles.OverviewBox);
         foreach (var livery in LiveryCatalog.LocoLiveries())
         {
             var isBoarded = livery.Id == boardedLiveryId;
@@ -32,19 +36,12 @@ internal static class ProfileOverview
             GUILayout.BeginHorizontal();
             GUILayout.Label(livery.TypeId, GUILayout.Width(LabelWidth));
             GUILayout.Label(ProfileRepository.TryGetStatus(livery.Id).Label);
-            var user = ProfileRepository.TryGetUserProfile(livery.Id);
-            if (user != null)
+
+            if (!authoring)
             {
-                var enabled = GUILayout.Toggle(user.Enabled, "enabled");
-                if (enabled != user.Enabled)
-                {
-                    ProfileRepository.SetEnabled(livery.Id, enabled);
-                    if (orchestrator != null)
-                    {
-                        orchestrator.ReloadHostsForLivery(livery.Id);
-                    }
-                }
+                DrawUserControls(livery.Id, orchestrator);
             }
+
             if (isBoarded)
             {
                 GUILayout.Label("boarded");
@@ -54,13 +51,49 @@ internal static class ProfileOverview
                     Main.EditPresenter.Open(car);
                 }
 
-                if (ProfileRepository.TryGetUserProfile(boardedLiveryId) != null
+                if (!authoring
+                    && ProfileRepository.TryGetUserProfile(boardedLiveryId) != null
                     && GUILayout.Button("Delete"))
                 {
                     ProfileRepository.DeleteProfile(boardedLiveryId);
                 }
             }
+
+            if (authoring)
+            {
+                DrawAuthoringControls(livery.Id, orchestrator);
+            }
             GUILayout.EndHorizontal();
         }
+        GUILayout.EndVertical();
+    }
+
+    private static void DrawAuthoringControls(string liveryId, Orchestrator orchestrator)
+    {
+        if (!ProfileRepository.ModSuppliesAuthoringLivery(liveryId)) return;
+
+        var target = ProfileRepository.AuthoringTargetName;
+        if (!GUILayout.Button(new GUIContent("delete", $"Remove this profile from '{target}'"))) return;
+
+        var error = ProfileRepository.DeleteFromAuthoringMod(liveryId);
+        if (error != null)
+        {
+            Log.Warn($"could not delete profile '{liveryId}' from the mod: {error}");
+            return;
+        }
+
+        orchestrator?.ReloadHostsForLivery(liveryId);
+    }
+
+    private static void DrawUserControls(string liveryId, Orchestrator orchestrator)
+    {
+        var user = ProfileRepository.TryGetUserProfile(liveryId);
+        if (user == null) return;
+
+        var enabled = GUILayout.Toggle(user.Enabled, "enabled");
+        if (enabled == user.Enabled) return;
+
+        ProfileRepository.SetEnabled(liveryId, enabled);
+        orchestrator?.ReloadHostsForLivery(liveryId);
     }
 }

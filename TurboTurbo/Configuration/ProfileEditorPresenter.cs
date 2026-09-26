@@ -1,3 +1,4 @@
+using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
@@ -40,6 +41,13 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
             return;
         }
 
+        if (ProfileRepository.IsAuthoring)
+        {
+            // switching the authoring target does not reload hosts, so the car
+            // may still be running the previous target's profile
+            Orchestrator.Instance.ReloadHost(car);
+        }
+
         var host = Orchestrator.Instance.FindHost(car);
         if (host == null)
         {
@@ -50,7 +58,6 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
 
         var go = new GameObject(Naming.Create("ProfileEditor"));
         DontDestroyOnLoad(go);
-        go.AddComponent<TurboTooltipLayer>();
         var editor = go.AddComponent<ProfileEditor>();
         editor.Initialize(car, host, car.carLivery.id);
         editor.Closed += OnEditorClosed;

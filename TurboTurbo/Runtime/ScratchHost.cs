@@ -10,9 +10,14 @@ internal static class ScratchHost
     {
         var liveryId = car.carLivery.id;
 
-        // TryGetProfile already returns a fresh instance, the user profile needs a clone
-        var profile = ProfileRepository.TryGetProfile(car)
-            ?? ProfileRepository.TryGetUserProfile(liveryId)?.Clone();
+        // TryGetProfile already returns a fresh instance, the user profile needs a clone.
+        // While authoring, the user tier is skipped entirely, to prevent it from interfering
+        // with the authored profiles.
+        var profile = ProfileRepository.TryGetProfile(car);
+        if (profile == null && !ProfileRepository.IsAuthoring)
+        {
+            profile = ProfileRepository.TryGetUserProfile(liveryId)?.Clone();
+        }
 
         if (profile == null)
         {
