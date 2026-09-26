@@ -59,7 +59,7 @@ internal sealed class ExhaustOffsetMarker : MonoBehaviour
             _materials[a] = new Material(shader)
             {
                 color = AxisColors[a],
-                name = $"TurboTurbo.ExhaustMarkerMat[{a}]",
+                name = Naming.Create($"ExhaustMarkerMat[{a}]"),
                 hideFlags = HideFlags.HideAndDontSave,
             };
         }

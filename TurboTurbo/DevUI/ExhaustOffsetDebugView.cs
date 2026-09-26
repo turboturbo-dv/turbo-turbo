@@ -11,7 +11,7 @@ internal sealed class ExhaustOffsetDebugView : MonoBehaviour
 {
     private const float HalfLength = 0.25f;
     private const float LineWidth = 0.01f;
-    private const string MarkerPrefix = "TurboTurbo.OffsetMarker";
+    private static readonly string MarkerPrefix = Naming.Create("OffsetMarker");
 
     private static readonly Vector3[] Axes = { Vector3.right, Vector3.up, Vector3.forward };
     private static readonly Color[] AxisColors = { Color.red, Color.green, Color.blue };

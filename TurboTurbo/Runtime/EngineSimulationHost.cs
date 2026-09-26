@@ -254,7 +254,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private SmokeParticles CreateSmokeEmitter(int index, SmokeParticles.Settings tuning,
         ExhaustSmokeModel.Settings smokeTuning)
     {
-        var go = new GameObject($"TurboTurbo.Smoke[{index}]");
+        var go = new GameObject(Naming.Create($"Smoke[{index}]"));
         ExhaustPlacement.AttachTo(go.transform, TrainCar.transform);
         var smoke = go.AddComponent<SmokeParticles>();
         smoke.tuning = tuning;
@@ -269,7 +269,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     private ShimmerParticles CreateShimmerEmitter(int index, ShimmerParticles.Settings tuning)
     {
-        var go = new GameObject($"TurboTurbo.Shimmer[{index}]");
+        var go = new GameObject(Naming.Create($"Shimmer[{index}]"));
         ExhaustPlacement.AttachTo(go.transform, TrainCar.transform);
         var shimmer = go.AddComponent<ShimmerParticles>();
         shimmer.tuning = tuning;

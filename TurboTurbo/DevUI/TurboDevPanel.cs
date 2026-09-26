@@ -31,7 +31,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     public static TurboDevPanel Create(Rect initialRect)
     {
-        var go = new GameObject("TurboTurbo.DevPanel");
+        var go = new GameObject(Naming.Create("DevPanel"));
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();

@@ -15,7 +15,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
 
     public static ProfileEditorPresenter Create()
     {
-        var go = new GameObject("TurboTurbo.ProfileEditorPresenter");
+        var go = new GameObject(Naming.Create("ProfileEditorPresenter"));
         DontDestroyOnLoad(go);
         return go.AddComponent<ProfileEditorPresenter>();
     }
@@ -48,7 +48,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
             if (host == null) return;
         }
 
-        var go = new GameObject("TurboTurbo.ProfileEditor");
+        var go = new GameObject(Naming.Create("ProfileEditor"));
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
         var editor = go.AddComponent<ProfileEditor>();

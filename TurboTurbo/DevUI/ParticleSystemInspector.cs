@@ -50,13 +50,11 @@ internal static class ParticleSystemInspector
         return sb.ToString().TrimEnd();
     }
 
-    private static bool IsOurs(ParticleSystem ps) => ps.transform.name.StartsWith("TurboTurbo.");
-
     private static void Describe(ParticleSystem ps, string path, int depth, StringBuilder sb)
     {
         var pad = new string(' ', depth * 2 + 2);
 
-        sb.AppendLine($"{pad}[PS] '{path}'{(IsOurs(ps) ? " (ours)" : "")} " +
+        sb.AppendLine($"{pad}[PS] '{path}'{(Naming.IsOurs(ps.transform.name) ? " (ours)" : "")} " +
                       $"goActive={ps.gameObject.activeInHierarchy} emitting={ps.isEmitting} particles={ps.particleCount}");
         sb.AppendLine($"{pad}  transform: world={ps.transform.position} local={ps.transform.localPosition} rot={ps.transform.eulerAngles}");
 

@@ -19,7 +19,7 @@ internal sealed class DevPanelPresenter : MonoBehaviour
 
     public static DevPanelPresenter Create(Settings settings)
     {
-        var go = new GameObject("TurboTurbo.DevPanelPresenter");
+        var go = new GameObject(Naming.Create("DevPanelPresenter"));
         DontDestroyOnLoad(go);
         var presenter = go.AddComponent<DevPanelPresenter>();
         presenter._settings = settings;

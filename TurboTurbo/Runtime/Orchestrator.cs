@@ -38,7 +38,7 @@ internal sealed class Orchestrator : MonoBehaviour
     public static Orchestrator Create()
     {
         // the game has SingletonBehaviour, which is probably what we want, but this works fine
-        var go = new GameObject("TurboTurbo.Orchestrator");
+        var go = new GameObject(Naming.Create("Orchestrator"));
         DontDestroyOnLoad(go);
         var orchestrator = go.AddComponent<Orchestrator>();
         Instance = orchestrator;

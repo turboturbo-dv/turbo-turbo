@@ -10,8 +10,6 @@ namespace TurboTurbo.Runtime;
 /// </summary>
 internal static class ExhaustTargets
 {
-    private const string OwnPrefix = "TurboTurbo.";
-
     public record struct Candidate(ParticleSystem Ps, string Name, string Path);
 
     /// <summary>
@@ -49,7 +47,7 @@ internal static class ExhaustTargets
         {
             var parent = ps.transform.parent;
             if (parent != null && parent.GetComponent<ParticleSystem>() != null) continue;
-            if (ps.transform.name.StartsWith(OwnPrefix, StringComparison.Ordinal)) continue;
+            if (Naming.IsOurs(ps.transform.name)) continue;
 
             candidates.Add(new Candidate(ps, ps.transform.name, PathOf(carTransform, ps.transform)));
         }
