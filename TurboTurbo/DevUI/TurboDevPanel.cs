@@ -131,7 +131,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
             return;
         }
 
-        var profile = host.CloneProfile();
+        var profile = host.Profile.Clone();
 
         var error = ProfileRepository.SaveProfile(profile);
         if (error != null)

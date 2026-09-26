@@ -1,6 +1,7 @@
-using TurboTurbo.Profiles;
+using System.Collections.Generic;
+using System.Linq;
 
-using UnityEngine;
+using TurboTurbo.Profiles;
 
 namespace TurboTurbo.Runtime;
 
@@ -18,18 +19,10 @@ internal static class ScratchHost
 
         if (profile == null)
         {
-            var ps = car.GetFirstComponentInChildren<ParticleSystem>(
-                true, p => p.name.Contains("ExhaustEngineSmoke"));
-            if (ps == null)
-            {
-                Log.Warn($"no exhaust particle system found on '{car.ID}', cannot create a profile");
-                return null;
-            }
-
             profile = new LocoProfile
             {
                 LiveryId = liveryId,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Name = ps.name }],
+                Exhausts = [DefaultExhaust(car)],
             };
         }
 
@@ -44,5 +37,20 @@ internal static class ScratchHost
         host.Configure(profile);
         Orchestrator.Instance.Hosts.Add(host);
         return host;
+    }
+
+    private static LocoExhaust DefaultExhaust(TrainCar car)
+    {
+        var candidates = ExhaustTargets.FindCandidates(car);
+        var names = candidates.Select(candidate => candidate.Name).ToList();
+
+        var pick = ExhaustTargets.PickDefault(names);
+        if (pick >= 0)
+        {
+            return new LocoExhaust { Kind = ExhaustKind.Replacement, Name = candidates[pick].Name };
+        }
+
+        Log.Info($"no exhaust particle system on '{car.ID}', adding an independent exhaust");
+        return new LocoExhaust { Kind = ExhaustKind.Independent };
     }
 }

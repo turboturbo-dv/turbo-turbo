@@ -23,7 +23,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private Rect _windowRect = new(460f, 20f, 450f, 170f);
 
     private EngineSimulationHost _boundHost;
-    private readonly List<Section> _sections = new();
+    private readonly List<IEditorPanel> _sections = new();
     private bool _needsShrink;
     private bool _requiresReconfigure;
     private TweakGrade _grade = TweakGrade.Basic;
@@ -154,12 +154,15 @@ internal sealed class ProfileEditor : MonoBehaviour
         AddSection(ShimmerEmitterSection.Build(host, MarkRequiresReconfigure, () => _needsShrink = true));
     }
 
-    private void AddSection(Section section)
+    private void AddSection(IEditorPanel panel)
     {
-        if (section == null) return;
-        section.MaxGrade = _grade;
-        section.HeaderWidth = (_windowRect.width - GUI.skin.window.padding.horizontal) * 0.4f;
-        _sections.Add(section);
+        if (panel == null) return;
+        if (panel is Section section)
+        {
+            section.MaxGrade = _grade;
+            section.HeaderWidth = (_windowRect.width - GUI.skin.window.padding.horizontal) * 0.4f;
+        }
+        _sections.Add(panel);
     }
 
     private void DrawFooter()
@@ -167,7 +170,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Save"))
         {
-            var error = ProfileRepository.SaveProfile(_host.CloneProfile());
+            var error = ProfileRepository.SaveProfile(_host.Profile.Clone());
             if (error != null) Log.Warn($"could not save profile '{_liveryId}': {error}");
             else
             {
@@ -186,7 +189,7 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void SwitchCharger(ChargerKind kind)
     {
-        var profile = _host.CloneProfile();
+        var profile = _host.Profile.Clone();
         profile.ChargerKind = kind;
 
         var error = profile.Complete();

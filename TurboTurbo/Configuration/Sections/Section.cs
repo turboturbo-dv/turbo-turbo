@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace TurboTurbo.Configuration.Sections;
 
-internal sealed class Section
+internal sealed class Section : IEditorPanel
 {
     // currently, we can get away with having one action per section.
     // if we encounter more complex situations, we might have to set it per spec

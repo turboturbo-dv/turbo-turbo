@@ -48,9 +48,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private Logger _log;
     private bool _simBound;
     private bool _loggedNoSim;
-    private bool _effectsBound;
 
-    private LocoProfile _configuration;
     private SimController _simController;
 
     private Port _throttlePort;
@@ -67,9 +65,12 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     public ExhaustVelocitySettings Velocity { get; private set; }
 
     /// <summary>The profile this host is running.</summary>
-    public LocoProfile Profile => _configuration;
+    public LocoProfile Profile { get; private set; }
 
     public bool Bound => _simBound && CombustionModel != null;
+
+    /// <summary>True once the exhaust emitters have been built from the profile.</summary>
+    public bool EffectsBound { get; private set; }
 
     public bool EngineOn => CombustionModel != null && _engineOn();
 
@@ -77,12 +78,9 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     public string CarId => TrainCar.ID;
 
-    /// <summary>Returns a clone of the underlying <see cref="LocoProfile"/>.</summary>
-    public LocoProfile CloneProfile() => _configuration.Clone();
-
     public EngineSimulationHost Configure(LocoProfile configuration)
     {
-        _configuration = configuration;
+        Profile = configuration;
 
         // per-car context: logs from multiple locos stay distinguishable
         var car = GetComponent<TrainCar>();
@@ -112,7 +110,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         // port units (writable straight to the governor port), so the adapter
         // does not have to invert the game's fuel-per-stroke mapping itself.
 
-        if (_effectsBound)
+        if (EffectsBound)
         {
             UpdateEffects(engineOn);
         }
@@ -132,8 +130,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         _simBound = true;
-        _log.Info($"sim bound ({_configuration.ChargerKind} charger, " +
-                     $"{_configuration.Exhausts.Count} exhaust(s))");
+        _log.Info($"sim bound ({Profile.ChargerKind} charger, " +
+                     $"{Profile.Exhausts.Count} exhaust(s))");
 
         TryBindCombustion();
 
@@ -187,7 +185,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             () => _throttlePort.Value,
             _fuelNorm,
             () => rpmPort.Value,
-            _configuration.BuildCharger());
+            Profile.BuildCharger());
 
         _log.Info($"combustion bound (throttle: {_throttlePort.id}, " +
                      $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
@@ -204,9 +202,9 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         TrainCar = GetComponent<TrainCar>();
         Exhausts.Clear();
 
-        Velocity = _configuration.Velocity;
+        Velocity = Profile.Velocity;
 
-        var exhausts = _configuration.Exhausts;
+        var exhausts = Profile.Exhausts;
         for (var i = 0; i < exhausts.Count; i++)
         {
             var exhaust = exhausts[i];
@@ -223,14 +221,14 @@ internal sealed class EngineSimulationHost : MonoBehaviour
                 Mouth = TrainCar.transform.InverseTransformPoint(exhaustTransform.position),
                 Offset = exhaust.Offset,
                 Source = exhaust,
-                Smoke = CreateSmokeEmitter(i, _configuration.SmokeEmitter, _configuration.Smoke),
-                Shimmer = CreateShimmerEmitter(i, _configuration.ShimmerEmitter)
+                Smoke = CreateSmokeEmitter(i, Profile.SmokeEmitter, Profile.Smoke),
+                Shimmer = CreateShimmerEmitter(i, Profile.ShimmerEmitter)
             };
             emitters.Reposition();
             Exhausts.Add(emitters);
         }
 
-        _effectsBound = true;
+        EffectsBound = true;
         _log.Info($"effects bound ({Exhausts.Count} exhaust emitter(s))");
     }
 
