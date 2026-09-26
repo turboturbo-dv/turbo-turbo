@@ -42,7 +42,7 @@ namespace TurboTurboTests
             var status = ProfileStatus.Resolve(null, Profile(), "Some Mod", Profile());
 
             status.Kind.ShouldBe(ProfileStatusKind.Supplied);
-            status.Label.ShouldBe("supplied by Some Mod (overrides built-in)");
+            status.Label.ShouldBe("mod: Some Mod (overrides built-in)");
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace TurboTurboTests
             var status = ProfileStatus.Resolve(Profile(), Profile(), "Some Mod", Profile());
 
             status.Kind.ShouldBe(ProfileStatusKind.User);
-            status.Label.ShouldBe("your profile (overrides supplied + built-in)");
+            status.Label.ShouldBe("yours (overrides mod + built-in)");
         }
 
         [Fact]
@@ -60,7 +60,7 @@ namespace TurboTurboTests
             var status = ProfileStatus.Resolve(Profile(), null, null, null);
 
             status.Kind.ShouldBe(ProfileStatusKind.User);
-            status.Label.ShouldBe("your profile");
+            status.Label.ShouldBe("yours");
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace TurboTurboTests
             var status = ProfileStatus.Resolve(Profile(enabled: false), Profile(), "Some Mod", Profile());
 
             status.Kind.ShouldBe(ProfileStatusKind.UserDisabled);
-            status.Label.ShouldBe("your profile - disabled, no effects");
+            status.Label.ShouldBe("yours (disabled)");
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace TurboTurboTests
             var status = ProfileStatus.Resolve(null, Profile(enabled: false), "Some Mod", Profile());
 
             status.Kind.ShouldBe(ProfileStatusKind.SuppliedDisabled);
-            status.Label.ShouldBe("supplied by Some Mod - disabled, no effects");
+            status.Label.ShouldBe("mod: Some Mod (disabled)");
         }
     }
 }
