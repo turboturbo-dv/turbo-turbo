@@ -48,9 +48,10 @@ internal sealed class Section : IEditorPanel
         return spec;
     }
 
-    public void AddButton(string key, string tooltip, Action action, TweakGrade grade = TweakGrade.Advanced)
+    public void AddProgressButton(string key, string tooltip, Action action,
+        Func<float> progress = null, TweakGrade grade = TweakGrade.Advanced)
     {
-        _specs.Add(new ButtonSpec(key, tooltip, action, grade));
+        _specs.Add(new ProgressButtonSpec(key, tooltip, action, grade, progress));
     }
 
     public void AddInt(string key, string tooltip, int min, int max, bool requiresReconfigure,

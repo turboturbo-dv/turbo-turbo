@@ -83,6 +83,33 @@ internal static class Styles
         return texture;
     }
 
+    private static Texture2D _progressFill;
+
+    public static Texture2D ProgressFill
+    {
+        get
+        {
+            if (_progressFill == null) _progressFill = FlatBackground(0x60);
+            return _progressFill;
+        }
+    }
+
+    private static GUIStyle _progressLabel;
+
+    public static GUIStyle ProgressLabel
+    {
+        get
+        {
+            if (_progressLabel == null)
+            {
+                _progressLabel = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
+                _progressLabel.normal.textColor = GUI.skin.button.normal.textColor;
+            }
+
+            return _progressLabel;
+        }
+    }
+
     private const byte BackgroundShade = 0x32;
 
     private static Texture2D _background;

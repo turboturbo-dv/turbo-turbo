@@ -130,10 +130,6 @@ internal sealed class ExhaustsPanel : IEditorPanel
         {
             DrawDropdown(index, entry.Scope.Name);
         }
-        else
-        {
-            GUILayout.Label("adds a new exhaust emitter at the car origin.", Styles.WrappedLabel);
-        }
 
         var position = _openPosition == index;
         GUI.enabled = bound;

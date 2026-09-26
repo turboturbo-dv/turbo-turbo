@@ -187,17 +187,19 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
 
 }
 
-internal sealed class ButtonSpec : ITweakSpec
+internal sealed class ProgressButtonSpec : ITweakSpec
 {
     private readonly string _tooltip;
     private readonly Action _action;
+    private readonly Func<float> _progress;
 
-    public ButtonSpec(string key, string tooltip, Action action, TweakGrade grade)
+    public ProgressButtonSpec(string key, string tooltip, Action action, TweakGrade grade, Func<float> progress)
     {
         Key = key;
         Grade = grade;
         _tooltip = tooltip;
         _action = action;
+        _progress = progress;
     }
 
     public string Key { get; }
@@ -212,6 +214,32 @@ internal sealed class ButtonSpec : ITweakSpec
 
     public void Draw()
     {
-        if (GUILayout.Button(new GUIContent(Key, _tooltip), GUILayout.Width(Styles.LabelWidth))) _action();
+        var button = GUI.skin.button;
+        var height = button.CalcHeight(new GUIContent(Key), Styles.LabelWidth);
+        var rect = GUILayoutUtility.GetRect(Styles.LabelWidth, height);
+
+        if (GUI.Button(rect, GUIContent.none, button)) _action();
+
+        var progress = _progress != null ? Mathf.Clamp01(_progress()) : 0f;
+        if (progress > 0f)
+        {
+            var border = button.border;
+            var insetX = (float)Mathf.Max(border.left, border.right);
+            var insetY = (float)Mathf.Max(border.top, border.bottom);
+            if (insetX <= 0f) insetX = 3f;
+            if (insetY <= 0f) insetY = 3f;
+
+            var inner = new Rect(rect.x + insetX, rect.y + insetY,
+                rect.width - insetX * 2f, rect.height - insetY * 2f);
+
+            var prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, 0.7f);
+            GUI.DrawTexture(new Rect(inner.x, inner.y, inner.width * progress, inner.height),
+                Styles.ProgressFill, ScaleMode.StretchToFill);
+            GUI.color = prev;
+        }
+
+        var label = _progress != null ? $"{Key}  {Mathf.RoundToInt(progress * 100f)}%" : Key;
+        GUI.Label(rect, new GUIContent(label, _tooltip), Styles.ProgressLabel);
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using TurboTurbo.Modeling;
 using TurboTurbo.Runtime;
@@ -72,8 +73,9 @@ internal static class SmokeModelSection
                                     " * Values below 1 make the effect more uniform regardless of RPM", 0.1f, 5f,
             m => m.Tuning.OilRpmExponent, (m, v) => m.Tuning.OilRpmExponent = v);
 
-        section.AddButton("Fill wet stack", "Immediately fill the wet stack to 100%, to test the effect.",
-            () => { foreach (var m in models) m.FillWetStack(); }, TweakGrade.Basic);
+        section.AddProgressButton("Fill wet stack", "Immediately fill the wet stack to 100%, to test the effect.",
+            () => { foreach (var m in models) m.FillWetStack(); },
+            () => models.Max(m => m.WetStackAccumulator), TweakGrade.Basic);
 
         return section;
 
