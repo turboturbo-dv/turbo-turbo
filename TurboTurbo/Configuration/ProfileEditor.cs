@@ -129,8 +129,13 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void DrawGradeRow()
     {
-        var advanced = GUILayout.Toggle(_grade == TweakGrade.Advanced, "advanced mode");
-        var next = advanced ? TweakGrade.Advanced : TweakGrade.Basic;
+        var advanced = GUILayout.Toggle(_grade == TweakGrade.Advanced,
+            new GUIContent("advanced mode",
+                "Show advanced tuning parameters.\n" +
+                "You do not need to change any advanced parameters if you just want to make a profile work.\n\n" +
+                "Adjusting these parameters can have unintended effects and may cause this profile to override " +
+                "future model enhancements, so it is recommended to only change them when you cannot achieve the " +
+                "desired effect any other way.")); var next = advanced ? TweakGrade.Advanced : TweakGrade.Basic;
         if (next == _grade) return;
 
         _grade = next;
