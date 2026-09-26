@@ -13,7 +13,19 @@ namespace TurboTurbo.Configuration;
 internal sealed class ProfileEditor : MonoBehaviour
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("editor");
-    private static readonly string[] ChargerOptions = { "Turbo", "Atmospheric" };
+    private static readonly GUIContent[] ChargerOptions =
+    {
+        new GUIContent("Turbo",
+            "Simulate a turbocharger on this locomotive.\n" +
+            "Turbocharged engines produce a lot of soot while throttling up fast, as it takes a while for the turbo to " +
+            "spin up.\n\n" +
+            "Adjust the 'Turbocharger' section below to tune this behaviour."),
+        new GUIContent("Atmospheric",
+            "Simulate natural aspiration on this locomotive.\n" +
+            "Naturally aspirated engines do not generally produce much soot, although at high RPM airflow may become" +
+            "restricted, resulting in soot when running at maximum power.\n\n" +
+            "Adjust the 'Atmospheric charger' section below to tune this behaviour."),
+    };
 
     internal event Action Closed;
 
@@ -101,7 +113,7 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void DrawChargerRow()
     {
-        GUILayout.Label("Select a charger model to use. Note that the atmospheric model is also applicable to supercharged / roots-blown engines.", Styles.WrappedLabel);
+        GUILayout.Label("Select a charger model to use.", Styles.WrappedLabel);
 
         var selected = _host.Profile.ChargerKind == ChargerKind.Atmospheric ? 1 : 0;
         var next = GUILayout.Toolbar(selected, ChargerOptions);

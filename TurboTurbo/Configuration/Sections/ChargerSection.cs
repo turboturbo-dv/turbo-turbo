@@ -8,10 +8,12 @@ namespace TurboTurbo.Configuration.Sections;
 internal static class ChargerSection
 {
     private const string LambdaCalibrationToolTip =
-        "Calibrates Lambda (air-to-fuel ratio) inside the engine.\n" +
-        "Affects the amount of soot the engine produces at all power levels.\n" +
+        "Adjust this to calibrate Lambda (air-to-fuel ratio) inside the engine.\n" +
+        "Affects the amount of soot the engine produces at all power levels:\n" +
         " * Raise this to make the engine run richer.\n" +
-        " * Lower it to make it run leaner.";
+        " * Lower it to make it run leaner.\n\n" +
+        "As a starting guideline, try to tune it so that lambda sits just above 1.3" +
+        "at full load. ";
 
     public static Section Build(EngineSimulationHost host, Action onRequiresReconfigure, Action onToggle)
     {

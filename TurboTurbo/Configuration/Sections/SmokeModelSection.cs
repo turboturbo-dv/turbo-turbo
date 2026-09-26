@@ -24,10 +24,10 @@ internal static class SmokeModelSection
         Add("Clean burn load", "Load at which the idle haze is fully gone.", 0.05f, 1f,
             m => m.Tuning.CleanBurnHeat, (m, v) => m.Tuning.CleanBurnHeat = v);
 
-        Add("Clean alpha (min load)", "Clean exhaust opacity at zero load.", 0f, 0.2f,
+        Add("Clean opacity (min load)", "Clean exhaust opacity at zero load.", 0f, 0.2f,
             m => m.Tuning.CleanMinHeatAlpha, (m, v) => m.Tuning.CleanMinHeatAlpha = v, TweakGrade.Basic);
 
-        Add("Clean alpha (max load)", "Clean exhaust opacity at full load.", 0f, 0.5f,
+        Add("Clean opacity (max load)", "Clean exhaust opacity at full load.", 0f, 0.5f,
             m => m.Tuning.CleanMaxHeatAlpha, (m, v) => m.Tuning.CleanMaxHeatAlpha = v, TweakGrade.Basic);
 
         Add("Soot onset lambda", "Lambda where soot starts forming. Normally does not need to be changed, adjust lambda calibration instead.", 0.9f, 1.5f,
@@ -43,8 +43,8 @@ internal static class SmokeModelSection
         Add("Soot opacity", "Maximum opacity of heavy soot. Lower this to make soot less intense.", 0f, 1f,
             m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v, TweakGrade.Basic);
 
-        Add("Wet stack mist strength", "Intensity of the wet-stacking effect. Prolonged idling causes unburned fuel to" +
-                                       "accumulate in the exhaust stack, which is released as white smoke when throttling" +
+        Add("Wet stack mist strength", "Intensity of the wet-stacking effect. Prolonged idling causes unburned fuel to " +
+                                       "accumulate in the exhaust stack, which is released as white smoke when throttling " +
                                        "up.\nHigher values increase the intensity of this effect.", 0f, 5f,
             m => m.Tuning.WetStackMistStrength, (m, v) => m.Tuning.WetStackMistStrength = v, TweakGrade.Basic);
 
