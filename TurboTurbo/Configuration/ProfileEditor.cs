@@ -38,6 +38,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private readonly List<(string Key, IEditorPanel Panel)> _sections = new();
     private readonly Dictionary<string, bool> _openState = new();
     private ExhaustMarkerController _markerController;
+    private ColorPickerWindow _colorPicker;
     private bool _needsShrink;
     private bool _requiresReconfigure;
     private TweakGrade _grade = TweakGrade.Basic;
@@ -50,6 +51,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         _host = host;
         _liveryId = liveryId;
         _markerController = new ExhaustMarkerController(() => _host);
+        _colorPicker = gameObject.AddComponent<ColorPickerWindow>();
     }
 
     private void CloseSelf() => Destroy(gameObject);
@@ -134,6 +136,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         _grade = next;
         SnapshotOpenState();
         _markerController?.Clear();
+        _colorPicker?.Close();
         _sections.Clear();
         _needsShrink = true;
     }
@@ -143,6 +146,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         if (_host != _boundHost)
         {
             SnapshotOpenState();
+            _colorPicker?.Close();
             _boundHost = _host;
             _sections.Clear();
         }
@@ -174,6 +178,7 @@ internal sealed class ProfileEditor : MonoBehaviour
             _markerController.SetTarget));
         AddPanel("charger", ChargerSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddPanel("smoke-model", SmokeModelSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("colors", ColorsSection.Build(_host, () => _needsShrink = true, spec => _colorPicker.Open(spec)));
         AddPanel("velocity", VelocitySection.Build(_host, () => _needsShrink = true));
         AddPanel("smoke-emitter", SmokeEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddPanel("shimmer-emitter", ShimmerEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
@@ -243,6 +248,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void Rebind(LocoProfile profile)
     {
         _markerController?.Clear();
+        _colorPicker?.Close();
 
         if (_host != null)
         {
@@ -260,6 +266,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         Closed?.Invoke();
 
         _markerController?.Clear();
+        _colorPicker?.Close();
 
         var orchestrator = Orchestrator.Instance;
         if (_host != null)

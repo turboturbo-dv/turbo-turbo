@@ -1,8 +1,6 @@
-using TurboTurbo.Configuration;
-
 using UnityEngine;
 
-namespace TurboTurbo.DevUI;
+namespace TurboTurbo.Configuration;
 
 internal sealed class ColorPickerWindow : MonoBehaviour
 {

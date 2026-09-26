@@ -21,16 +21,16 @@ internal static class ColorsSection
         if (models.Count == 0) return null;
 
         var first = models[0];
-        var section = new Section("smoke colors") { OnToggle = onToggle };
-        Wire(section, "colorIdleHaze", "Haze tint at idle and low load.", onRequestEdit,
+        var section = new Section("Smoke colours") { OnToggle = onToggle };
+        Wire(section, "Idle haze tint", "Haze tint at idle and low load.", onRequestEdit,
             () => first.Tuning.ColorIdleHaze, v => { foreach (var m in models) m.Tuning.ColorIdleHaze = v; });
-        Wire(section, "colorCleanBurn", "Clean burn tint.", onRequestEdit,
+        Wire(section, "Clean burn tint", "Tint of clean-burning exhaust.", onRequestEdit,
             () => first.Tuning.ColorCleanBurn, v => { foreach (var m in models) m.Tuning.ColorCleanBurn = v; });
-        Wire(section, "colorHeavySoot", "Soot tint.", onRequestEdit,
+        Wire(section, "Soot tint", "Tint of heavy soot.", onRequestEdit,
             () => first.Tuning.ColorHeavySoot, v => { foreach (var m in models) m.Tuning.ColorHeavySoot = v; });
-        Wire(section, "colorWetStack", "Wet stack burn tint.", onRequestEdit,
+        Wire(section, "Wet stack tint", "Tint of wet-stack vapour.", onRequestEdit,
             () => first.Tuning.ColorWetStack, v => { foreach (var m in models) m.Tuning.ColorWetStack = v; });
-        Wire(section, "colorOilBurn", "Oil burn tint.", onRequestEdit,
+        Wire(section, "Oil tint", "Tint of burning engine oil.", onRequestEdit,
             () => first.Tuning.ColorOilBurn, v => { foreach (var m in models) m.Tuning.ColorOilBurn = v; });
         return section;
     }

@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
-using TurboTurbo.Configuration.Sections;
 using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
@@ -16,14 +14,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
     private int _selected;
     private readonly Logger _log = Log.ForContext("devpanel");
 
-    private EngineSimulationHost _boundHost;
-    private readonly List<Section> _sections = new();
-    private bool _needsShrink;
-
     private string _diagLine = "orchestrator: ?\nspawner: ?";
     private float _diagTimer;
-
-    private ColorPickerWindow _colorPicker;
 
     public Rect WindowRect { get; private set; } = new(20f, 20f, 360f, 120f);
 
@@ -33,7 +25,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
         DontDestroyOnLoad(go);
         go.AddComponent<TurboTooltipLayer>();
         var panel = go.AddComponent<TurboDevPanel>();
-        panel._colorPicker = go.AddComponent<ColorPickerWindow>();
         panel.WindowRect = initialRect;
         return panel;
     }
@@ -50,15 +41,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private void OnGUI()
     {
-        if (_needsShrink)
-        {
-            // not correct, but next draw will resize the window to fit the content
-            var shrinkRect = WindowRect;
-            shrinkRect.height = 10f;
-            WindowRect = shrinkRect;
-            _needsShrink = false;
-        }
-
         WindowRect = GUILayout.Window(GetInstanceID(), WindowRect, DrawWindow, "TurboTurbo Dev UI");
     }
 
@@ -69,8 +51,6 @@ internal sealed class TurboDevPanel : MonoBehaviour
         DrawDiagnostics();
         GUILayout.Space(6f);
         DrawTelemetry();
-        GUILayout.Space(6f);
-        DrawSections();
         GUILayout.Space(4f);
         DrawDiagnosticsButtons();
 
@@ -154,46 +134,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
         ParticleSystemInspector.Dump(car);
     }
 
-    private void DrawSections()
-    {
-        var host = CurrentHost();
-        if (host != _boundHost)
-        {
-            _boundHost = host;
-            BuildSections(host);
-        }
-
-        if (_sections.Count == 0)
-        {
-            GUILayout.Label("no target");
-            return;
-        }
-
-        foreach (var section in _sections)
-        {
-            section.Draw();
-        }
-    }
-
     private EngineSimulationHost CurrentHost()
     {
         var hosts = Orchestrator.Instance.Hosts;
         return hosts.Count == 0 ? null : hosts[_selected];
-    }
-
-    private void BuildSections(EngineSimulationHost host)
-    {
-        _sections.Clear();
-        _colorPicker.Close();
-        if (host == null) return;
-
-        AddSection(ColorsSection.Build(host, () => _needsShrink = true,
-            spec => spec.RequestEdit += () => _colorPicker.Open(spec)));
-    }
-
-    private void AddSection(Section section)
-    {
-        if (section != null) _sections.Add(section);
     }
 
     private void PickDefaultTarget()
