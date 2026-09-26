@@ -13,29 +13,21 @@ namespace TurboTurbo.Profiles;
 /// </summary>
 internal static class LiveryCatalog
 {
-    internal record struct LiveryInfo(string Id, string TypeId, string LocalizationKey, bool IsLoco, bool IsHidden);
+    internal record struct LiveryInfo(string Id, string TypeId, bool IsLoco, bool IsHidden);
 
-    internal static List<LiveryInfo> All()
+    internal static List<LiveryInfo> LocoLiveries()
     {
-        var model = DVObjectModel.current ?? Globals.G?.Types;
-        if (model?.Liveries == null) return new List<LiveryInfo>();
+        var model = DVObjectModel.current ? DVObjectModel.current : Globals.G.Types;
+        if (model == null || model.Liveries == null) return [];
 
         return model.Liveries
             .Where(livery => livery != null)
             .Select(livery => new LiveryInfo(
                 livery.id,
                 livery.parentType != null ? livery.parentType.id : "",
-                livery.localizationKey,
                 livery.parentType != null && CarTypes.IsLocomotive(livery),
                 livery.isHidden))
-            .ToList();
-    }
-
-    internal static List<LiveryInfo> LocoLiveries()
-    {
-        // we may want to filter further here
-        return All()
-            .Where(livery => livery.IsLoco && !livery.IsHidden)
+            .Where(livery => livery is {IsLoco: true, IsHidden: false})
             .OrderBy(livery => livery.Id, StringComparer.Ordinal)
             .ToList();
     }

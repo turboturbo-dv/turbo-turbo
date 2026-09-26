@@ -46,23 +46,7 @@ public static class Main
         entry.OnGUI = SettingsPanel.Draw;
         entry.OnSaveGUI = saveEntry => _settings.Save(saveEntry);
 
-        LogDiscoveredLiveries();
-
         Log.ForContext("main").Info("TurboTurbo ready!");
-    }
-
-    // temporary diagnostic: what the game's livery catalog actually contains, incl. mod-added
-    private static void LogDiscoveredLiveries()
-    {
-        var log = Log.ForContext("liveries");
-        var liveries = LiveryCatalog.All();
-        log.Info($"discovered {liveries.Count} liveries");
-
-        foreach (var livery in liveries)
-        {
-            log.Info($"  {livery.Id} | type={livery.TypeId} | loco={livery.IsLoco} | " +
-                     $"hidden={livery.IsHidden} | key={livery.LocalizationKey}");
-        }
     }
 
     private static bool OnToggle(UnityModManager.ModEntry entry, bool isOn)
