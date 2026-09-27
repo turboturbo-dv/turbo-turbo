@@ -17,7 +17,7 @@ public sealed class TurboCharger : ICharger
         internal const float DefaultBoostChargeMultiplier = 1.125f;
         internal const float DefaultRpmBoostExponent = 1.2f;
         internal const float DefaultTauUp = 3.0f;
-        internal const float DefaultTauDown = 1.0f;
+        internal const float DefaultTauDown = 1.5f;
         internal const float DefaultMinSpoolTau = 0.5f;
         internal const float DefaultThermalK = 0.8f;
         internal const float DefaultSurgeRateThreshold = 15f;
@@ -80,7 +80,7 @@ public sealed class TurboCharger : ICharger
     public float ExhaustHeat { get; private set; }
 
     /// <summary>
-    /// Per-stroke cylinder charge. 1.0 = naturally aspirated; boost raises it further, up to 1 + BoostChargeMultiplier
+    /// Per-stroke cylinder charge.
     /// </summary>
     public float Charge => 1f + _tuning.BoostChargeMultiplier * Boost;
 
