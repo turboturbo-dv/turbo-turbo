@@ -438,7 +438,7 @@ namespace TurboTurboTests
                 @"<TurboCharger><TauUp>5</TauUp></TurboCharger></LocoProfile>");
 
             restored.TurboCharger.TauUp.ShouldBe(5f);
-            restored.TurboCharger.TauDown.ShouldBe(1f);
+            restored.TurboCharger.TauDown.ShouldBe(TurboCharger.Settings.DefaultTauDown);
             restored.Exhausts[0].Offset.ShouldBe(Vector3.zero);
             restored.Validate().ShouldBeNull();
         }

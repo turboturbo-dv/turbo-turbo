@@ -37,9 +37,18 @@ internal static class SmokeModelSection
         Add("Soot opaque lambda", "Lambda where soot reaches maximum opacity.", 0.5f, 1.2f,
             m => m.Tuning.SootOpaqueLambda, (m, v) => m.Tuning.SootOpaqueLambda = v);
 
-        Add("Soot curve shape", "Exponent shaping the soot curve over the lambda deficit." +
+        Add("Soot curve shape", "Exponent shaping the soot curve over the lambda deficit.\n" +
                                 "Values above 1 delay heavy soot until closer to the soot opaque lambda point.", 0.5f, 3f,
             m => m.Tuning.SootCurveExponent, (m, v) => m.Tuning.SootCurveExponent = v);
+
+        Add("Soot increase time", "Time constant (seconds) easing soot in when lambda suddenly drops into the sooty range.\n" +
+                                "Keep this slightly above zero to avoid harsh single-frame transitions.", 0.01f, 0.5f,
+            m => m.Tuning.SootIncreaseTau, (m, v) => m.Tuning.SootIncreaseTau = v);
+
+        Add("Soot decrease time", "Time constant (seconds) easing soot out when lambda recovers.\n" +
+                                 "Keep this a bit higher to represent that it takes a moment for soot to clear from the" +
+                                 " exhaust stack, even during a rapid throttle cut where combustion instantly goes clean.", 0.01f, 2f,
+            m => m.Tuning.SootDecreaseTau, (m, v) => m.Tuning.SootDecreaseTau = v);
 
         Add("Soot opacity", "Maximum opacity of heavy soot. Lower this to make soot less intense.", 0f, 1f,
             m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v, TweakGrade.Basic);

@@ -10,6 +10,7 @@
 - Smoke now fades when close to the camera, to prevent it from clipping through the cab when inside
 - Adjusted clean smoke opacity calculations to be more intuitive
 - Slightly reduced max shimmer intensity on the DM3
+- Soot now has a slight ease-in/out over time, so that it can no longer appear or disappear instantly in a single frame
 - Minor tweaks to the combustion simulation model
 
 ## v0.2.2

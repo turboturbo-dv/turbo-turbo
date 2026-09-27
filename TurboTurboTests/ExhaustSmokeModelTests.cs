@@ -32,6 +32,23 @@ namespace TurboTurboTests
             }
         }
 
+        // run frames until the soot lag converges on the current lambda
+        private static void SettleSoot(ExhaustSmokeModel model, float lambda, float heat)
+        {
+            for (var i = 0; i < 200; i++)
+            {
+                model.Update(lambda, 0f, heat, engineOn: true, 0.016f);
+            }
+        }
+
+        // recover the soot contribution [0..1] from the composited opacity
+        private static float SootFraction(ExhaustSmokeModel model, float heat)
+        {
+            var baseAlpha = Mathf.Lerp(model.Tuning.CleanMinHeatAlpha, model.Tuning.CleanMaxHeatAlpha, heat);
+            var sootAlpha = 1f - (1f - model.Color.a) / (1f - baseAlpha);
+            return sootAlpha / model.Tuning.SootMaxAlpha;
+        }
+
         // ------------------------------------------------------------
         // engine-off guard
         // ------------------------------------------------------------
@@ -107,7 +124,7 @@ namespace TurboTurboTests
         [Fact]
         public void SootyExhaust_IsDarkAndDense()
         {
-            _model.Update(_model.Tuning.SootOpaqueLambda, 0f, 0.5f, engineOn: true, 0.016f);
+            SettleSoot(_model, _model.Tuning.SootOpaqueLambda, 0.5f);
 
             var baseAlpha = Mathf.Lerp(
                 _model.Tuning.CleanMinHeatAlpha, _model.Tuning.CleanMaxHeatAlpha, 0.5f);
@@ -127,6 +144,35 @@ namespace TurboTurboTests
                 model.Color.a.ShouldBeGreaterThanOrEqualTo(last);
                 last = model.Color.a;
             }
+        }
+
+        [Fact]
+        public void Soot_AttacksFasterThanItReleases()
+        {
+            var attack = new ExhaustSmokeModel();
+            attack.Update(2f, 0f, 0.5f, engineOn: true, 0.016f);
+            attack.Update(attack.Tuning.SootOpaqueLambda, 0f, 0.5f, engineOn: true, 0.016f);
+
+            var release = new ExhaustSmokeModel();
+            SettleSoot(release, release.Tuning.SootOpaqueLambda, 0.5f);
+            SootFraction(release, 0.5f).ShouldBe(1f, tolerance: 0.01f);
+            release.Update(2f, 0f, 0.5f, engineOn: true, 0.016f);
+
+            SootFraction(attack, 0.5f).ShouldBeGreaterThan(
+                1f - SootFraction(release, 0.5f),
+                "one frame should darken soot faster than one frame clears it");
+        }
+
+        [Fact]
+        public void EngineOff_ResetsSoot()
+        {
+            SettleSoot(_model, _model.Tuning.SootOpaqueLambda, 0.5f);
+            SootFraction(_model, 0.5f).ShouldBe(1f, tolerance: 0.01f);
+
+            _model.Update(2f, 0f, 0.5f, engineOn: false, 0.016f);
+            _model.Update(2f, 0f, 0.5f, engineOn: true, 0.016f);
+
+            SootFraction(_model, 0.5f).ShouldBe(0f, tolerance: 0.001f);
         }
 
         // ------------------------------------------------------------
@@ -205,12 +251,19 @@ namespace TurboTurboTests
         [Fact]
         public void Settings_CopyConstructor_IsIndependent()
         {
-            var template = new ExhaustSmokeModel.Settings { SootOnsetLambda = 0.5f };
+            var template = new ExhaustSmokeModel.Settings
+            {
+                SootOnsetLambda = 0.5f,
+                SootIncreaseTau = 0.2f,
+                SootDecreaseTau = 1.5f,
+            };
             var clone = new ExhaustSmokeModel.Settings(template);
 
             clone.SootOnsetLambda.ShouldBe(0.5f);
-            clone.SootOnsetLambda = 0.9f;
-            template.SootOnsetLambda.ShouldBe(0.5f);
+            clone.SootIncreaseTau.ShouldBe(0.2f);
+            clone.SootDecreaseTau.ShouldBe(1.5f);
+            clone.SootIncreaseTau = 0.9f;
+            template.SootIncreaseTau.ShouldBe(0.2f);
         }
 
         // ------------------------------------------------------------
@@ -248,6 +301,23 @@ namespace TurboTurboTests
 
             model.Tuning.WetStackFillHeat.ShouldBeLessThan(model.Tuning.WetStackReleaseHeat);
             model.Tuning.WetStackReleaseHeat.ShouldBeLessThanOrEqualTo(1f);
+        }
+
+        [Fact]
+        public void Validate_ClampsSootTaus()
+        {
+            var model = new ExhaustSmokeModel
+            {
+                Tuning =
+                {
+                    SootIncreaseTau = -1f,
+                    SootDecreaseTau = 0f,
+                },
+            };
+            model.Tuning.Validate();
+
+            model.Tuning.SootIncreaseTau.ShouldBeGreaterThan(0f);
+            model.Tuning.SootDecreaseTau.ShouldBeGreaterThan(0f);
         }
     }
 

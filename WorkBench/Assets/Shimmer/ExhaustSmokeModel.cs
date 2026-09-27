@@ -67,6 +67,8 @@ namespace TurboTurbo.Modeling
             internal const float DefaultSootOnsetLambda = 1.3f;
             internal const float DefaultSootOpaqueLambda = 1.05f;
             internal const float DefaultSootCurveExponent = 1.1f;
+            internal const float DefaultSootIncreaseTau = 0.08f;
+            internal const float DefaultSootDecreaseTau = 0.4f;
             internal const float DefaultSootMaxAlpha = 0.95f;
             internal const float DefaultWetStackFillHeat = 0.1f;
             internal const float DefaultWetStackReleaseHeat = 0.15f;
@@ -94,6 +96,12 @@ namespace TurboTurbo.Modeling
 
             [DefaultValue(DefaultSootCurveExponent)]
             public float SootCurveExponent = DefaultSootCurveExponent;
+
+            [DefaultValue(DefaultSootIncreaseTau)]
+            public float SootIncreaseTau = DefaultSootIncreaseTau;
+
+            [DefaultValue(DefaultSootDecreaseTau)]
+            public float SootDecreaseTau = DefaultSootDecreaseTau;
 
             [DefaultValue(DefaultSootMaxAlpha)]
             public float SootMaxAlpha = DefaultSootMaxAlpha;
@@ -141,6 +149,8 @@ namespace TurboTurbo.Modeling
                 SootOnsetLambda = other.SootOnsetLambda;
                 SootOpaqueLambda = other.SootOpaqueLambda;
                 SootCurveExponent = other.SootCurveExponent;
+                SootIncreaseTau = other.SootIncreaseTau;
+                SootDecreaseTau = other.SootDecreaseTau;
                 SootMaxAlpha = other.SootMaxAlpha;
 
                 WetStackFillHeat = other.WetStackFillHeat;
@@ -172,6 +182,8 @@ namespace TurboTurbo.Modeling
                 WetStackReleaseRate = Mathf.Max(0f, WetStackReleaseRate);
                 CleanBurnHeat = Mathf.Max(epsilon, CleanBurnHeat);
                 SootCurveExponent = Mathf.Max(epsilon, SootCurveExponent);
+                SootIncreaseTau = Mathf.Max(epsilon, SootIncreaseTau);
+                SootDecreaseTau = Mathf.Max(epsilon, SootDecreaseTau);
                 OilRpmExponent = Mathf.Max(epsilon, OilRpmExponent);
 
                 WetStackFillHeat = Mathf.Clamp01(WetStackFillHeat);
@@ -183,6 +195,8 @@ namespace TurboTurbo.Modeling
                 SootOpaqueLambda = Mathf.Min(SootOpaqueLambda, SootOnsetLambda - epsilon);
             }
         }
+
+        private float _soot;
 
         public Settings Tuning { get; set; } = new Settings();
 
@@ -198,6 +212,7 @@ namespace TurboTurbo.Modeling
 
             if (!engineOn)
             {
+                _soot = 0f;
                 Color = Color.clear;
                 return;
             }
@@ -213,9 +228,14 @@ namespace TurboTurbo.Modeling
             var oilFactor = Mathf.Clamp01(s.OilTintStrength * Mathf.Pow(rpmNorm, s.OilRpmExponent));
             baseColor = Color.Lerp(baseColor, s.ColorOilBurn, oilFactor);
 
-            var sootFactor = Mathf.InverseLerp(s.SootOnsetLambda, s.SootOpaqueLambda, lambda);
-            sootFactor = Mathf.Pow(sootFactor, s.SootCurveExponent);
-            var sootAlpha = s.SootMaxAlpha * sootFactor;
+            var sootTarget = Mathf.InverseLerp(s.SootOnsetLambda, s.SootOpaqueLambda, lambda);
+            sootTarget = Mathf.Pow(sootTarget, s.SootCurveExponent);
+
+            // the governor is instant, so lambda can cross the whole sooty band in one
+            // frame; ease soot in/out so opacity cannot snap between 0 and 1
+            var sootTau = sootTarget > _soot ? s.SootIncreaseTau : s.SootDecreaseTau;
+            _soot += (sootTarget - _soot) * (1f - Mathf.Exp(-delta / sootTau));
+            var sootAlpha = s.SootMaxAlpha * _soot;
 
             var wetFactor = 0f;
             if (heat < s.WetStackFillHeat)
