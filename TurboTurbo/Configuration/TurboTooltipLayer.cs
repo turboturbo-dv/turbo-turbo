@@ -21,7 +21,7 @@ internal sealed class TurboTooltipLayer : MonoBehaviour
             {
                 alignment = TextAnchor.UpperLeft,
                 wordWrap = true,
-                fontSize = 11,
+                fontSize = 12,
                 border = new RectOffset(0, 0, 0, 0),
                 padding = new RectOffset(6, 6, 4, 4),
             };
