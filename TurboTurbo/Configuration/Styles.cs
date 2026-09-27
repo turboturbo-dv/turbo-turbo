@@ -58,6 +58,8 @@ internal static class Styles
 
     public static readonly Color TooltipBackground = new Color32(0x1F, 0x1F, 0x1F, 0xF7);
 
+    private static readonly Color TitleIdle = new Color32(0xC8, 0xC8, 0xC8, 0xFF);
+
     private static GUIStyle _telemetryBox;
 
     public static GUIStyle TelemetryBox
@@ -162,6 +164,16 @@ internal static class Styles
                 _windowStyle.onHover.background = _background;
                 _windowStyle.onActive.background = _background;
                 _windowStyle.onFocused.background = _background;
+
+                // Unity highlights the window title with the onNormal state on hover
+                _windowStyle.normal.textColor = TitleIdle;
+                _windowStyle.focused.textColor = TitleIdle;
+                _windowStyle.onFocused.textColor = TitleIdle;
+                _windowStyle.hover.textColor = Color.white;
+                _windowStyle.active.textColor = Color.white;
+                _windowStyle.onNormal.textColor = Color.white;
+                _windowStyle.onHover.textColor = Color.white;
+                _windowStyle.onActive.textColor = Color.white;
             }
 
             return _windowStyle;
