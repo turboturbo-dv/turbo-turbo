@@ -48,7 +48,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TurboTurbo\TurboTurbo.csproj" />
+    <ProjectReference Include="..\TurboTurbo\TurboTurbo.csproj" AdditionalProperties="DeployMod=false" />
   </ItemGroup>
 
   <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(GameDir)' == ''">

@@ -26,3 +26,11 @@ See description. There is a pretty detailed simulation underlying all this. If y
 ## Mod compatibility
 
 No compatibility problems known. Integration with other mods is possible but still experimental. If you'd like to integrate support in a vehicle mod, contact me on the official Derail Valley discord server (@geluk).
+
+## Development
+
+Requires the .NET SDK and Unity 2019.4 (for the asset bundle). Run `build.ps1` once to detect the game directory (or set `GameDir` yourself); the projects import the generated `GameDir.props`.
+
+- **Build and deploy:** `dotnet build TurboTurbo/TurboTurbo.csproj` builds the plugin and copies it, plus `info.json`, into the game's `Mods/TurboTurbo`, stamping the mod version.
+- **Test:** `dotnet test TurboTurboTests/TurboTurboTests.csproj` (the test project builds TurboTurbo with `DeployMod=false`, so testing never touches the game install).
+- **Shaders and the asset bundle:** `WorkBench/` is a Unity 2019.4 project that builds the `turboturbo_assets` bundle. Shader or texture changes require rebuilding it from the editor via the `TurboTurbo/Build and Deploy` menu; the C# build does not recompile shaders.
