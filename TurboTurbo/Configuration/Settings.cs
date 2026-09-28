@@ -9,6 +9,7 @@ namespace TurboTurbo.Configuration;
 public class Settings : UnityModManager.ModSettings
 {
     public KeyBinding ToggleDevPanel = new KeyBinding();
+    public KeyBinding OpenProfileEditor = new KeyBinding();
 
     public bool AuthoringMode;
     public string AuthoringTargetModId = "";

@@ -42,6 +42,10 @@ internal static class SettingsPanel
         GUILayout.Label("Toggle dev panel");
         UnityModManager.UI.DrawKeybindingSmart(SettingsStore.Current.ToggleDevPanel, "Toggle dev panel");
         GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Open profile editor");
+        UnityModManager.UI.DrawKeybindingSmart(SettingsStore.Current.OpenProfileEditor, "Open profile editor");
+        GUILayout.EndHorizontal();
 
         DrawAuthoring(entry);
 

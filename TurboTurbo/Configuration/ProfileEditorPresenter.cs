@@ -31,6 +31,20 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
         Close();
     }
 
+    private void Update()
+    {
+        if (!SettingsStore.Current.OpenProfileEditor.Down()) return;
+
+        var car = PlayerManager.Car;
+        if (car == null || !car.IsLoco || car.carLivery == null)
+        {
+            Log.Info("open-profile-editor hotkey pressed with no boarded locomotive, ignoring");
+            return;
+        }
+
+        Open(car);
+    }
+
     public void Open(TrainCar car)
     {
         if (_editor != null)
