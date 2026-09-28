@@ -46,9 +46,19 @@ internal static class SmokeModelSection
         Add("Soot weight", "Intensity of heavy soot at maximum opacity, relative to other types of smoke. ", 0f, 1f,
             m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v, TweakGrade.Basic);
 
-        Add("Soot curve shape", "Exponent shaping the soot curve over the lambda deficit.\n" +
-                                "Values above 1 delay heavy soot until closer to the soot opaque lambda point.", 0.5f, 3f,
+        Add("Soot lambda curve shape", "Exponent shaping the soot curve over lambda deficit.\n" +
+                                "Values above 1 delay heavy soot to higher lambda deficits (heavy overfuel, fast throttle-up).", 0.5f, 3f,
             m => m.Tuning.SootCurveExponent, (m, v) => m.Tuning.SootCurveExponent = v);
+
+        Add("Soot power floor", "Minimum soot weight at zero engine power, as a fraction of the full-power weight.\n" +
+                                "This determines how much the quantity of soot produced varies depending on engine power. " +
+                                "Lower values result in greater variance, as less soot is produced at low power.", 0f, 1f,
+            m => m.Tuning.SootPowerFloor, (m, v) => m.Tuning.SootPowerFloor = v);
+
+        Add("Soot power curve shape", "Exponent shaping the soot weight against engine power.\n" +
+                                    " * Values above 1 hold soot back until high power.\n" +
+                                    " * Values below 1 bring soot in earlier.", 0.1f, 5f,
+            m => m.Tuning.SootPowerExponent, (m, v) => m.Tuning.SootPowerExponent = v);
 
         Add("Soot increase time", "Time constant (seconds) easing soot in when lambda suddenly drops into the sooty range.\n" +
                                 "Keep this slightly above zero to avoid harsh single-frame transitions.", 0.01f, 0.5f,

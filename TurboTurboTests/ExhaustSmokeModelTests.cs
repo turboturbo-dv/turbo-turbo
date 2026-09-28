@@ -32,12 +32,20 @@ namespace TurboTurboTests
             }
         }
 
+        // raw soot contribution to the density-scaled mass, before normalizing by SootMaxAlpha and the power ramp
+        private static float SootMass(ExhaustSmokeModel model, float heat)
+        {
+            var tuning = model.Tuning;
+            var baseAlpha = Mathf.Lerp(tuning.CleanMinHeatAlpha, tuning.CleanMaxHeatAlpha, heat);
+            return model.ParticulateMass / tuning.Density - baseAlpha;
+        }
+
         // recover the soot fraction [0..1] from the density-scaled particulate mass
         private static float SootFraction(ExhaustSmokeModel model, float heat)
         {
-            var baseAlpha = Mathf.Lerp(model.Tuning.CleanMinHeatAlpha, model.Tuning.CleanMaxHeatAlpha, heat);
-            var sootAlpha = model.ParticulateMass / model.Tuning.Density - baseAlpha;
-            return sootAlpha / model.Tuning.SootMaxAlpha;
+            var tuning = model.Tuning;
+            var power = Mathf.Lerp(tuning.SootPowerFloor, 1f, Mathf.Pow(heat, tuning.SootPowerExponent));
+            return SootMass(model, heat) / tuning.SootMaxAlpha / power;
         }
 
         // ------------------------------------------------------------
@@ -201,6 +209,46 @@ namespace TurboTurboTests
             var baseMass = _model.Tuning.Density * Mathf.Lerp(
                 _model.Tuning.CleanMinHeatAlpha, _model.Tuning.CleanMaxHeatAlpha, 0.5f);
             _model.ParticulateMass.ShouldBeGreaterThan(baseMass);
+        }
+
+        [Fact]
+        public void SootPower_RampsWithHeat()
+        {
+            var idle = new ExhaustSmokeModel();
+            SettleSoot(idle, idle.Tuning.SootOpaqueLambda, 0f);
+
+            var full = new ExhaustSmokeModel();
+            SettleSoot(full, full.Tuning.SootOpaqueLambda, 1f);
+
+            SootMass(idle, 0f).ShouldBe(
+                SootMass(full, 1f) * full.Tuning.SootPowerFloor, tolerance: 0.01f);
+        }
+
+        [Fact]
+        public void SootMass_IsMonotonicInHeat()
+        {
+            var last = -1f;
+            for (var heat = 0f; heat <= 1f; heat += 0.1f)
+            {
+                var model = new ExhaustSmokeModel();
+                SettleSoot(model, model.Tuning.SootOpaqueLambda, heat);
+
+                var soot = SootMass(model, heat);
+                soot.ShouldBeGreaterThanOrEqualTo(last - 1e-5f);
+                last = soot;
+            }
+        }
+
+        [Fact]
+        public void SootPower_ExponentAboveOne_DelaysSoot()
+        {
+            var linear = new ExhaustSmokeModel { Tuning = { SootPowerExponent = 1f } };
+            SettleSoot(linear, linear.Tuning.SootOpaqueLambda, 0.5f);
+
+            var delayed = new ExhaustSmokeModel { Tuning = { SootPowerExponent = 2f } };
+            SettleSoot(delayed, delayed.Tuning.SootOpaqueLambda, 0.5f);
+
+            SootMass(delayed, 0.5f).ShouldBeLessThan(SootMass(linear, 0.5f));
         }
 
         [Fact]
