@@ -12,6 +12,8 @@ namespace TurboTurbo.Modeling
         [XmlType("SmokeSettings")]
         public sealed class Settings
         {
+            internal const float DefaultDensity = 150f;
+
             // colors cannot be [DefaultValue] constants, so they serialize as hex.
             // the hex is the source of truth, so the default round-trips byte-exact and is omitted.
             internal const string DefaultColorIdleHazeHex = "9E9678FF";
@@ -25,6 +27,9 @@ namespace TurboTurbo.Modeling
             [XmlIgnore] public Color ColorHeavySoot = ColorHex.Parse(DefaultColorHeavySootHex);
             [XmlIgnore] public Color ColorWetStack = ColorHex.Parse(DefaultColorWetStackHex);
             [XmlIgnore] public Color ColorOilBurn = ColorHex.Parse(DefaultColorOilBurnHex);
+
+            [DefaultValue(DefaultDensity)]
+            public float Density = DefaultDensity;
 
             [DefaultValue(DefaultColorIdleHazeHex)]
             public string ColorIdleHazeHex
@@ -61,7 +66,7 @@ namespace TurboTurbo.Modeling
                 set => ColorOilBurn = ColorHex.Parse(value);
             }
 
-            internal const float DefaultCleanMinHeatAlpha = 0.015f;
+            internal const float DefaultCleanMinHeatAlpha = 0.002f;
             internal const float DefaultCleanMaxHeatAlpha = 0.08f;
             internal const float DefaultCleanBurnHeat = 0.2f;
             internal const float DefaultSootOnsetLambda = 1.3f;
@@ -136,6 +141,8 @@ namespace TurboTurbo.Modeling
 
             public Settings(Settings other)
             {
+                Density = other.Density;
+
                 ColorIdleHaze = other.ColorIdleHaze;
                 ColorCleanBurn = other.ColorCleanBurn;
                 ColorHeavySoot = other.ColorHeavySoot;
@@ -171,6 +178,8 @@ namespace TurboTurbo.Modeling
             {
                 const float epsilon = 0.01f;
 
+                Density = Mathf.Max(0f, Density);
+
                 CleanMinHeatAlpha = Mathf.Clamp01(CleanMinHeatAlpha);
                 CleanMaxHeatAlpha = Mathf.Clamp01(CleanMaxHeatAlpha);
                 SootMaxAlpha = Mathf.Clamp01(SootMaxAlpha);
@@ -204,6 +213,19 @@ namespace TurboTurbo.Modeling
 
         public Color Color { get; private set; } = Color.clear;
 
+        /// <summary>
+        /// Total particulate mass produced per unit time (sum of all exhaust fractions).
+        /// The shader uses this to decide how much smoke to render.
+        /// </summary>
+        public float ParticulateMass { get; private set; }
+
+        /// <summary>
+        /// Upper bound of <see cref="ParticulateMass"/> derived from the current tuning.
+        /// As long as the tuning does not change, ParticulateMass is guaranteed to never exceed this.
+        /// </summary>
+        public float MaxParticulateMass => Tuning.Density
+            * (Tuning.CleanMaxHeatAlpha + Tuning.WetStackMaxAlpha + Tuning.SootMaxAlpha);
+
         public void FillWetStack() => WetStackAccumulator = 1f;
 
         public void Update(float lambda, float rpmNorm, float heat, bool engineOn, float delta)
@@ -214,6 +236,7 @@ namespace TurboTurbo.Modeling
             {
                 _soot = 0f;
                 Color = Color.clear;
+                ParticulateMass = 0f;
                 return;
             }
 
@@ -263,9 +286,12 @@ namespace TurboTurbo.Modeling
             var finalColor = (baseColor * baseAlpha
                               + s.ColorWetStack * wetAlpha
                               + s.ColorHeavySoot * sootAlpha) / totalWeight;
-            finalColor.a = 1f - (1f - baseAlpha) * (1f - wetAlpha) * (1f - sootAlpha);
+
+            // unused as ParticulateMass encodes density, but set it to 1 for good practice
+            finalColor.a = 1f;
 
             Color = finalColor;
+            ParticulateMass = s.Density * totalWeight;
         }
     }
 

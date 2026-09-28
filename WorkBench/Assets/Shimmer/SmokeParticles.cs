@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Xml.Serialization;
 
@@ -14,6 +15,14 @@ namespace TurboTurbo.WorkBench
         private static readonly int MaxShadowFloor = Shader.PropertyToID("_MaxShadowFloor");
         private static readonly int MinFadeDist = Shader.PropertyToID("_MinFadeDist");
         private static readonly int MaxFadeDist = Shader.PropertyToID("_MaxFadeDist");
+        private static readonly int DensityScale = Shader.PropertyToID("_DensityScale");
+        private static readonly int DensityFalloffId = Shader.PropertyToID("_DensityFalloff");
+
+        // the CPU write and shader read of the encoded density must use reciprocal powers
+        private const float DensityEncodeExponent = 0.5f;
+
+        /// <summary>Decay exponent for the density model, applied to every emitter.</summary>
+        public static float DensityFalloff = 1.5f;
 
         [XmlType("SmokeEmitterSettings")]
         public sealed class Settings
@@ -152,6 +161,7 @@ namespace TurboTurbo.WorkBench
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
+        private float _densityScale = 1f;
 
         public int ParticleCount => _ps.particleCount;
 
@@ -199,19 +209,9 @@ namespace TurboTurbo.WorkBench
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, _sizeCurve);
 
-            var fade = new Gradient();
-            fade.SetKeys(
-                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                new[]
-                {
-                    new GradientAlphaKey(0f, 0f),
-                    new GradientAlphaKey(1f, 0.025f),
-                    new GradientAlphaKey(1f, 0.4f),
-                    new GradientAlphaKey(0f, 1f),
-                });
+            // the whole alpha envelope lives in the shader, so the particle system must not apply one
             var col = _ps.colorOverLifetime;
-            col.enabled = true;
-            col.color = new ParticleSystem.MinMaxGradient(fade);
+            col.enabled = false;
 
             // no shape module currently, could introduce a small distribution here but for now a point source is fine
 
@@ -270,6 +270,14 @@ namespace TurboTurbo.WorkBench
             // can look a bit weird, but sorting by distance is worse as it can make particles pop through each 
             // other over time, which looks very unnatural.
             rend.sortMode = ParticleSystemSortMode.YoungestInFront;
+            rend.SetActiveVertexStreams(new List<ParticleSystemVertexStream>
+            {
+                ParticleSystemVertexStream.Position,
+                ParticleSystemVertexStream.Color,
+                ParticleSystemVertexStream.UV,
+                ParticleSystemVertexStream.SizeX,
+                ParticleSystemVertexStream.AgePercent,
+            });
             if (shader != null)
             {
                 rend.material.shader = shader;
@@ -278,7 +286,16 @@ namespace TurboTurbo.WorkBench
                 SetMaxShadowFloor(s.maxShadowFloor);
                 SetMinFadeDist(s.minFadeDist);
                 SetMaxFadeDist(s.maxFadeDist);
+                SetDensityScale(ComputeDensityScale());
+                ApplyDensityFalloff();
             }
+        }
+
+        // upper bound of per-particle density, so the encoded value stays in [0,1]
+        private float ComputeDensityScale()
+        {
+            var minRate = Mathf.Min(tuning.idleEmissionRate, tuning.fullEmissionRate);
+            return Mathf.Max(1e-4f, _model.MaxParticulateMass / Mathf.Max(1f, minRate));
         }
 
         public void SetLightSaturation(float value)
@@ -305,6 +322,17 @@ namespace TurboTurbo.WorkBench
             if (_renderer != null) _renderer.material.SetFloat(MaxFadeDist, value);
         }
 
+        public void SetDensityScale(float value)
+        {
+            _densityScale = value;
+            if (_renderer != null) _renderer.material.SetFloat(DensityScale, value);
+        }
+
+        public void ApplyDensityFalloff()
+        {
+            if (_renderer != null) _renderer.material.SetFloat(DensityFalloffId, DensityFalloff);
+        }
+
         private void Update()
         {
             var dt = Time.deltaTime;
@@ -319,9 +347,10 @@ namespace TurboTurbo.WorkBench
             var noise = _ps.noise;
             noise.strength = s.turbulenceStrength * speedNorm;
 
+            var emissionRate = Mathf.Lerp(s.idleEmissionRate, s.fullEmissionRate, heat);
             if (engineOn)
             {
-                _emitAccumulator += Mathf.Lerp(s.idleEmissionRate, s.fullEmissionRate, heat) * dt;
+                _emitAccumulator += emissionRate * dt;
             }
 
             var n = (int)_emitAccumulator;
@@ -342,6 +371,8 @@ namespace TurboTurbo.WorkBench
 
                 var lifetime = s.lifetime * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm);
 
+                var spawnColor = EncodeDensityColor(_model.Color, emissionRate);
+
                 for (var i = 0; i < n; i++)
                 {
                     var emitVelocity = baseEmitVelocity * Random.Range(0.85f, 1.15f);
@@ -359,7 +390,7 @@ namespace TurboTurbo.WorkBench
                         position = simPos - simSpaceVelocity * dt,
                         velocity = simSpaceVelocity,
                         startSize = Random.Range(baseSize / spread, baseSize * spread),
-                        startColor = _model.Color,
+                        startColor = spawnColor,
                         startLifetime = lifetime * Random.Range(0.9f, 1.1f),
                         // random orientation + slow spin gives the appearance of a turbulent smoke column
                         rotation = Random.Range(0f, 360f),
@@ -368,6 +399,20 @@ namespace TurboTurbo.WorkBench
                     _ps.Emit(ep, 1);
                 }
             }
+        }
+
+        // encode per-particle density into the alpha channel of the given color
+        private Color EncodeDensityColor(Color modelColor, float emissionRate)
+        {
+            // all this tomfoolery really does is encode the current per-particle particulate mass into an 8-bit wide
+            // channel. 8 bits isn't much, so let's make sure that every bit represents a quantity that is attainable
+            // for our current particle emitter. we also apply a gamma curve to shift some more detail into the
+            // low-density range, where subtle variations matter more.
+            var density = emissionRate > 0f
+                ? Mathf.Clamp01(_model.ParticulateMass / emissionRate / _densityScale)
+                : 0f;
+            var q = Mathf.Pow(density, DensityEncodeExponent);
+            return new Color(modelColor.r, modelColor.g, modelColor.b, q);
         }
     }
 }

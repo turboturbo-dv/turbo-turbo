@@ -9,6 +9,8 @@ Shader "TurboTurbo/Smoke"
         _MaxShadowFloor ("Max Shadow Floor", Range(0, 1)) = 0.65
         _MinFadeDist ("Min Camera Fade Distance", Range(0, 10)) = 1
         _MaxFadeDist ("Max Camera Fade Distance", Range(0, 10)) = 5
+        _DensityScale ("Density Scale", Float) = 1
+        _DensityFalloff ("Density Falloff", Float) = 1.5
     }
     SubShader
     {
@@ -36,12 +38,14 @@ Shader "TurboTurbo/Smoke"
             float _MaxShadowFloor;
             float _MinFadeDist;
             float _MaxFadeDist;
+            float _DensityScale;
+            float _DensityFalloff;
 
             struct appdata
             {
                 float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-                fixed4 color : COLOR; // rgb = model color, a = fade envelope
+                fixed4 color : COLOR; // rgb = tint, a = encoded particulate mass
+                float4 texcoords : TEXCOORD0; // xy = uv, z = size, w = normalized age
             };
 
             struct v2f
@@ -56,7 +60,7 @@ Shader "TurboTurbo/Smoke"
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
+                o.uv = v.texcoords.xy;
 
                 // fade out near the camera so smoke doesn't enter the cab if
                 // you're inside it
@@ -64,7 +68,23 @@ Shader "TurboTurbo/Smoke"
                 float camFade = smoothstep(_MinFadeDist, _MaxFadeDist, eyeDepth);
 
                 o.color = v.color;
-                o.color.a *= camFade;
+                float size = v.texcoords.z;
+                float age = v.texcoords.w;
+
+                // note: gamma decode requires corresponding encode on the emitter side
+                // gamma decode -> rescale -> apply size fade
+                float tau = (v.color.a * v.color.a) * _DensityScale / pow(max(1e-6, size), _DensityFalloff);
+
+                // brief fade in at birth avoids pop-in
+                float fadeIn = saturate(age / 0.025);
+                
+                // size fade alone gives polynomial decay, which does not reach zero,
+                // so multiply by a smooth fade-to-zero at end of life
+                float ageFade = 1.0 - smoothstep(0.0, 1.0, saturate((age - 0.75) / 0.25));
+
+                // decode + rescale process can result in tau > 1, which is deliberate as it allows particles
+                // to hold at max opacity for a while, so it needs a saturate
+                o.color.a = saturate(tau) * fadeIn * ageFade * camFade;
                 UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }

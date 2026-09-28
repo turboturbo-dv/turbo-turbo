@@ -1,11 +1,19 @@
 ﻿using DV.ThingTypes;
 
+using TurboTurbo.Modeling;
+
 using UnityEngine;
 
 namespace TurboTurbo;
 
 internal static class StockConfiguration
 {
+    public static float De6Density = ExhaustSmokeModel.Settings.DefaultDensity;
+    public static readonly float Dh4Density = 100;
+    public static readonly float Dm3Density = 80;
+    public static readonly float De2Density = 50;
+    public static readonly float Dm1UDensity = 50;
+
     public static void Apply()
     {
         ConfigureDe6();
@@ -17,6 +25,9 @@ internal static class StockConfiguration
 
     private static void ConfigureDe6()
     {
+        // The DE6 uses the default configuration for everything, this allows users creating a new profile
+        // for a new loco to get DE6-like behaviour by default. Since many modded diesels appear to occupy the
+        // same approximate power range as the DE6, this will often result in a useful profile right out of the box.
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
             .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0.02f, 0.15f, -0.02f)));
     }
@@ -28,15 +39,17 @@ internal static class StockConfiguration
             .ConfigureTurboCharger(t =>
             {
                 // the DH4 runs slightly cleaner and has a lighter turbo that spins up faster
-                t.LambdaCalibration = 1.38f;
+                t.LambdaCalibration = 1.36f;
                 t.TauUp = 2;
+                t.TauDown = 1;
             })
             .ConfigureSmoke(s =>
             {
-                // The DH4 has a more modern engine with better filtration, generating less soot.
-                // also adjusts for the fact that the exhaust opening is bigger, so smoke particles start out bigger,
-                // and therefore less dense.
+                s.Density = Dh4Density;
+
+                // represents a more modern engine with better filtration, generating less soot
                 s.SootMaxAlpha = 0.33f;
+                s.CleanMaxHeatAlpha = 0.12f;
                 s.WetStackMistStrength = 1.2f;
                 s.OilRpmExponent = 2.1f;
             })
@@ -82,8 +95,10 @@ internal static class StockConfiguration
             })
             .ConfigureSmoke(s =>
             {
+                s.Density = Dm3Density;
+
+                s.CleanMinHeatAlpha = 0.004f;
                 // some oil burning gives the DM3 a distinctive blue-gray smoke
-                s.CleanMinHeatAlpha = 0.04f;
                 s.OilTintStrength = 0.5f;
                 s.OilRpmExponent = 0.5f;
             })
@@ -110,15 +125,17 @@ internal static class StockConfiguration
             .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0f, 0f))
             .UseAtmosphericCharger(c =>
             {
-                // a reasonably clean naturally aspirated engine, shouldn't really generate soot normally
+                // a reasonably clean naturally aspirated engine, just a hint of soot at full power + RPM
                 c.EtaPeak = 0.86f;
-                c.ChokeK = 0.24f;
-                c.LambdaCalibration = 0.51f;
-
+                c.ChokeK = 0.285f;
+                c.LambdaCalibration = 0.52f;
             })
             .ConfigureSmoke(s =>
             {
+                s.Density = De2Density;
+
                 // not much wet stacking occurs in a smaller engine
+                s.CleanMaxHeatAlpha = 0.15f;
                 s.WetStackMistStrength = 1f;
                 s.OilTintStrength = 0.35f;
             })
@@ -167,6 +184,8 @@ internal static class StockConfiguration
             })
             .ConfigureSmoke(s =>
             {
+                s.Density = Dm1UDensity;
+
                 s.CleanMinHeatAlpha = 0.03f;
                 s.OilTintStrength = 0.5f;
                 s.OilRpmExponent = 0.5f;

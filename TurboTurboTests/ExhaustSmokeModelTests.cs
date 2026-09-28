@@ -8,15 +8,6 @@ using Xunit;
 
 namespace TurboTurboTests
 {
-    /// <summary>
-    /// Behavioural tests for the heat-based ExhaustSmokeModel (SMOKE.md):
-    /// engine-off guard, heat-driven base color, lambda-driven baseline
-    /// opacity, oil tint, the soot ladder, and heat-driven wet-stack fill
-    /// and release, plus the relational invariants enforced by Validate.
-    /// All expectations reference the model's own tuning constants instead
-    /// of hardcoded numbers, so retuning the model cannot silently
-    /// invalidate a test.
-    /// </summary>
     public class ExhaustSmokeModelTests
     {
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
@@ -41,11 +32,11 @@ namespace TurboTurboTests
             }
         }
 
-        // recover the soot contribution [0..1] from the composited opacity
+        // recover the soot fraction [0..1] from the density-scaled particulate mass
         private static float SootFraction(ExhaustSmokeModel model, float heat)
         {
             var baseAlpha = Mathf.Lerp(model.Tuning.CleanMinHeatAlpha, model.Tuning.CleanMaxHeatAlpha, heat);
-            var sootAlpha = 1f - (1f - model.Color.a) / (1f - baseAlpha);
+            var sootAlpha = model.ParticulateMass / model.Tuning.Density - baseAlpha;
             return sootAlpha / model.Tuning.SootMaxAlpha;
         }
 
@@ -78,22 +69,20 @@ namespace TurboTurboTests
         // ------------------------------------------------------------
 
         [Fact]
-        public void CleanHighFlow_Exhaust_UsesMaxHeatAlpha()
+        public void CleanHighFlow_Exhaust_UsesCleanBurnTint()
         {
             _model.Update(2f, 0f, 1f, engineOn: true, 0.016f);
 
-            _model.Color.a.ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.001f);
             _model.Color.r.ShouldBe(_model.Tuning.ColorCleanBurn.r, tolerance: 0.01f);
             _model.Color.g.ShouldBe(_model.Tuning.ColorCleanBurn.g, tolerance: 0.01f);
             _model.Color.b.ShouldBe(_model.Tuning.ColorCleanBurn.b, tolerance: 0.01f);
         }
 
         [Fact]
-        public void IdleHeat_AtSootOnset_KeepsHazeTintAndAlpha()
+        public void IdleHeat_AtSootOnset_KeepsHazeTint()
         {
             _model.Update(_model.Tuning.SootOnsetLambda, 0f, 0f, engineOn: true, 0.016f);
 
-            _model.Color.a.ShouldBe(_model.Tuning.CleanMinHeatAlpha, tolerance: 0.001f);
             _model.Color.r.ShouldBe(_model.Tuning.ColorIdleHaze.r, tolerance: 0.01f);
             _model.Color.g.ShouldBe(_model.Tuning.ColorIdleHaze.g, tolerance: 0.01f);
             _model.Color.b.ShouldBe(_model.Tuning.ColorIdleHaze.b, tolerance: 0.01f);
@@ -122,28 +111,11 @@ namespace TurboTurboTests
         // ------------------------------------------------------------
 
         [Fact]
-        public void SootyExhaust_IsDarkAndDense()
+        public void SootyExhaust_IsDark()
         {
             SettleSoot(_model, _model.Tuning.SootOpaqueLambda, 0.5f);
 
-            var baseAlpha = Mathf.Lerp(
-                _model.Tuning.CleanMinHeatAlpha, _model.Tuning.CleanMaxHeatAlpha, 0.5f);
-            var expectedAlpha = 1f - (1f - baseAlpha) * (1f - _model.Tuning.SootMaxAlpha);
-            _model.Color.a.ShouldBe(expectedAlpha, tolerance: 0.005f);
             _model.Color.r.ShouldBeLessThan(0.2f);
-        }
-
-        [Fact]
-        public void Alpha_Increases_AsLambdaFalls()
-        {
-            var model = new ExhaustSmokeModel();
-            var last = -1f;
-            for (var lambda = 2f; lambda >= 0.3f; lambda -= 0.05f)
-            {
-                model.Update(lambda, 0f, 0.5f, engineOn: true, 0.016f);
-                model.Color.a.ShouldBeGreaterThanOrEqualTo(last);
-                last = model.Color.a;
-            }
         }
 
         [Fact]
@@ -173,6 +145,79 @@ namespace TurboTurboTests
             _model.Update(2f, 0f, 0.5f, engineOn: true, 0.016f);
 
             SootFraction(_model, 0.5f).ShouldBe(0f, tolerance: 0.001f);
+        }
+
+        // ------------------------------------------------------------
+        // particulate mass (SMOKE.md density model)
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void EngineOff_ZeroesParticulateMass()
+        {
+            _model.Update(0.5f, 0.5f, 0.5f, engineOn: false, delta: 0.016f);
+
+            _model.ParticulateMass.ShouldBe(0f);
+        }
+
+        [Fact]
+        public void CleanHighFlow_ParticulateMass_IsBaseMass()
+        {
+            _model.Update(2f, 0f, 1f, engineOn: true, 0.016f);
+
+            _model.ParticulateMass.ShouldBe(
+                _model.Tuning.Density * _model.Tuning.CleanMaxHeatAlpha, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void Density_ScalesParticulateMass_Linearly()
+        {
+            var single = new ExhaustSmokeModel { Tuning = { Density = 1f } };
+            single.Update(2f, 0f, 1f, engineOn: true, 0.016f);
+
+            var doubled = new ExhaustSmokeModel { Tuning = { Density = 2f } };
+            doubled.Update(2f, 0f, 1f, engineOn: true, 0.016f);
+
+            doubled.ParticulateMass.ShouldBe(single.ParticulateMass * 2f, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void ParticulateMass_Increases_AsLambdaFalls()
+        {
+            var model = new ExhaustSmokeModel();
+            var last = -1f;
+            for (var lambda = 2f; lambda >= 0.3f; lambda -= 0.05f)
+            {
+                model.Update(lambda, 0f, 0.5f, engineOn: true, 0.016f);
+                model.ParticulateMass.ShouldBeGreaterThanOrEqualTo(last);
+                last = model.ParticulateMass;
+            }
+        }
+
+        [Fact]
+        public void SootyExhaust_ParticulateMass_ExceedsBaseMass()
+        {
+            SettleSoot(_model, _model.Tuning.SootOpaqueLambda, 0.5f);
+
+            var baseMass = _model.Tuning.Density * Mathf.Lerp(
+                _model.Tuning.CleanMinHeatAlpha, _model.Tuning.CleanMaxHeatAlpha, 0.5f);
+            _model.ParticulateMass.ShouldBeGreaterThan(baseMass);
+        }
+
+        [Fact]
+        public void ParticulateMass_StaysWithinCeiling()
+        {
+            var model = new ExhaustSmokeModel();
+            model.FillWetStack();
+
+            for (var heat = 0f; heat <= 1f; heat += 0.1f)
+            {
+                for (var lambda = 2f; lambda >= 0.3f; lambda -= 0.1f)
+                {
+                    model.Update(lambda, 0.5f, heat, engineOn: true, 0.5f);
+                    model.ParticulateMass.ShouldBeLessThanOrEqualTo(
+                        model.MaxParticulateMass + 0.001f);
+                }
+            }
         }
 
         // ------------------------------------------------------------
@@ -227,7 +272,8 @@ namespace TurboTurboTests
             _model.Update(2f, 0.3f, 1f, engineOn: true, 0.016f);
 
             _model.WetStackAccumulator.ShouldBeLessThan(1f);
-            _model.Color.a.ShouldBeGreaterThan(_model.Tuning.CleanMaxHeatAlpha);
+            (_model.ParticulateMass / _model.Tuning.Density)
+                .ShouldBeGreaterThan(_model.Tuning.CleanMaxHeatAlpha);
             _model.Color.r.ShouldBeGreaterThan(_model.Tuning.ColorIdleHaze.r,
                 "wet-stack mist should push the color toward off-white");
         }
@@ -245,7 +291,8 @@ namespace TurboTurboTests
             }
 
             _model.WetStackAccumulator.ShouldBe(0f, tolerance: 0.001f);
-            _model.Color.a.ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.01f);
+            (_model.ParticulateMass / _model.Tuning.Density)
+                .ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.01f);
         }
 
         [Fact]
@@ -264,6 +311,15 @@ namespace TurboTurboTests
             clone.SootDecreaseTau.ShouldBe(1.5f);
             clone.SootIncreaseTau = 0.9f;
             template.SootIncreaseTau.ShouldBe(0.2f);
+        }
+
+        [Fact]
+        public void Settings_CopyConstructor_CopiesDensity()
+        {
+            var template = new ExhaustSmokeModel.Settings { Density = 3f };
+            var clone = new ExhaustSmokeModel.Settings(template);
+
+            clone.Density.ShouldBe(3f);
         }
 
         // ------------------------------------------------------------
@@ -318,6 +374,15 @@ namespace TurboTurboTests
 
             model.Tuning.SootIncreaseTau.ShouldBeGreaterThan(0f);
             model.Tuning.SootDecreaseTau.ShouldBeGreaterThan(0f);
+        }
+
+        [Fact]
+        public void Validate_ClampsNegativeDensity()
+        {
+            var model = new ExhaustSmokeModel { Tuning = { Density = -5f } };
+            model.Tuning.Validate();
+
+            model.Tuning.Density.ShouldBe(0f);
         }
     }
 
