@@ -65,11 +65,11 @@ internal static class SettingsPanel
         var settings = SettingsStore.Current;
         var mode = GUILayout.Toggle(settings.AuthoringMode,
             new GUIContent("Vehicle author mode",
-                "When vehicle author mode is enabled, profiles that you create are saved directly to a TurboConfig.xml " +
-                "file belonging to the selected mod.\n" +
-                "When you've finished your profile(s), distribute the TurboConfig.xml file together with the other " +
-                "files in your mod's directory. Users who have TurboTurbo installed will automatically have your " +
-                "profile applied."),
+                "For vehicle mod developers. With author mode enabled, any vehicle profiles that you create are saved " +
+                "directly to a TurboConfig.xml file in the mod directory (next to its info.json).\n\n" +
+                "When you've finished creating the profile(s), distribute the TurboConfig.xml file together with the other " +
+                "files in your mod's directory. Users who have TurboTurbo installed alongside your mod will " +
+                "automatically have your profile applied."),
             Toggle);
         if (mode != settings.AuthoringMode)
         {

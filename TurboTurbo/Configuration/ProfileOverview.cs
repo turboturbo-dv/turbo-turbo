@@ -50,13 +50,6 @@ internal static class ProfileOverview
                 {
                     ProfileEditorPresenter.Instance?.Open(car);
                 }
-
-                if (!authoring
-                    && ProfileRepository.TryGetUserProfile(boardedLiveryId) != null
-                    && GUILayout.Button("Delete"))
-                {
-                    ProfileRepository.DeleteProfile(boardedLiveryId);
-                }
             }
 
             if (authoring)
@@ -91,9 +84,16 @@ internal static class ProfileOverview
         if (user == null) return;
 
         var enabled = GUILayout.Toggle(user.Enabled, "enabled");
-        if (enabled == user.Enabled) return;
+        if (enabled != user.Enabled)
+        {
+            ProfileRepository.SetEnabled(liveryId, enabled);
+            orchestrator?.ReloadHostsForLivery(liveryId);
+        }
 
-        ProfileRepository.SetEnabled(liveryId, enabled);
-        orchestrator?.ReloadHostsForLivery(liveryId);
+        if (GUILayout.Button("Delete"))
+        {
+            ProfileRepository.DeleteProfile(liveryId);
+            orchestrator?.ReloadHostsForLivery(liveryId);
+        }
     }
 }
