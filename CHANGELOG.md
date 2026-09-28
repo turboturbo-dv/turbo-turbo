@@ -2,15 +2,21 @@
 
 ### Added
 - User profiles: These can be created in-game and are saved to user settings
-- Mod profiles: Custom vehicle mods can supply a profile alongside their files
-  to instruct TurboTurbo how to apply its effects
+- Mod profiles: Custom vehicle mods can install a profile file to instruct 
+  TurboTurbo how to apply its effects. Mod loading order is honoured when loading
+  profiles (earliest mod to load takes precedence)
 - A new profile editor provides an intuitive way to create and edit profiles
 
 ### Changed
-- Smoke now fades when close to the camera, to prevent it from clipping through the cab when inside
-- Adjusted clean smoke opacity calculations to be more intuitive
+- Smoke fade-out is no longer hardcoded and now depends on how fast a particle
+  grows, so the plume naturally thins as it widens
+- Smoke now fades away when close to the camera, to prevent it from clipping
+  through the cab when inside
+- Soot now has a slight ease-in/out over time, so that it can no longer appear
+  or disappear instantly after fast throttle changes
+- Improved clean smoke opacity calculations near engine idle point
 - Slightly reduced max shimmer intensity on the DM3
-- Soot now has a slight ease-in/out over time, so that it can no longer appear or disappear instantly in a single frame
+- Slowed down DE6 turbo spool-down time
 - Minor tweaks to the combustion simulation model
 
 ## v0.2.2
