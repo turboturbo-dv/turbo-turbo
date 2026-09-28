@@ -98,13 +98,14 @@ internal static class ModAssets
         {
             HeatShimmerShader = null;
             SmokeShader = null;
+
+            Log.Error($"failed to load asset bundle '{BundleName}': {e.Message}");
             if (throwOnError)
             {
                 throw;
             }
 
             Log.Exception(e);
-            Log.Error($"failed to load asset bundle '{BundleName}': {e.Message}");
         }
     }
 }
