@@ -14,11 +14,21 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
 
     private ProfileEditor _editor;
 
+    public static ProfileEditorPresenter Instance { get; private set; }
+
     public static ProfileEditorPresenter Create()
     {
         var go = new GameObject(Naming.Create("ProfileEditorPresenter"));
         DontDestroyOnLoad(go);
-        return go.AddComponent<ProfileEditorPresenter>();
+        var presenter = go.AddComponent<ProfileEditorPresenter>();
+        Instance = presenter;
+        return presenter;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+        Close();
     }
 
     public void Open(TrainCar car)

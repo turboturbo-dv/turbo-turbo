@@ -27,7 +27,7 @@ internal static class LiveryCatalog
                 livery.parentType != null ? livery.parentType.id : "",
                 livery.parentType != null && CarTypes.IsLocomotive(livery),
                 livery.isHidden))
-            .Where(livery => livery is {IsLoco: true, IsHidden: false})
+            .Where(livery => livery is { IsLoco: true, IsHidden: false })
             .OrderBy(livery => livery.Id, StringComparer.Ordinal)
             .ToList();
     }

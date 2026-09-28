@@ -48,7 +48,7 @@ internal static class ProfileOverview
                 var host = orchestrator != null ? orchestrator.FindHost(car) : null;
                 if (GUILayout.Button(host != null ? "Edit" : "New profile"))
                 {
-                    Main.EditPresenter.Open(car);
+                    ProfileEditorPresenter.Instance?.Open(car);
                 }
 
                 if (!authoring

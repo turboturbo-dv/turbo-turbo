@@ -1,5 +1,6 @@
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
+using TurboTurbo.DevUI;
 using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
@@ -11,8 +12,6 @@ using UnityModManagerNet;
 
 public static class Main
 {
-    internal static Configuration.ProfileEditorPresenter EditPresenter { get; private set; }
-
     public static void Load(UnityModManager.ModEntry entry)
     {
         Log.Init(new UmmLogSink(entry.Logger));
@@ -26,8 +25,8 @@ public static class Main
 
         Orchestrator.Create();
 
-        DevUI.DevPanelPresenter.Create();
-        EditPresenter = Configuration.ProfileEditorPresenter.Create();
+        DevPanelPresenter.Create();
+        ProfileEditorPresenter.Create();
 
         entry.OnToggle = OnToggle;
         entry.OnGUI = SettingsPanel.Draw;
@@ -41,18 +40,25 @@ public static class Main
 
         if (isOn)
         {
-            if (DevUI.DevPanelPresenter.Instance == null)
+            if (DevPanelPresenter.Instance == null)
             {
-                DevUI.DevPanelPresenter.Create();
+                DevPanelPresenter.Create();
+            }
+            if (ProfileEditorPresenter.Instance == null)
+            {
+                ProfileEditorPresenter.Create();
             }
         }
         else
         {
-            if (DevUI.DevPanelPresenter.Instance != null)
+            if (DevPanelPresenter.Instance != null)
             {
-                Object.Destroy(DevUI.DevPanelPresenter.Instance.gameObject);
+                Object.Destroy(DevPanelPresenter.Instance.gameObject);
             }
-            EditPresenter.Close();
+            if (ProfileEditorPresenter.Instance != null)
+            {
+                Object.Destroy(ProfileEditorPresenter.Instance.gameObject);
+            }
         }
 
         return true;
