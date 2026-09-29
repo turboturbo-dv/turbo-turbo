@@ -37,10 +37,11 @@ internal static class ShimmerEmitterSection
             0f, 3f, true, () => f.tuning.drag, v => { foreach (var s in shimmers) s.tuning.drag = v; });
         section.AddFloat("Buoyancy", "Constant upward drift [m/s].",
             0f, 2f, true, () => f.tuning.buoyancy, v => { foreach (var s in shimmers) s.tuning.buoyancy = v; });
-        section.AddFloat("Min strength", "Shimmer effect strength at zero load.",
-            0f, 1f, false, () => f.tuning.baseStrength, v => { foreach (var s in shimmers) s.tuning.baseStrength = v; }, TweakGrade.Basic);
         section.AddFloat("Max strength", "Shimmer effect strength at full load.",
             0f, 0.05f, false, () => f.tuning.strength, v => { foreach (var s in shimmers) s.tuning.strength = v; }, TweakGrade.Basic);
+        section.AddFloat("Base strength", "Effect strength at zero load, as a fraction of max strength.\n" +
+                                          "Raising this will make the effect more pronounced at zero load.",
+            0f, 1f, false, () => f.tuning.baseStrength, v => { foreach (var s in shimmers) s.tuning.baseStrength = v; });
         section.AddFloat("Hold time", "Fraction of the particle's lifetime held at full strength before the decay function takes over.",
             0f, 1f, true, () => f.tuning.shimmerHoldTime, v => { foreach (var s in shimmers) s.tuning.shimmerHoldTime = v; });
         section.AddFloat("Decay K", "Decay tuning constant. Larger values give a steeper initial drop after the hold time passes.",
