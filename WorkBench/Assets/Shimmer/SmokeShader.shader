@@ -11,6 +11,7 @@ Shader "TurboTurbo/Smoke"
         _MaxFadeDist ("Max Camera Fade Distance", Range(0, 10)) = 5
         _DensityScale ("Density Scale", Float) = 1
         _DensityFalloff ("Density Falloff", Float) = 1.5
+        _SoftParticlesFade ("Soft Particles Fade (m)", Range(0, 1)) = 0.15
     }
     SubShader
     {
@@ -40,6 +41,8 @@ Shader "TurboTurbo/Smoke"
             float _MaxFadeDist;
             float _DensityScale;
             float _DensityFalloff;
+            float _SoftParticlesFade;
+            sampler2D_float _CameraDepthTexture;
 
             struct appdata
             {
@@ -53,6 +56,8 @@ Shader "TurboTurbo/Smoke"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 fixed4 color : TEXCOORD1;
+                float4 screenPos : TEXCOORD3;
+                float eyeDepth : TEXCOORD4;
                 UNITY_FOG_COORDS(2)
             };
 
@@ -66,6 +71,9 @@ Shader "TurboTurbo/Smoke"
                 // you're inside it
                 float eyeDepth = -UnityObjectToViewPos(v.vertex).z;
                 float camFade = smoothstep(_MinFadeDist, _MaxFadeDist, eyeDepth);
+
+                o.screenPos = ComputeScreenPos(o.pos);
+                o.eyeDepth = eyeDepth;
 
                 o.color = v.color;
                 float size = v.texcoords.z;
@@ -91,8 +99,15 @@ Shader "TurboTurbo/Smoke"
 
             half4 frag (v2f i) : SV_Target
             {
+                // fade the particle out as it approaches opaque geometry, so a quad
+                // poking through a surface doesn't end in a hard clipped edge
+                float2 screenUV = i.screenPos.xy / i.screenPos.w;
+                float rawZ = tex2D(_CameraDepthTexture, screenUV).r;
+                float sceneZ = LinearEyeDepth(rawZ);
+                float softFade = saturate((sceneZ - i.eyeDepth) / max(1e-4, _SoftParticlesFade));
+
                 half4 tex = tex2D(_MainTex, i.uv);
-                float alpha = tex.a * i.color.a;
+                float alpha = tex.a * i.color.a * softFade;
 
                 // compress the dynamic range on bright colours, to avoid white
                 // smoke having unnaturally dark shadows, while preserving

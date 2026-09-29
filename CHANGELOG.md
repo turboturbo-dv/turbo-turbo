@@ -11,8 +11,11 @@
 - Smoke fade-out is no longer hardcoded and now depends on how fast a particle
   grows, so the plume naturally thins as it widens
 - Increased the lifespan and maximum size of long, thin smoke plumes
+- Smoke now grows quickly just after leaving the exhaust pipe, and more slowly
+  afterwards
 - Smoke fades away when close to the camera, to prevent it from clipping
   through the cab when inside
+- Removed harsh edges on smoke that intersects other surfaces
 - Shimmer now draws before the smoke; this gets rid of some glitchy patterns that
   used to show up near smoke edges
 - Soot gains a slight ease-in/out over time, so that it can no longer appear

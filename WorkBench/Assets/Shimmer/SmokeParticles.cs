@@ -17,12 +17,16 @@ namespace TurboTurbo.WorkBench
         private static readonly int MaxFadeDist = Shader.PropertyToID("_MaxFadeDist");
         private static readonly int DensityScale = Shader.PropertyToID("_DensityScale");
         private static readonly int DensityFalloffId = Shader.PropertyToID("_DensityFalloff");
+        private static readonly int SoftParticlesFadeId = Shader.PropertyToID("_SoftParticlesFade");
 
         // the CPU write and shader read of the encoded density must use reciprocal powers
         private const float DensityEncodeExponent = 0.5f;
 
         /// <summary>Decay exponent for the density model, applied to every emitter.</summary>
         public static float DensityFalloff = 1.8f;
+
+        /// <summary>Distance [m] over which smoke fades out as it approaches opaque geometry. 0 disables.</summary>
+        public static float SoftParticlesFade = 0.15f;
 
         // near-camera fade range, in metres
         private const float FadeDistMin = 1.5f;
@@ -287,6 +291,7 @@ namespace TurboTurbo.WorkBench
                 rend.material.SetFloat(MaxFadeDist, FadeDistMax);
                 SetDensityScale(ComputeDensityScale());
                 ApplyDensityFalloff();
+                ApplySoftParticlesFade();
             }
         }
 
@@ -318,6 +323,11 @@ namespace TurboTurbo.WorkBench
         public void ApplyDensityFalloff()
         {
             if (_renderer != null) _renderer.material.SetFloat(DensityFalloffId, DensityFalloff);
+        }
+
+        public void ApplySoftParticlesFade()
+        {
+            if (_renderer != null) _renderer.material.SetFloat(SoftParticlesFadeId, SoftParticlesFade);
         }
 
         private void Update()
