@@ -19,10 +19,10 @@ internal static class ShimmerEmitterSection
 
         var section = new Section("Shimmer emitter", onRequiresReconfigure) { OnToggle = onToggle };
         var f = shimmers[0];
-        section.AddFloat("Start size", "Particle size [m] at emission.",
+        section.AddFloat("Start size", "Shimmer plume diameter [m] at emission.",
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in shimmers) s.tuning.startSize = v; }, TweakGrade.Basic);
-        section.AddFloat("End size", "Particle size [m] at end of lifetime.",
-            1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeEnd = v; });
+        section.AddFloat("End size", "Shimmer plume diameter [m] at end of lifetime.",
+            1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeEnd = v; }, TweakGrade.Basic);
         section.AddFloat("Size curve shape", "Exponent shaping how the shimmer effect grows throughout its lifetime.\n" +
                                              " * 1 grows at a constant rate (linear).\n" +
                                              " * Below 1 expands quickly, then slows.",

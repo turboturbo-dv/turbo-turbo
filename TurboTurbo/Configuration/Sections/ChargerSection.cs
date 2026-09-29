@@ -12,7 +12,7 @@ internal static class ChargerSection
         "Affects the amount of soot the engine produces at all power levels:\n" +
         " * Raise this to make the engine run richer.\n" +
         " * Lower it to make it run leaner.\n\n" +
-        "As a starting guideline, try to tune it so that lambda sits just above 1.3" +
+        "As a starting guideline, try to tune it so that lambda sits just above 1.3 " +
         "at full load.";
 
     public static Section Build(EngineSimulationHost host, Action onRequiresReconfigure, Action onToggle)

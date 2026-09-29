@@ -12,14 +12,16 @@ internal static class TelemetryView
         "It raises or lowers power to match engine RPM to the requested throttle setting.";
 
     private const string LoadValueTooltip =
-        "Normalised fuel flow into the engine.\n" +
+        "Total fuel flow into the engine, as a percentage of the maximum possible.\n" +
         "Both governor demand (fuel per stroke) and RPM (strokes per second) affect this.";
 
     private const string LambdaValueTooltip =
         "Air-to-fuel ratio, relative to a stoichiometric (chemically balanced) mixture:\n" +
         " * 1 is balanced\n" +
-        " * below 1 is rich (excess fuel)\n" +
-        " * above 1 is lean (excess air)";
+        " * above 1 is lean (excess air)\n" +
+        " * below 1 is rich (excess fuel)\n\n" +
+        "Because of this, lambda goes down when more fuel is injected into the engine, and it rises when more air is " +
+        "supplied. This process is what causes soot to clear when a turbocharger spins up.";
 
     private const string ChargeValueTooltip =
         "Cylinder air pressure, relative to atmospheric.\n" +
@@ -49,7 +51,9 @@ internal static class TelemetryView
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(new GUIContent($"Lambda {model.Lambda:0.00}", LambdaValueTooltip));
+            GUILayout.Label(new GUIContent($"Lambda {model.Lambda:0.00}",
+                LambdaValueTooltip + $"\n\nOnce lambda drops below {host.Profile.Smoke.SootOnsetLambda:0.00}, soot starts forming.\n" +
+                $"When lambda reaches {host.Profile.Smoke.SootOpaqueLambda:0.00}, soot has reached maximum intensity."));
             GUILayout.Label(new GUIContent($"Charge {model.Charge:0.00}", ChargeValueTooltip));
             GUILayout.EndHorizontal();
         }

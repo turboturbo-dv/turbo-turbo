@@ -20,10 +20,10 @@ internal static class SmokeEmitterSection
 
         var section = new Section("Smoke emitter", onRequiresReconfigure) { OnToggle = onToggle };
         var f = smokes[0];
-        section.AddFloat("Start size", "Particle size [m] at emission.",
+        section.AddFloat("Start size", "Smoke plume diameter [m] at emission.",
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in smokes) s.tuning.startSize = v; }, TweakGrade.Basic);
-        section.AddFloat("End size", "Particle size [m] at end of lifetime.",
-            1f, 15f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; });
+        section.AddFloat("End size", "Smoke plume diameter [m] at end of lifetime.",
+            1f, 15f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; }, TweakGrade.Basic);
         section.AddFloat("Size curve shape", "Exponent shaping how the smoke plume grows throughout its lifetime.\n" +
                                              " * 1 grows at a constant rate (linear).\n" +
                                              " * Below 1 expands quickly, then slows.",

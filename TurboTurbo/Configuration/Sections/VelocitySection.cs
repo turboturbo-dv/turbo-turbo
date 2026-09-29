@@ -14,7 +14,7 @@ internal static class VelocitySection
                                      "and high speed.",
             0f, 5f, false, () => host.Velocity.Idle, v => host.Velocity.Idle = v, TweakGrade.Basic);
         section.AddFloat("Max load", "Exhaust plume speed [m/s] at full load.",
-            0f, 20f, false, () => host.Velocity.FullLoad, v => host.Velocity.FullLoad = v, TweakGrade.Basic);
+            0f, 25f, false, () => host.Velocity.FullLoad, v => host.Velocity.FullLoad = v, TweakGrade.Basic);
         return section;
     }
 }
