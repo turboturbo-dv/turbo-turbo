@@ -6,8 +6,8 @@ using TurboTurbo.Profiles;
 
 using Xunit;
 
-using static TurboTurbo.Profiles.ProfileRepository;
 using static TurboTurbo.Profiles.ProfileLoader;
+using static TurboTurbo.Profiles.ProfileRepository;
 
 namespace TurboTurboTests
 {

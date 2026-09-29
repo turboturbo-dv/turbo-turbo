@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
 
@@ -8,6 +11,15 @@ namespace TurboTurbo.Configuration;
 internal static class ProfileOverview
 {
     private const float LabelWidth = 200f;
+
+    // these locos have no diesel exhaust to simulate, so they get no profile row
+    private static readonly HashSet<string> ExcludedLiveries = new(StringComparer.Ordinal)
+    {
+        "HandCar",
+        "LocoMicroshunter",
+        "LocoS060",
+        "LocoS282A",
+    };
 
     private static readonly Logger Log = TurboTurbo.Log.ForContext("overview");
 
@@ -31,6 +43,8 @@ internal static class ProfileOverview
         GUILayout.BeginVertical(Styles.OverviewBox);
         foreach (var livery in LiveryCatalog.LocoLiveries())
         {
+            if (ExcludedLiveries.Contains(livery.Id)) continue;
+
             var isBoarded = livery.Id == boardedLiveryId;
 
             GUILayout.BeginHorizontal();
