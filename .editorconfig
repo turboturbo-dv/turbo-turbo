@@ -11,7 +11,7 @@ indent_size = 2
 #### File formatting ####
 indent_size = 4
 tab_width = 4
-insert_final_newline = false
+insert_final_newline = true
 
 # Organize usings
 dotnet_separate_import_directive_groups = true
