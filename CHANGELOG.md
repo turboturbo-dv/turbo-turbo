@@ -10,14 +10,18 @@
 ### Changed
 - Smoke fade-out is no longer hardcoded and now depends on how fast a particle
   grows, so the plume naturally thins as it widens
-- Smoke now fades away when close to the camera, to prevent it from clipping
+- Increased the lifespan and maximum size of long, thin smoke plumes
+- Smoke fades away when close to the camera, to prevent it from clipping
   through the cab when inside
-- Soot now has a slight ease-in/out over time, so that it can no longer appear
+- Shimmer now draws before the smoke; this gets rid of some glitchy patterns that
+  used to show up near smoke edges
+- Soot gains a slight ease-in/out over time, so that it can no longer appear
   or disappear instantly after fast throttle changes
 - Improved clean smoke opacity calculations near engine idle point
 - Slightly reduced max shimmer intensity on the DM3
 - Slowed down DE6 turbo spool-down time
 - Minor tweaks to the combustion simulation model
+- Now logs an error if assets could not be loaded
 
 ## v0.2.2
 
