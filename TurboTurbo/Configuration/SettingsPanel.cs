@@ -85,18 +85,23 @@ internal static class SettingsPanel
         var current = mods.Find(m => m.Info.Id == settings.AuthoringTargetModId);
         var label = current != null ? current.Info.DisplayName : "(none)";
 
+        GUILayout.BeginVertical(Styles.AuthoringBox);
+
         GUILayout.Label("Save profiles to:");
         GUILayout.BeginVertical(GUILayout.Width(TargetWidth));
         if (GUILayout.Button(label + "  ▾")) _targetOpen = !_targetOpen;
         if (_targetOpen) DrawTargetList(entry, mods);
         GUILayout.EndVertical();
 
-        if (string.IsNullOrEmpty(settings.AuthoringTargetModId)) return;
+        if (!string.IsNullOrEmpty(settings.AuthoringTargetModId))
+        {
+            var file = current != null
+                ? System.IO.Path.Combine(current.Path, ProfileWriter.ConfigFileName)
+                : "(target mod unavailable)";
+            GUILayout.Label($"Profiles will be saved to {file}", Styles.WrappedLabel);
+        }
 
-        var file = current != null
-            ? System.IO.Path.Combine(current.Path, ProfileWriter.ConfigFileName)
-            : "(target mod unavailable)";
-        GUILayout.Label($"writing to {file}", Styles.WrappedLabel);
+        GUILayout.EndVertical();
     }
 
     private static void DrawTargetList(UnityModManager.ModEntry entry, List<UnityModManager.ModEntry> mods)

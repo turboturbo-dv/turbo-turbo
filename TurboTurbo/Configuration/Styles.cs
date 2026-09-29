@@ -92,6 +92,23 @@ internal static class Styles
         }
     }
 
+    private static GUIStyle _authoringBox;
+
+    public static GUIStyle AuthoringBox
+    {
+        get
+        {
+            if (_authoringBox == null)
+            {
+                _authoringBox = new GUIStyle(GUI.skin.box);
+                _authoringBox.normal.background = FlatBackground(0x2A);
+                _authoringBox.padding = new RectOffset(8, 8, 6, 6);
+            }
+
+            return _authoringBox;
+        }
+    }
+
     private static GUIStyle _boldLabel;
 
     public static GUIStyle BoldLabel
