@@ -37,6 +37,7 @@ Shader "TurboTurbo/HeatShimmer"
             sampler2D_float _CameraDepthTexture;
 
             static const float MinVisibleAlpha = 0.004;
+            static const float OcclusionBias = 0.05;
 
             struct appdata
             {
@@ -105,7 +106,7 @@ Shader "TurboTurbo/HeatShimmer"
                 // effect
                 float rawZ = tex2D(_CameraDepthTexture, suvBase).r;
                 float sceneZ = LinearEyeDepth(rawZ);
-                float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - 0.05) ? 1.0 : 0.0;
+                float occluded = (rawZ > 0.0001 && rawZ < 0.9999 && sceneZ < i.eyeDepth - OcclusionBias) ? 1.0 : 0.0;
                 float edgeFade = uvMask * (1.0 - occluded);
 
                 // debug 1: show effect area, transparent where faded
