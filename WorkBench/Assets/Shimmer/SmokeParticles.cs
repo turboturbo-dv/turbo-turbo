@@ -22,7 +22,7 @@ namespace TurboTurbo.WorkBench
         private const float DensityEncodeExponent = 0.5f;
 
         /// <summary>Decay exponent for the density model, applied to every emitter.</summary>
-        public static float DensityFalloff = 1.5f;
+        public static float DensityFalloff = 1.8f;
 
         // near-camera fade range, in metres
         private const float FadeDistMin = 1.5f;
