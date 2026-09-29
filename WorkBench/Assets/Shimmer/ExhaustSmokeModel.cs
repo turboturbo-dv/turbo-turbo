@@ -345,7 +345,7 @@ namespace TurboTurbo.Modeling
     /// </summary>
     public sealed class ExhaustVelocitySettings
     {
-        internal const float DefaultIdle = 1.5f;
+        internal const float DefaultIdle = 2f;
         internal const float DefaultFullLoad = 15f;
 
         [DefaultValue(DefaultIdle)]
