@@ -148,8 +148,6 @@ internal static class StockConfiguration
             .ConfigureSmokeEmitter(e =>
             {
                 e.sizeOverLifetimeEnd = 4.8f;
-                e.minFadeDist = 2f;
-                e.maxFadeDist = 3.5f;
             })
             .ConfigureShimmerEmitter(e =>
             {

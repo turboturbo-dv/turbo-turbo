@@ -56,10 +56,6 @@ internal static class SmokeEmitterSection
             0f, 1f, false, () => f.tuning.speedLifetimeScale, v => { foreach (var s in smokes) s.tuning.speedLifetimeScale = v; });
         section.AddFloat("Dispersion jitter", "Extra emission jitter [m/s] at full dispersion.",
             0f, 2f, false, () => f.tuning.speedJitter, v => { foreach (var s in smokes) s.tuning.speedJitter = v; });
-        section.AddFloat("Min fade distance", "Camera distance [m] below which smoke is fully faded out.",
-            0f, 10f, false, () => f.tuning.minFadeDist, v => { foreach (var s in smokes) s.SetMinFadeDist(v); });
-        section.AddFloat("Max fade distance", "Camera distance [m] above which smoke is fully visible.",
-            0f, 10f, false, () => f.tuning.maxFadeDist, v => { foreach (var s in smokes) s.SetMaxFadeDist(v); });
         return section;
     }
 }

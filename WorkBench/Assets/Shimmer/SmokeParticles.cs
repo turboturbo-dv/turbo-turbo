@@ -24,6 +24,10 @@ namespace TurboTurbo.WorkBench
         /// <summary>Decay exponent for the density model, applied to every emitter.</summary>
         public static float DensityFalloff = 1.5f;
 
+        // near-camera fade range, in metres
+        private const float FadeDistMin = 1.5f;
+        private const float FadeDistMax = 2.5f;
+
         [XmlType("SmokeEmitterSettings")]
         public sealed class Settings
         {
@@ -44,8 +48,6 @@ namespace TurboTurbo.WorkBench
             internal const float DefaultTurbulenceScrollSpeed = 0f;
             internal const float DefaultLightSaturation = 0.35f;
             internal const float DefaultMaxShadowFloor = 0.65f;
-            internal const float DefaultMinFadeDist = 1f;
-            internal const float DefaultMaxFadeDist = 2f;
 
             [DefaultValue(DefaultIdleEmissionRate)]
             public float idleEmissionRate = DefaultIdleEmissionRate;
@@ -98,12 +100,6 @@ namespace TurboTurbo.WorkBench
             [DefaultValue(DefaultMaxShadowFloor)]
             public float maxShadowFloor = DefaultMaxShadowFloor;
 
-            [DefaultValue(DefaultMinFadeDist)]
-            public float minFadeDist = DefaultMinFadeDist;
-
-            [DefaultValue(DefaultMaxFadeDist)]
-            public float maxFadeDist = DefaultMaxFadeDist;
-
             public Settings()
             {
             }
@@ -127,8 +123,6 @@ namespace TurboTurbo.WorkBench
                 turbulenceScrollSpeed = other.turbulenceScrollSpeed;
                 lightSaturation = other.lightSaturation;
                 maxShadowFloor = other.maxShadowFloor;
-                minFadeDist = other.minFadeDist;
-                maxFadeDist = other.maxFadeDist;
             }
         }
 
@@ -284,8 +278,8 @@ namespace TurboTurbo.WorkBench
                 rend.material.mainTexture = atlas;
                 SetLightSaturation(s.lightSaturation);
                 SetMaxShadowFloor(s.maxShadowFloor);
-                SetMinFadeDist(s.minFadeDist);
-                SetMaxFadeDist(s.maxFadeDist);
+                rend.material.SetFloat(MinFadeDist, FadeDistMin);
+                rend.material.SetFloat(MaxFadeDist, FadeDistMax);
                 SetDensityScale(ComputeDensityScale());
                 ApplyDensityFalloff();
             }
@@ -308,18 +302,6 @@ namespace TurboTurbo.WorkBench
         {
             tuning.maxShadowFloor = value;
             if (_renderer != null) _renderer.material.SetFloat(MaxShadowFloor, value);
-        }
-
-        public void SetMinFadeDist(float value)
-        {
-            tuning.minFadeDist = value;
-            if (_renderer != null) _renderer.material.SetFloat(MinFadeDist, value);
-        }
-
-        public void SetMaxFadeDist(float value)
-        {
-            tuning.maxFadeDist = value;
-            if (_renderer != null) _renderer.material.SetFloat(MaxFadeDist, value);
         }
 
         public void SetDensityScale(float value)
