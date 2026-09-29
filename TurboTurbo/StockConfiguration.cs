@@ -29,7 +29,7 @@ internal static class StockConfiguration
         // for a new loco to get DE6-like behaviour by default. Since many modded diesels appear to occupy the
         // same approximate power range as the DE6, this will often result in a useful profile right out of the box.
         Controller.ConfigureEngine(TrainCarType.LocoDiesel, options => options
-            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0.02f, 0.15f, -0.02f)));
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0.02f, 0.2f, -0.02f)));
     }
 
     private static void ConfigureDh4()
@@ -122,20 +122,22 @@ internal static class StockConfiguration
     private static void ConfigureDe2()
     {
         Controller.ConfigureEngine(TrainCarType.LocoShunter, options => options
-            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0f, 0f))
+            .ReplaceEngineExhaust("ExhaustEngineSmoke", new Vector3(0f, 0.1f, 0f))
             .UseAtmosphericCharger(c =>
             {
-                // a reasonably clean naturally aspirated engine, just a hint of soot at full power + RPM
+                // a reasonably clean naturally aspirated engine, just a hint of soot at full load + RPM
                 c.EtaPeak = 0.86f;
                 c.ChokeK = 0.285f;
-                c.LambdaCalibration = 0.52f;
+                c.LambdaCalibration = 0.525f;
             })
             .ConfigureSmoke(s =>
             {
                 s.Density = De2Density;
 
-                // not much wet stacking occurs in a smaller engine
+                s.CleanMinHeatAlpha = 0.001f;
                 s.CleanMaxHeatAlpha = 0.15f;
+
+                // not much wet stacking occurs in a smaller engine
                 s.WetStackMistStrength = 1f;
                 s.OilTintStrength = 0.35f;
             })
@@ -147,6 +149,7 @@ internal static class StockConfiguration
             })
             .ConfigureSmokeEmitter(e =>
             {
+                e.startSize = 0.25f;
                 e.sizeOverLifetimeEnd = 4.8f;
             })
             .ConfigureShimmerEmitter(e =>
@@ -157,7 +160,7 @@ internal static class StockConfiguration
 
                 // lower power, so shimmer is less intense and disperses more quickly
                 e.lifetime = 1f;
-                e.strength = 0.004f;
+                e.strength = 0.005f;
 
                 // particle velocity adds enough movement, no need to scroll the effect itself
                 e.idleAnimSpeed = 0f;
