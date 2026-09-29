@@ -29,10 +29,10 @@ namespace TurboTurbo.WorkBench
         {
             internal const float DefaultIdleEmissionRate = 15f;
             internal const float DefaultFullEmissionRate = 75f;
-            internal const float DefaultLifetime = 3f;
+            internal const float DefaultLifetime = 4.5f;
             internal const float DefaultStartSize = 0.39f;
             internal const float DefaultStartSizeVariance = 0.29f;
-            internal const float DefaultSizeOverLifetimeEnd = 3.8f;
+            internal const float DefaultSizeOverLifetimeEnd = 6f;
             internal const float DefaultBuoyancy = 0.1f;
             internal const float DefaultDrag = 0.6f;
             internal const float DefaultAngularVelocityMax = 20f;
