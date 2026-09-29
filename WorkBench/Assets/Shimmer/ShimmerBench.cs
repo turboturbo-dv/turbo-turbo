@@ -23,9 +23,6 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 100f)] public float idleEmissionRate = 15f;
         [Range(0f, 300f)] public float fullEmissionRate = 75f;
 
-        [Header("Draw order")]
-        public bool shimmerOverSmoke = false;
-
         [Header("Movement speed")]
         [Range(0f, 8f)] public float moveSpeed = 1.5f;
 
@@ -33,7 +30,6 @@ namespace TurboTurbo.WorkBench
         private ShimmerParticles _particleEmitter;
         private SmokeParticles _smokeBench;
         private GameObject _frame;
-        private bool _lastShimmerOverSmoke;
 
         private void Start()
         {
@@ -111,13 +107,6 @@ namespace TurboTurbo.WorkBench
                 _smokeBench.tuning.idleEmissionRate = idleEmissionRate;
                 _smokeBench.tuning.fullEmissionRate = fullEmissionRate;
                 _smokeBench.heat = heat;
-            }
-
-            if (_particleEmitter != null && shimmerOverSmoke != _lastShimmerOverSmoke)
-            {
-                _lastShimmerOverSmoke = shimmerOverSmoke;
-                _particleEmitter.renderQueue = shimmerOverSmoke ? 3010 : 2990;
-                _particleEmitter.Configure();
             }
 
             Material bg = _background != null ? _background.sharedMaterial : null;

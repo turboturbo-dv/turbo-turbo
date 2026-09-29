@@ -146,8 +146,9 @@ namespace TurboTurbo
         public bool outline;
         public int debug;
 
-        // smoke goes at 3000 by default, higher means we draw on top of the smoke, displacing it, which looks nice
-        public int renderQueue = 3010;
+        // smoke sits at the default Transparent queue (3000); drawing just below it puts the shimmer under the
+        // smoke so only the background is distorted. Drawing on top also distorts the smoke, but glitches at cloud edges.
+        private const int RenderQueue = 2990;
 
         [Header("Engine signal (0..1)")]
         [Range(0f, 1f)] public float heat;
@@ -248,7 +249,7 @@ namespace TurboTurbo
                     _material = new Material(shader) { name = "TurboTurbo.ShimmerParticleMat" };
                     rend.material = _material;
                 }
-                _material.renderQueue = renderQueue;
+                _material.renderQueue = RenderQueue;
             }
             else
             {
