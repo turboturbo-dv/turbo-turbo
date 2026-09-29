@@ -23,6 +23,10 @@ internal static class ShimmerEmitterSection
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in shimmers) s.tuning.startSize = v; }, TweakGrade.Basic);
         section.AddFloat("End size", "Particle size [m] at end of lifetime.",
             1f, 10f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeEnd = v; });
+        section.AddFloat("Size curve shape", "Exponent shaping how the shimmer effect grows throughout its lifetime.\n" +
+                                             " * 1 grows at a constant rate (linear).\n" +
+                                             " * Below 1 expands quickly, then slows.",
+            0.1f, 1f, true, () => f.tuning.sizeOverLifetimeExponent, v => { foreach (var s in shimmers) s.tuning.sizeOverLifetimeExponent = v; });
         section.AddFloat("Size variance", "Random variance in particle size:\n" +
                                           " * 0 means all particles are the exact same size as similarly-aged neighbours.\n" +
                                           " * 1 means all particles can be anywhere between half as small and twice as big relative to their neighbours.",

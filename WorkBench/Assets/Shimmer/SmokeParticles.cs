@@ -37,6 +37,7 @@ namespace TurboTurbo.WorkBench
             internal const float DefaultStartSize = 0.39f;
             internal const float DefaultStartSizeVariance = 0.29f;
             internal const float DefaultSizeOverLifetimeEnd = 6f;
+            internal const float DefaultSizeOverLifetimeExponent = 0.65f;
             internal const float DefaultBuoyancy = 0.1f;
             internal const float DefaultDrag = 0.6f;
             internal const float DefaultAngularVelocityMax = 20f;
@@ -66,6 +67,9 @@ namespace TurboTurbo.WorkBench
 
             [DefaultValue(DefaultSizeOverLifetimeEnd)]
             public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
+
+            [DefaultValue(DefaultSizeOverLifetimeExponent)]
+            public float sizeOverLifetimeExponent = DefaultSizeOverLifetimeExponent;
 
             [DefaultValue(DefaultBuoyancy)]
             public float buoyancy = DefaultBuoyancy;
@@ -112,6 +116,7 @@ namespace TurboTurbo.WorkBench
                 startSize = other.startSize;
                 startSizeVariance = other.startSizeVariance;
                 sizeOverLifetimeEnd = other.sizeOverLifetimeEnd;
+                sizeOverLifetimeExponent = other.sizeOverLifetimeExponent;
                 buoyancy = other.buoyancy;
                 drag = other.drag;
                 angularVelocityMax = other.angularVelocityMax;
@@ -197,7 +202,7 @@ namespace TurboTurbo.WorkBench
             main.gravityModifier = 0f;
 
             // growth: smoke expands as it disperses
-            _sizeCurve = AnimationCurve.Linear(0f, 1f, 1f, Mathf.Max(0.01f, s.sizeOverLifetimeEnd / Mathf.Max(0.01f, s.startSize)));
+            _sizeCurve = ParticleCurves.BakeSizeCurve(s.startSize, s.sizeOverLifetimeEnd, s.sizeOverLifetimeExponent);
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;

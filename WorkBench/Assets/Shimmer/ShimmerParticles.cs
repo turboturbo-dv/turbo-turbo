@@ -28,6 +28,7 @@ namespace TurboTurbo
             internal const float DefaultStartSize = 0.8f;
             internal const float DefaultStartSizeVariance = 0f;
             internal const float DefaultSizeOverLifetimeEnd = 4.8f;
+            internal const float DefaultSizeOverLifetimeExponent = 1f;
             internal const float DefaultDrag = 0.8f;
             internal const float DefaultBuoyancy = 0.65f;
             internal const float DefaultSpeedNormMax = 15f;
@@ -62,6 +63,9 @@ namespace TurboTurbo
 
             [DefaultValue(DefaultSizeOverLifetimeEnd)]
             public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
+
+            [DefaultValue(DefaultSizeOverLifetimeExponent)]
+            public float sizeOverLifetimeExponent = DefaultSizeOverLifetimeExponent;
 
             [DefaultValue(DefaultDrag)]
             public float drag = DefaultDrag;
@@ -123,6 +127,7 @@ namespace TurboTurbo
                 startSize = other.startSize;
                 startSizeVariance = other.startSizeVariance;
                 sizeOverLifetimeEnd = other.sizeOverLifetimeEnd;
+                sizeOverLifetimeExponent = other.sizeOverLifetimeExponent;
                 drag = other.drag;
                 buoyancy = other.buoyancy;
                 speedNormMax = other.speedNormMax;
@@ -205,7 +210,7 @@ namespace TurboTurbo
             main.maxParticles = 200;
             main.gravityModifier = 0f;
 
-            _sizeCurve = AnimationCurve.Linear(0f, 1f, 1f, Mathf.Max(0.01f, s.sizeOverLifetimeEnd / Mathf.Max(0.01f, s.startSize)));
+            _sizeCurve = ParticleCurves.BakeSizeCurve(s.startSize, s.sizeOverLifetimeEnd, s.sizeOverLifetimeExponent);
 
             var sol = _ps.sizeOverLifetime;
             sol.enabled = true;
