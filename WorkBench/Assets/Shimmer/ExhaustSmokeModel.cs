@@ -80,7 +80,7 @@ namespace TurboTurbo.Modeling
             internal const float DefaultWetStackFillHeat = 0.1f;
             internal const float DefaultWetStackReleaseHeat = 0.15f;
             internal const float DefaultWetStackFillRate = 0.005f;
-            internal const float DefaultWetStackReleaseRate = 0.75f;
+            internal const float DefaultWetStackReleaseRate = 0.1f;
             internal const float DefaultWetStackMistStrength = 4f;
             internal const float DefaultWetStackMaxAlpha = 0.95f;
             internal const float DefaultOilTintStrength = 0.3f;
