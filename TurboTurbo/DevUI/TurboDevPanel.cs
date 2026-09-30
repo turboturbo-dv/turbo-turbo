@@ -1,6 +1,7 @@
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
 using TurboTurbo.Runtime;
+using TurboTurbo.WorkBench;
 
 using UnityEngine;
 
@@ -13,6 +14,9 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private string _diagLine = "orchestrator: ?\nspawner: ?";
     private float _diagTimer;
+
+    private float _densityFalloff = SmokeParticles.DensityFalloff;
+    private float _softParticlesFade = SmokeParticles.SoftParticlesFade;
 
     private TurboTooltipLayer _tooltip;
 
@@ -50,6 +54,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
         DrawDiagnostics();
         GUILayout.Space(6f);
         DrawTelemetry();
+        GUILayout.Space(4f);
+        DrawDensityFalloff();
+        GUILayout.Space(4f);
+        DrawSoftParticlesFade();
         GUILayout.Space(4f);
         DrawDiagnosticsButtons();
 
@@ -191,5 +199,69 @@ internal sealed class TurboDevPanel : MonoBehaviour
         }
 
         GUILayout.EndVertical();
+    }
+
+    private void DrawDensityFalloff()
+    {
+        GUILayout.BeginVertical(GUI.skin.box);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(new GUIContent($"Density falloff: {_densityFalloff:0.00}",
+                "Exponent of the size-based density falloff."),
+            GUILayout.Width(170f));
+        var next = GUILayout.HorizontalSlider(_densityFalloff, 0.5f, 4f);
+        GUILayout.EndHorizontal();
+        if (!Mathf.Approximately(next, _densityFalloff))
+        {
+            _densityFalloff = next;
+            SmokeParticles.DensityFalloff = next;
+            ApplyDensityFalloff();
+        }
+        GUILayout.EndVertical();
+    }
+
+    private void ApplyDensityFalloff()
+    {
+        var orchestrator = Orchestrator.Instance;
+        if (orchestrator == null) return;
+
+        foreach (var host in orchestrator.Hosts)
+        {
+            foreach (var e in host.Exhausts)
+            {
+                e.Smoke?.ApplyDensityFalloff();
+            }
+        }
+    }
+
+    private void DrawSoftParticlesFade()
+    {
+        GUILayout.BeginVertical(GUI.skin.box);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(new GUIContent($"Soft particles: {_softParticlesFade:0.00} m",
+                "Distance over which smoke fades out as it approaches opaque geometry. 0 disables."),
+            GUILayout.Width(170f));
+        var next = GUILayout.HorizontalSlider(_softParticlesFade, 0f, 1f);
+        GUILayout.EndHorizontal();
+        if (!Mathf.Approximately(next, _softParticlesFade))
+        {
+            _softParticlesFade = next;
+            SmokeParticles.SoftParticlesFade = next;
+            ApplySoftParticlesFade();
+        }
+        GUILayout.EndVertical();
+    }
+
+    private void ApplySoftParticlesFade()
+    {
+        var orchestrator = Orchestrator.Instance;
+        if (orchestrator == null) return;
+
+        foreach (var host in orchestrator.Hosts)
+        {
+            foreach (var e in host.Exhausts)
+            {
+                e.Smoke?.ApplySoftParticlesFade();
+            }
+        }
     }
 }
