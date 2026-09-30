@@ -84,6 +84,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         // per-car context: logs from multiple locos stay distinguishable
         var car = GetComponent<TrainCar>();
+        TrainCar = car;
         _log = Log.ForContext(car != null ? $"host:{car.LogIdentifier()}" : "host");
 
         return this;
@@ -199,7 +200,6 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         ModAssets.EnsureLoaded();
         GameAssets.EnsureLoaded();
 
-        TrainCar = GetComponent<TrainCar>();
         Exhausts.Clear();
 
         Velocity = Profile.Velocity;
