@@ -13,7 +13,7 @@ internal sealed class ExhaustOffsetMarker : MonoBehaviour
 
     private static readonly Vector3[] Axes = { Vector3.right, Vector3.up, Vector3.forward };
     private static readonly string[] AxisNames = { "X", "Y", "Z" };
-    private static readonly Color[] AxisColors = { Color.red, Color.green, Color.blue };
+    internal static readonly Color[] AxisColors = { Color.red, Color.green, Color.blue };
 
     private static Material[] _materials;
 

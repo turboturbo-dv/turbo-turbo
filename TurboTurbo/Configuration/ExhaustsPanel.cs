@@ -179,7 +179,10 @@ internal sealed class ExhaustsPanel : IEditorPanel
         var value = entry.GetAxis(axis);
 
         GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(20f));
+        var previousColor = GUI.contentColor;
+        GUI.contentColor = ExhaustOffsetMarker.AxisColors[axis];
+        GUILayout.Label(label, Styles.BoldLabel, GUILayout.Width(20f));
+        GUI.contentColor = previousColor;
         for (var s = Steps.Length - 1; s >= 0; s--) DrawNudge(entry, axis, -Steps[s]);
 
         var shown = _editText[axis] ?? value.ToString("0.###", CultureInfo.InvariantCulture);
