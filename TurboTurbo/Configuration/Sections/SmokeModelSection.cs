@@ -34,7 +34,8 @@ internal static class SmokeModelSection
                              "relative smoke weights below.", 0f, 250f,
             m => m.Tuning.Density, (m, v) => m.Tuning.Density = v, TweakGrade.Basic, requiresReconfigure: true);
 
-        Add("Clean smoke weight (min)", "Intensity of clean exhaust smoke at zero load, relative to other types of smoke.", 0f, 0.1f,
+        Add("Clean smoke weight (min)", "Intensity of clean exhaust smoke at zero load, relative to other types of smoke.\n" +
+                                        "This will generally be very low, as an idling engine should hardly produce smoke.", 0f, 0.1f,
             m => m.Tuning.CleanMinHeatAlpha, (m, v) => m.Tuning.CleanMinHeatAlpha = v, TweakGrade.Basic);
 
         Add("Clean smoke weight (max)", "Intensity of clean exhaust smoke at full load, relative to other types of smoke.", 0f, 0.5f,

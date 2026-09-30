@@ -5,7 +5,8 @@ using UnityEngine;
 namespace TurboTurbo.Assets;
 
 /// <summary>
-/// Runtime access to vanilla assets we build on.
+/// Runtime access to vanilla assets we depend on. These are fetched directly from the game
+/// to avoid having to redistribute them.
 /// </summary>
 internal static class GameAssets
 {

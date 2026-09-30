@@ -20,7 +20,8 @@ internal static class SmokeEmitterSection
 
         var section = new Section("Smoke emitter", onRequiresReconfigure) { OnToggle = onToggle };
         var f = smokes[0];
-        section.AddFloat("Start size", "Smoke plume diameter [m] at emission.",
+        section.AddFloat("Start size", "Smoke plume diameter [m] at emission.\n" +
+                                       "Change this so it visually matches the width of the exhaust pipe.",
             0.1f, 3f, true, () => f.tuning.startSize, v => { foreach (var s in smokes) s.tuning.startSize = v; }, TweakGrade.Basic);
         section.AddFloat("End size", "Smoke plume diameter [m] at end of lifetime.",
             1f, 15f, true, () => f.tuning.sizeOverLifetimeEnd, v => { foreach (var s in smokes) s.tuning.sizeOverLifetimeEnd = v; }, TweakGrade.Basic);
