@@ -49,7 +49,6 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
     {
         if (_editor != null)
         {
-            Log.Info("profile editor already open");
             return;
         }
 

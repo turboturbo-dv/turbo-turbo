@@ -132,7 +132,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         _simBound = true;
         _log.Info($"sim bound ({Profile.ChargerKind} charger, " +
-                     $"{Profile.Exhausts.Count} exhaust(s))");
+                     $"{Profile.Exhausts.Count} exhausts)");
 
         TryBindCombustion();
 
@@ -229,7 +229,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         }
 
         EffectsBound = true;
-        _log.Info($"effects bound ({Exhausts.Count} exhaust emitter(s))");
+        _log.Info($"effects bound ({Exhausts.Count} exhaust emitters)");
     }
 
     private Transform ResolveExhaustTransform(LocoExhaust exhaust)
