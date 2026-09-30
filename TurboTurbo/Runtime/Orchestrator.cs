@@ -110,11 +110,7 @@ internal sealed class Orchestrator : MonoBehaviour
     /// <summary> Forgets about a host, without explicitly deleting it. </summary>
     public void Forget(EngineSimulationHost host)
     {
-        var car = host.TrainCar;
-        if (Hosts.Remove(host))
-        {
-            _log.Info($"forgot about {car.LogIdentifier()}");
-        }
+        Hosts.Remove(host);
     }
 
     private void Update()

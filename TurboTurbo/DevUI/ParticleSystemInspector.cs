@@ -16,7 +16,7 @@ internal static class ParticleSystemInspector
             .Where(ps => ps.transform.parent == null || ps.transform.parent.GetComponent<ParticleSystem>() == null)
             .ToList();
 
-        Log.Info($"=== car '{car.ID}' ({car.carType}): {roots.Count} particle system roots ===");
+        Log.Info($"=== car '{car.DisplayId()}' ({car.carType}): {roots.Count} particle system roots ===");
         Log.Info(DescribeLighting());
         foreach (var root in roots)
         {

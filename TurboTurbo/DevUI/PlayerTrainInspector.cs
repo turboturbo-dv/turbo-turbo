@@ -33,7 +33,7 @@ internal static class PlayerTrainInspector
     public static void Dump(TrainCar car)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"car: {car.name} (id={car.ID}, type={car.carType})");
+        sb.AppendLine($"car: {car.name} (id={car.DisplayId()}, type={car.carType})");
 
         var systems = car.GetComponentsInChildren<ParticleSystem>(true);
         sb.AppendLine($"particle systems: {systems.Length}");

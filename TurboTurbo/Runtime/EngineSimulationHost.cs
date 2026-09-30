@@ -76,7 +76,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
     public float AbsSpeed => TrainCar.GetAbsSpeed();
 
-    public string CarId => TrainCar.ID;
+    public string CarId => TrainCar.DisplayId();
 
     public EngineSimulationHost Configure(LocoProfile configuration)
     {

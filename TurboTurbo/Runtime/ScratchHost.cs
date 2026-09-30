@@ -32,7 +32,7 @@ internal static class ScratchHost
         var error = profile.Complete();
         if (error != null)
         {
-            Log.Warn($"cannot create a profile for '{car.ID}': {error}");
+            Log.Warn($"cannot create a profile for '{car.DisplayId()}': {error}");
             return null;
         }
 
@@ -47,7 +47,7 @@ internal static class ScratchHost
         var path = ExhaustTargets.TryDefaultPath(car);
         if (path != null) return LocoExhaust.Replacement(path);
 
-        Log.Info($"no exhaust particle system on '{car.ID}', adding an independent exhaust");
+        Log.Info($"no exhaust particle system on '{car.DisplayId()}', adding an independent exhaust");
         return LocoExhaust.Independent();
     }
 }

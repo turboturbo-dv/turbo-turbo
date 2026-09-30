@@ -92,7 +92,7 @@ internal sealed class ProfileEditor : MonoBehaviour
             _needsShrink = false;
         }
 
-        _windowRect = GUILayout.Window(GetInstanceID(), _windowRect, DrawWindow, $"Profile: {_liveryId} ({_car.ID})", Styles.Window);
+        _windowRect = GUILayout.Window(GetInstanceID(), _windowRect, DrawWindow, $"Profile: {_liveryId} ({_car.DisplayId()})", Styles.Window);
     }
 
     private void DrawWindow(int id)
