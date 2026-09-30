@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using TurboTurbo.Profiles;
 using TurboTurbo.Runtime;
@@ -8,11 +9,20 @@ using UnityEngine;
 
 namespace TurboTurbo.Configuration;
 
-internal static class ProfileOverview
+internal sealed class ProfileOverview
 {
-    private const float LabelWidth = 200f;
+    private const float MarkerWidth = 16f;
+    private const float NameWidth = 180f;
+    private const float PillWidth = 104f;
+    private const float LayersWidth = PillWidth * 3f + Styles.ProfileOverviewRowMargin * 2f;
+    private const float EnabledWidth = 56f;
+    private const float ActionsWidth = 160f;
+    private const float RowSpacing = 4f;
 
-    // these locos have no diesel exhaust to simulate, so they get no profile row
+    private static readonly string[] LayerOrder = { "Built-in", "Mod", "User" };
+
+    // These locos have no diesel exhaust to simulate, so they get no profile row.
+    // This won't exclude modded vehicles, but these are harder to check when we don't have a TrainCar object yet.
     private static readonly HashSet<string> ExcludedLiveries = new(StringComparer.Ordinal)
     {
         "HandCar",
@@ -21,93 +31,221 @@ internal static class ProfileOverview
         "LocoS282A",
     };
 
+    private static readonly Color32 PillFill = new(0x4A, 0x4A, 0x4A, 0xFF);
+    private static readonly Color32 PillText = new(0xD0, 0xD0, 0xD0, 0xFF);
+    private static readonly Color32 DotActive = new(0x6F, 0xCF, 0x73, 0xFF);
+    private static readonly Color32 DotInactive = new(0xC5, 0x6A, 0x5A, 0xFF);
+    private static readonly Color32 DotShadowed = new(0x9A, 0x9A, 0x9A, 0xFF);
+
     private static readonly Logger Log = TurboTurbo.Log.ForContext("overview");
 
-    public static void Draw()
+    public void Draw()
     {
         var car = PlayerManager.Car;
         var boardedLiveryId = car != null && car.IsLoco && car.carLivery != null
             ? car.carLivery.id
             : null;
 
-        GUILayout.Label("Locomotive profiles", Styles.BoldLabel);
-        if (boardedLiveryId == null)
-        {
-            GUILayout.Label("Board a locomotive to create or edit its profile.");
-        }
+        GUILayout.Label("Profiles", Styles.BoldLabel);
         GUILayout.Space(2f);
 
         var orchestrator = Orchestrator.Instance;
         var authoring = SettingsStore.Current.IsAuthoring;
 
         GUILayout.BeginVertical(Styles.OverviewBox);
-        foreach (var livery in LiveryCatalog.LocoLiveries())
+        DrawHeader();
+        var liveries = OrderedLiveries();
+        for (var i = 0; i < liveries.Count; i++)
         {
-            if (ExcludedLiveries.Contains(livery.Id)) continue;
-
-            var isBoarded = livery.Id == boardedLiveryId;
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(livery.TypeId, GUILayout.Width(LabelWidth));
-            GUILayout.Label(ProfileRepository.TryGetStatus(livery.Id).Label);
-
-            if (!authoring)
-            {
-                DrawUserControls(livery.Id, orchestrator);
-            }
-
-            if (isBoarded)
-            {
-                GUILayout.Label("boarded");
-                var host = orchestrator != null ? orchestrator.FindHost(car) : null;
-                if (GUILayout.Button(host != null ? "Edit" : "New profile"))
-                {
-                    ProfileEditorPresenter.Instance?.Open(car);
-                }
-            }
-
-            if (authoring)
-            {
-                DrawAuthoringControls(livery.Id, orchestrator);
-            }
-            GUILayout.EndHorizontal();
+            if (i > 0) GUILayout.Space(RowSpacing);
+            DrawRow(BuildContext(liveries[i], boardedLiveryId, car, orchestrator, authoring));
         }
         GUILayout.EndVertical();
     }
 
-    private static void DrawAuthoringControls(string liveryId, Orchestrator orchestrator)
+    private List<LiveryCatalog.LiveryInfo> OrderedLiveries()
     {
-        if (!ProfileRepository.ModSuppliesAuthoringLivery(liveryId)) return;
-
-        var target = ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId);
-        if (!GUILayout.Button(new GUIContent("delete", $"Remove this profile from '{target}'"))) return;
-
-        var error = ProfileRepository.DeleteFromAuthoringMod(liveryId);
-        if (error != null)
+        var list = LiveryCatalog.GetLiveries().Where(l => !ExcludedLiveries.Contains(l.Id)).ToList();
+        list.Sort((a, b) =>
         {
-            Log.Warn($"could not delete profile '{liveryId}' from the mod: {error}");
+            var byGroup = b.IsModded.CompareTo(a.IsModded);
+            if (byGroup != 0) return byGroup;
+
+            var byName = string.Compare(a.Name, b.Name, StringComparison.Ordinal);
+            return byName != 0 ? byName : string.Compare(a.Id, b.Id, StringComparison.Ordinal);
+        });
+        return list;
+    }
+
+    private void DrawHeader()
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(GUIContent.none, Styles.RowLabel, GUILayout.Width(MarkerWidth));
+        GUILayout.Label("Locomotive", Styles.BoldLabel, GUILayout.Width(NameWidth));
+        GUILayout.Label("Layers", Styles.BoldLabel, GUILayout.Width(LayersWidth));
+        GUILayout.Label("Enabled", Styles.BoldLabel, GUILayout.Width(EnabledWidth));
+        GUILayout.Label("Actions", Styles.BoldLabel, GUILayout.Width(ActionsWidth));
+        GUILayout.EndHorizontal();
+        Styles.HLine();
+    }
+
+    private static ProfileRowContext BuildContext(
+        LiveryCatalog.LiveryInfo livery,
+        string boardedLiveryId,
+        TrainCar car,
+        Orchestrator orchestrator,
+        bool authoring)
+    {
+        return new ProfileRowContext(
+            livery,
+            Controller.TryGetConfiguration(livery.Id),
+            ProfileRepository.TryGetModProfile(livery.Id),
+            ProfileRepository.TryGetModName(livery.Id),
+            authoring ? null : ProfileRepository.TryGetUserProfile(livery.Id),
+            livery.Id == boardedLiveryId,
+            car,
+            orchestrator,
+            authoring);
+    }
+
+    private void DrawRow(ProfileRowContext ctx)
+    {
+        var present = BuildLayers(ctx);
+
+        GUILayout.BeginHorizontal();
+
+        GUILayout.Label(ctx.Boarded ? new GUIContent("▶", "You have boarded this locomotive.") : GUIContent.none,
+            Styles.RowLabel, GUILayout.Width(MarkerWidth));
+        GUILayout.Label(
+            new GUIContent(ctx.Livery.Name, "Board this locomotive to create or edit its profile."),
+            Styles.RowLabel, GUILayout.Width(NameWidth));
+
+        DrawLayerSlots(present);
+
+        DrawEnabled(ctx);
+
+        DrawActions(ctx);
+
+        GUILayout.EndHorizontal();
+    }
+
+    private static Dictionary<string, Layer> BuildLayers(ProfileRowContext ctx)
+    {
+        var present = new Dictionary<string, Layer>(3);
+        if (ctx.BuiltIn != null) present["Built-in"] = new Layer("Stock", "This profile is built into TurboTurbo", true, false);
+        if (ctx.Mod != null) present["Mod"] = new Layer("Mod", $"This profile is supplied by another mod ({ctx.ModName})", ctx.Mod.Enabled, false);
+        if (ctx.User != null) present["User"] = new Layer("User", "This profile was created by you", ctx.User.Enabled, false);
+
+        var effective = present.ContainsKey("User") ? "User"
+            : present.ContainsKey("Mod") ? "Mod"
+            : present.ContainsKey("Built-in") ? "Built-in"
+            : null;
+        if (effective != null)
+        {
+            var layer = present[effective];
+            present[effective] = new Layer(layer.Label, layer.Tooltip, layer.Enabled, true);
+        }
+
+        return present;
+    }
+
+    private void DrawLayerSlots(Dictionary<string, Layer> present)
+    {
+        GUILayout.BeginHorizontal(GUILayout.Width(LayersWidth));
+        for (var i = 0; i < LayerOrder.Length; i++)
+        {
+            if (present.TryGetValue(LayerOrder[i], out var layer)) DrawPill(layer);
+            else GUILayout.Label(GUIContent.none, Styles.EmptySlot, GUILayout.Width(PillWidth));
+        }
+        GUILayout.EndHorizontal();
+    }
+
+    private void DrawPill(Layer layer)
+    {
+        var dot = layer.Effective ? (layer.Enabled ? DotActive : DotInactive) : DotShadowed;
+
+        GUILayout.Label(
+            new GUIContent(layer.Label, layer.Tooltip),
+            Styles.Pill(PillFill, dot, PillText),
+            GUILayout.Width(PillWidth));
+    }
+
+    private void DrawEnabled(ProfileRowContext ctx)
+    {
+        if (ctx.User == null)
+        {
+            GUILayout.Label(GUIContent.none, Styles.EmptySlot, GUILayout.Width(16f));
+            GUILayout.Space(EnabledWidth - 16f);
             return;
         }
 
-        orchestrator?.ReloadHostsForLivery(liveryId);
+        var enabled = GUILayout.Toggle(ctx.User.Enabled, GUIContent.none, Styles.EnabledToggle, GUILayout.Width(16f));
+        GUILayout.Space(EnabledWidth - 16f);
+        if (enabled == ctx.User.Enabled) return;
+
+        ProfileRepository.SetEnabled(ctx.Id, enabled);
+        ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
     }
 
-    private static void DrawUserControls(string liveryId, Orchestrator orchestrator)
+    private void DrawActions(ProfileRowContext ctx)
     {
-        var user = ProfileRepository.TryGetUserProfile(liveryId);
-        if (user == null) return;
+        GUILayout.BeginHorizontal(GUILayout.Width(ActionsWidth));
 
-        var enabled = GUILayout.Toggle(user.Enabled, "enabled");
-        if (enabled != user.Enabled)
+        if (ctx.Authoring)
         {
-            ProfileRepository.SetEnabled(liveryId, enabled);
-            orchestrator?.ReloadHostsForLivery(liveryId);
+            var authored = ProfileRepository.ModSuppliesAuthoringLivery(ctx.Id);
+
+            if (ctx.Boarded)
+            {
+                var content = authored
+                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in: {ctx.ModName}).")
+                    : new GUIContent("Create", $"Create a mod profile for this locomotive (written to: {ctx.ModName})");
+                if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
+            }
+
+            if (authored
+                && GUILayout.Button(new GUIContent("Delete", $"Delete this mod profile (removed from: {ctx.ModName})."), Styles.ActionButton))
+            {
+                var error = ProfileRepository.DeleteFromAuthoringMod(ctx.Id);
+                if (error != null) Log.Warn($"could not delete mod profile '{ctx.Id}' from {ctx.ModName}: {error}");
+                else ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
+            }
+        }
+        else
+        {
+            if (ctx.Boarded)
+            {
+                var content = ctx.User == null
+                    ? new GUIContent("Create", "Create a new user profile for this locomotive.")
+                    : new GUIContent("Edit", "Edit the profile.");
+                if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
+            }
+
+            if (ctx.User != null
+                && GUILayout.Button(new GUIContent("Delete", "Delete your user profile for this locomotive."), Styles.ActionButton))
+            {
+                ProfileRepository.DeleteProfile(ctx.Id);
+                ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
+                Log.Info($"deleted profile '{ctx.Id}'");
+            }
         }
 
-        if (GUILayout.Button("Delete"))
+        GUILayout.EndHorizontal();
+    }
+
+    private readonly struct Layer
+    {
+        public readonly string Label;
+        public readonly string Tooltip;
+        public readonly bool Enabled;
+        public readonly bool Effective;
+
+        public Layer(string label, string tooltip, bool enabled, bool effective)
         {
-            ProfileRepository.DeleteProfile(liveryId);
-            orchestrator?.ReloadHostsForLivery(liveryId);
+            Label = label;
+            Tooltip = tooltip;
+            Enabled = enabled;
+            Effective = effective;
         }
     }
 }

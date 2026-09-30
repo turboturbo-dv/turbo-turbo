@@ -19,8 +19,10 @@ internal static class SettingsPanel
     private static bool _targetOpen;
     private static GUIStyle _toggle;
     private static TurboTooltipLayer _tooltip;
+    private static readonly ProfileOverview Profiles = new();
 
     private const float TargetWidth = 220f;
+    private const float KeybindWidth = 110f;
 
     // UMM indents GUI.skin.toggle by ~10px; drop that so our toggle aligns with the labels.
     private static GUIStyle Toggle => _toggle ??= new GUIStyle(GUI.skin.toggle) { margin = new RectOffset(0, 0, 0, 0) };
@@ -39,18 +41,18 @@ internal static class SettingsPanel
             section.Draw();
         }
         GUILayout.BeginHorizontal();
-        GUILayout.Label("Toggle dev panel");
-        UnityModManager.UI.DrawKeybindingSmart(SettingsStore.Current.ToggleDevPanel, "Toggle dev panel");
-        GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("Open profile editor");
-        UnityModManager.UI.DrawKeybindingSmart(SettingsStore.Current.OpenProfileEditor, "Open profile editor");
+        GUILayout.Label(
+            new GUIContent("Open profile editor",
+                "Opens the profile editor for the locomotive you are currently driving."),
+            GUILayout.Width(Styles.LabelWidth));
+        UnityModManager.UI.DrawKeybindingSmart(
+            SettingsStore.Current.OpenProfileEditor, "Open profile editor", Styles.KeybindButton, GUILayout.Width(KeybindWidth));
         GUILayout.EndHorizontal();
 
         DrawAuthoring(entry);
 
         GUILayout.Space(8f);
-        ProfileOverview.Draw();
+        Profiles.Draw();
 
         // GUI.tooltip is only populated during repaint; capture then, so
         // other event passes don't overwrite it.
@@ -63,14 +65,19 @@ internal static class SettingsPanel
     private static void DrawAuthoring(UnityModManager.ModEntry entry)
     {
         var settings = SettingsStore.Current;
-        var mode = GUILayout.Toggle(settings.AuthoringMode,
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(
             new GUIContent("Vehicle author mode",
                 "For vehicle mod developers. With author mode enabled, any vehicle profiles that you create are saved " +
                 "directly to a TurboConfig.xml file in the mod directory (next to its info.json).\n\n" +
                 "When you've finished creating the profile(s), distribute the TurboConfig.xml file together with the other " +
                 "files in your mod's directory. Users who have TurboTurbo installed alongside your mod will " +
-                "automatically have your profile applied."),
-            Toggle);
+                "automatically have your profile applied.\n\n" +
+                "Note that all user profiles are temporarily disabled while vehicle author mode is active."),
+            GUILayout.Width(Styles.LabelWidth));
+        var mode = GUILayout.Toggle(settings.AuthoringMode, GUIContent.none, Toggle, GUILayout.Width(16f));
+        GUILayout.EndHorizontal();
         if (mode != settings.AuthoringMode)
         {
             settings.AuthoringMode = mode;

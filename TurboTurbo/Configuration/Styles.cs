@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 using UnityEngine;
 
 namespace TurboTurbo.Configuration;
@@ -5,6 +7,8 @@ namespace TurboTurbo.Configuration;
 internal static class Styles
 {
     public const float LabelWidth = 165f;
+
+    public const int ProfileOverviewRowMargin = 4;
 
     private static GUIStyle _separator;
 
@@ -118,19 +122,191 @@ internal static class Styles
             if (_boldLabel == null)
             {
                 _boldLabel = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+                _boldLabel.margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0);
             }
 
             return _boldLabel;
         }
     }
 
-    private static Texture2D FlatBackground(byte shade)
+    private static GUIStyle _rowLabel;
+
+    public static GUIStyle RowLabel
+    {
+        get
+        {
+            if (_rowLabel == null)
+            {
+                _rowLabel = new GUIStyle(GUI.skin.label);
+                _rowLabel.margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0);
+            }
+
+            return _rowLabel;
+        }
+    }
+
+    private static GUIStyle _emptySlot;
+
+    public static GUIStyle EmptySlot
+    {
+        get
+        {
+            if (_emptySlot == null)
+            {
+                _emptySlot = new GUIStyle(GUI.skin.label);
+                _emptySlot.margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0);
+            }
+
+            return _emptySlot;
+        }
+    }
+
+    private static GUIStyle _actionButton;
+
+    public static GUIStyle ActionButton
+    {
+        get
+        {
+            if (_actionButton == null)
+            {
+                _actionButton = new GUIStyle(GUI.skin.button);
+                _actionButton.margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0);
+            }
+
+            return _actionButton;
+        }
+    }
+
+    private static GUIStyle _keybindButton;
+
+    public static GUIStyle KeybindButton
+    {
+        get
+        {
+            if (_keybindButton == null)
+            {
+                _keybindButton = new GUIStyle(GUI.skin.button);
+                _keybindButton.margin = new RectOffset(0, 0, 0, 0);
+            }
+
+            return _keybindButton;
+        }
+    }
+
+    private static Texture2D FlatBackground(byte shade) => Solid(new Color32(shade, shade, shade, 0xFF));
+
+    private static Texture2D Solid(Color32 color)
     {
         var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
         texture.hideFlags = HideFlags.HideAndDontSave;
-        texture.SetPixel(0, 0, new Color32(shade, shade, shade, 0xFF));
+        texture.SetPixel(0, 0, color);
         texture.Apply();
         return texture;
+    }
+
+    private const int PillHeight = 18;
+    private const int PillRadius = 9;
+    private const int PillWidth = 30;
+    private const float PillDotX = 10f;
+    private const float PillDotRadius = 3f;
+
+    private static readonly Dictionary<(Color32 Fill, Color32 Dot, Color32 Text), GUIStyle> PillStyles = new();
+
+    public static GUIStyle Pill(Color32 fill, Color32 dot, Color32 text)
+    {
+        var key = (fill, dot, text);
+        if (PillStyles.TryGetValue(key, out var cached)) return cached;
+
+        var style = new GUIStyle(GUI.skin.label)
+        {
+            normal = { background = PillTexture(fill, dot), textColor = text },
+            border = new RectOffset(18, 9, 0, 0),
+            padding = new RectOffset(20, 8, 0, 0),
+            margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0),
+            alignment = TextAnchor.MiddleLeft,
+            fontSize = 13,
+            fixedHeight = PillHeight,
+        };
+
+        PillStyles[key] = style;
+        return style;
+    }
+
+    private static Texture2D PillTexture(Color32 fill, Color32 dot)
+    {
+        var texture = NewTexture(PillWidth, PillHeight);
+        var fillColor = (Color)fill;
+        var dotColor = (Color)dot;
+        var centerY = (PillHeight - 1) / 2f;
+        var bodyX = (PillWidth - 1) / 2f - PillRadius;
+        var bodyY = (PillHeight - 1) / 2f - PillRadius;
+
+        for (var y = 0; y < PillHeight; y++)
+        {
+            for (var x = 0; x < PillWidth; x++)
+            {
+                var qx = Mathf.Max(Mathf.Abs(x - (PillWidth - 1) / 2f) - bodyX, 0f);
+                var qy = Mathf.Max(Mathf.Abs(y - centerY) - bodyY, 0f);
+                var alpha = Mathf.Clamp01(0.5f - (Mathf.Sqrt(qx * qx + qy * qy) - PillRadius));
+
+                var color = fillColor;
+                var ddx = x - PillDotX;
+                var ddy = y - centerY;
+                var dotAlpha = Mathf.Clamp01(PillDotRadius - Mathf.Sqrt(ddx * ddx + ddy * ddy) + 0.5f);
+                if (dotAlpha > 0f) color = Color.Lerp(color, dotColor, dotAlpha);
+
+                texture.SetPixel(x, y, new Color(color.r, color.g, color.b, alpha));
+            }
+        }
+
+        texture.Apply();
+        return texture;
+    }
+
+    private static Texture2D NewTexture(int width, int height)
+    {
+        return new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            hideFlags = HideFlags.HideAndDontSave,
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+    }
+
+    private static GUIStyle _hline;
+
+    public static void HLine()
+    {
+        if (_hline == null)
+        {
+            _hline = new GUIStyle
+            {
+                normal = { background = Solid(new Color32(0x3A, 0x3A, 0x3A, 0xFF)) },
+                border = new RectOffset(0, 0, 0, 0),
+                padding = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+            };
+        }
+
+        GUILayout.Space(2f);
+        GUILayout.Box(GUIContent.none, _hline, GUILayout.Height(1f), GUILayout.ExpandWidth(true));
+        GUILayout.Space(2f);
+    }
+
+    private static GUIStyle _enabledToggle;
+
+    public static GUIStyle EnabledToggle
+    {
+        get
+        {
+            if (_enabledToggle == null)
+            {
+                _enabledToggle = new GUIStyle(GUI.skin.toggle);
+                _enabledToggle.margin = new RectOffset(ProfileOverviewRowMargin, ProfileOverviewRowMargin, 0, 0);
+            }
+
+            return _enabledToggle;
+        }
     }
 
     private static Texture2D _progressFill;

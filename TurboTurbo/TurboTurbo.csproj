@@ -115,6 +115,10 @@
       <HintPath>$(ManagedDir)\DV.ThingTypes.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="DV.Localization">
+      <HintPath>$(ManagedDir)\DV.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="WorldStreamer">
       <HintPath>$(ManagedDir)\WorldStreamer.dll</HintPath>
       <Private>false</Private>
