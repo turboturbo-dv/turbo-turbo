@@ -189,11 +189,6 @@ internal sealed class Orchestrator : MonoBehaviour
 
         if (matchingConfiguration == null)
         {
-            if (car.IsLoco)
-            {
-                _log.Info(
-                    $"{car.LogIdentifier()} not configured, skipping");
-            }
             return;
         }
 
