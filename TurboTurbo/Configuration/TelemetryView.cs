@@ -40,24 +40,39 @@ internal static class TelemetryView
         }
         else
         {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(new GUIContent($"Governor {model.GovernorNorm * 100f:0}%", GovernorValueTooltip));
-            GUILayout.Label($"RPM {model.RpmNorm * 100f:0}%");
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Speed {host.AbsSpeed * 3.6f:0.0} km/h");
-            GUILayout.Label(new GUIContent($"Load {model.FuelNorm * 100f:0}%", LoadValueTooltip));
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(new GUIContent($"Lambda {model.Lambda:0.00}",
+            var governor = new GUIContent($"Governor {model.GovernorNorm * 100f:0}%", GovernorValueTooltip);
+            var speed = new GUIContent($"Speed {host.AbsSpeed * 3.6f:0.0} km/h");
+            var lambda = new GUIContent($"Lambda {model.Lambda:0.00}",
                 LambdaValueTooltip + $"\n\nOnce lambda drops below {host.Profile.Smoke.SootOnsetLambda:0.00}, soot starts forming.\n" +
-                $"When lambda reaches {host.Profile.Smoke.SootOpaqueLambda:0.00}, soot has reached maximum intensity."));
-            GUILayout.Label(new GUIContent($"Charge {model.Charge:0.00}", ChargeValueTooltip));
-            GUILayout.EndHorizontal();
+                $"When lambda reaches {host.Profile.Smoke.SootOpaqueLambda:0.00}, soot has reached maximum intensity.");
+
+            var column = ColumnWidth(governor, speed, lambda);
+
+            DrawRow(governor, new GUIContent($"RPM {model.RpmNorm * 100f:0}%"), column);
+            DrawRow(speed, new GUIContent($"Load {model.FuelNorm * 100f:0}%", LoadValueTooltip), column);
+            DrawRow(lambda, new GUIContent($"Charge {model.Charge:0.00}", ChargeValueTooltip), column);
         }
 
         GUILayout.EndVertical();
+    }
+
+    private static void DrawRow(GUIContent left, GUIContent right, float column)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(left, GUILayout.Width(column));
+        GUILayout.Label(right);
+        GUILayout.EndHorizontal();
+    }
+
+    private static float ColumnWidth(params GUIContent[] contents)
+    {
+        var style = GUI.skin.label;
+        var width = 0f;
+        foreach (var content in contents)
+        {
+            width = Mathf.Max(width, style.CalcSize(content).x);
+        }
+
+        return width;
     }
 }
