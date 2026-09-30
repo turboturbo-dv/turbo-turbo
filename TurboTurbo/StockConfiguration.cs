@@ -66,7 +66,7 @@ internal static class StockConfiguration
                 // bigger exhaust opening means particles start out bigger too
                 e.startSize = 0.49f;
                 e.startSizeVariance = 0.22f;
-                e.sizeOverLifetimeEnd = 4.8f;
+                e.sizeOverLifetimeEnd = 5f;
             })
             .ConfigureShimmerEmitter(e =>
             {
@@ -91,13 +91,14 @@ internal static class StockConfiguration
             .ConfigureExhaustVelocity(s =>
             {
                 // again slightly lower max exhaust velocity
-                s.FullLoad = 13f;
+                s.FullLoad = 12f;
             })
             .ConfigureSmoke(s =>
             {
                 s.Density = Dm3Density;
 
                 s.CleanMinHeatAlpha = 0.004f;
+                s.CleanMaxHeatAlpha = 0.12f;
                 // some oil burning gives the DM3 a distinctive blue-gray smoke
                 s.OilTintStrength = 0.5f;
                 s.OilRpmExponent = 0.5f;
@@ -107,7 +108,7 @@ internal static class StockConfiguration
                 // sized to match the exhaust pipe
                 e.startSize = 0.32f;
                 e.startSizeVariance = 0.26f;
-                e.sizeOverLifetimeEnd = 3.6f;
+                e.sizeOverLifetimeEnd = 5f;
             })
             .ConfigureShimmerEmitter(e =>
             {
