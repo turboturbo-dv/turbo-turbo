@@ -103,7 +103,11 @@ internal sealed class ExhaustsPanel : IEditorPanel
     private void DrawHeader(LocoProfile profile, TrainCar car)
     {
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button((_open ? "▾ " : "▸ ") + "exhausts", Styles.SectionHeader)) _open = !_open;
+        if (GUILayout.Button((_open ? "▾ " : "▸ ") + "Exhausts", Styles.SectionHeader))
+        {
+            _open = !_open;
+            _onNeedsShrink();
+        }
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("add", GUILayout.Width(60f))) Add(profile, car);
         GUILayout.EndHorizontal();
