@@ -22,7 +22,7 @@ internal sealed class ProfileEditor : MonoBehaviour
             "Adjust the 'Turbocharger' section below to tune this behaviour."),
         new GUIContent("Atmospheric",
             "Simulate natural aspiration on this locomotive.\n" +
-            "Naturally aspirated engines do not generally produce much soot, although at high RPM airflow may become" +
+            "Naturally aspirated engines do not generally produce much soot, although at high RPM airflow may become " +
             "restricted, resulting in soot when running at maximum power.\n\n" +
             "Adjust the 'Atmospheric charger' section below to tune this behaviour."),
     };
@@ -126,7 +126,7 @@ internal sealed class ProfileEditor : MonoBehaviour
 
     private void DrawIntro()
     {
-        GUILayout.Label("Adjust the engine parameters below. Defaults for a new profile are taken from the DE6 tuning.", Styles.WrappedLabel);
+        GUILayout.Label($"Adjust the engine parameters below to change how the exhaust effect behaves.", Styles.WrappedLabel);
     }
 
     private void DrawGradeRow()

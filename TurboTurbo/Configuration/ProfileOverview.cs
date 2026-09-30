@@ -216,7 +216,9 @@ internal sealed class ProfileOverview
             if (ctx.Boarded)
             {
                 var content = ctx.User == null
-                    ? new GUIContent("Create", "Create a new user profile for this locomotive.")
+                    ? new GUIContent("Create", "Create a new user profile for this locomotive.\n\n" +
+                                               "If a builtin profile or a mod profile exists, the user profile will start out with those settings. " +
+                                               "Otherwise, the DE6 defaults will be applied.")
                     : new GUIContent("Edit", "Edit the profile.");
                 if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
             }
