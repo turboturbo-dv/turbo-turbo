@@ -63,7 +63,7 @@ internal static class SettingsPanel
         }
     }
 
-    private static void DrawAuthoring(UnityModManager.ModEntry entry)
+    private static void DrawAuthoring(UnityModManager.ModEntry thisMod)
     {
         var settings = SettingsStore.Current;
 
@@ -83,14 +83,14 @@ internal static class SettingsPanel
         {
             settings.AuthoringMode = mode;
             _targetOpen = false;
-            settings.Save(entry);
+            settings.Save(thisMod);
             Orchestrator.Instance?.ReloadAllHosts();
         }
         if (!settings.AuthoringMode) return;
 
-        var mods = ModRegistry.EligibleTargets(entry.Info.Id);
+        var eligibleMods = ModRegistry.EligibleTargets(thisMod.Info.Id);
 
-        var current = mods.Find(m => m.Info.Id == settings.AuthoringTargetModId);
+        var current = eligibleMods.Find(m => m.Info.Id == settings.AuthoringTargetModId);
         var label = current != null ? current.Info.DisplayName : "(none)";
 
         GUILayout.BeginVertical(Styles.AuthoringBox);
@@ -98,7 +98,7 @@ internal static class SettingsPanel
         GUILayout.Label("Save profiles to:");
         GUILayout.BeginVertical(GUILayout.Width(TargetWidth));
         if (GUILayout.Button(label + "  ▾")) _targetOpen = !_targetOpen;
-        if (_targetOpen) DrawTargetList(entry, mods);
+        if (_targetOpen) DrawTargetList(thisMod, eligibleMods);
         GUILayout.EndVertical();
 
         if (!string.IsNullOrEmpty(settings.AuthoringTargetModId))
