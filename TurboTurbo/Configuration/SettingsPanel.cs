@@ -43,8 +43,8 @@ internal static class SettingsPanel
         }
         GUILayout.BeginHorizontal();
         GUILayout.Label(
-            new GUIContent("Open profile editor",
-                "Opens the profile editor for the locomotive you are currently driving."),
+            new GUIContent("Profile editor hotkey",
+                "Use this hotkey to immediately open the profile editor for the vehicle you're currently driving."),
             GUILayout.Width(Styles.LabelWidth));
         UnityModManager.UI.DrawKeybindingSmart(
             SettingsStore.Current.OpenProfileEditor, "Open profile editor", Styles.KeybindButton, GUILayout.Width(KeybindWidth));
