@@ -2,7 +2,7 @@
 
 ### Added
 - User profiles: These can be created in-game and are saved to user settings
-- Mod profiles: Custom vehicle mods can install a profile file to instruct 
+- Mod profiles: Custom vehicle mods can install a profile file to instruct
   TurboTurbo how to apply its effects. Mod loading order is honoured when loading
   profiles (earliest mod to load takes precedence)
 - A new profile editor provides an intuitive way to create and edit profiles
@@ -21,10 +21,12 @@
 - Soot gains a slight ease-in/out over time, so that it can no longer appear
   or disappear instantly after fast throttle changes
 - Improved clean smoke opacity calculations near engine idle point
-- Slightly reduced max shimmer intensity on the DM3
-- Slowed down DE6 turbo spool-down time
+- All loco profiles have been further finetuned to make the effects look better
 - Minor tweaks to the combustion simulation model
 - Now logs an error if assets could not be loaded
+
+### Fixed
+- Fixed an invalid lookup resulting in a log error on some vehicle despawns
 
 ## v0.2.2
 
