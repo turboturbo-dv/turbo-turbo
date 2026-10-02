@@ -51,10 +51,17 @@ internal abstract class SpecBase<T>
         if (_requiresReconfigure) _onRequiresReconfigure();
     }
 
+    /// <summary>
+    /// Invoked on reset. Should clear any in-progress editing state to allow the reset state to take over again.
+    /// </summary>
+    protected virtual void ClearEditState()
+    {
+    }
+
     public void Reset()
     {
-        if (!Changed) return;
-        Commit(_initial);
+        if (Changed) Commit(_initial);
+        ClearEditState();
     }
 }
 
@@ -71,6 +78,8 @@ internal sealed class IntSpec : SpecBase<int>, ITweakSpec
         _min = min;
         _max = max;
     }
+
+    protected override void ClearEditState() => _editText = null;
 
     public void Draw()
     {
@@ -114,6 +123,8 @@ internal sealed class FloatSpec : SpecBase<float>, ITweakSpec
         _min = min;
         _max = max;
     }
+
+    protected override void ClearEditState() => _editText = null;
 
     public void Draw()
     {
