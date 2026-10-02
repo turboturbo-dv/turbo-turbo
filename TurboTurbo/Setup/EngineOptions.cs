@@ -87,9 +87,9 @@ public class EngineOptions
 
     /// <summary>
     /// Builds the assembled configuration into a complete, valid <see cref="LocoProfile"/>,
-    /// or null when the configuration is invalid.
+    /// or a failed result when the configuration is invalid.
     /// </summary>
-    internal LocoProfile TryBuild(string liveryId)
+    internal Result<LocoProfile> TryBuild(string liveryId)
     {
         var profile = new LocoProfile
         {
@@ -105,9 +105,6 @@ public class EngineOptions
         };
 
         var error = profile.Complete();
-        if (error == null) return profile;
-
-        Log.ForContext("options").Error($"invalid engine configuration for '{liveryId}': {error}");
-        return null;
+        return profile.ToResult(error);
     }
 }

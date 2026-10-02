@@ -59,14 +59,14 @@ public sealed class LocoProfile
     }
 
     /// <summary>Structural validation. Returns an error, or null when the profile is usable.</summary>
-    public ValidationError? Validate()
+    internal Error? Validate()
     {
-        if (Version != CurrentVersion) return new ValidationError($"unknown version {Version}");
-        if (string.IsNullOrWhiteSpace(LiveryId)) return new ValidationError("LiveryId is required");
+        if (Version != CurrentVersion) return new Error($"unknown version {Version}");
+        if (string.IsNullOrWhiteSpace(LiveryId)) return new Error("LiveryId is required");
         if (Exhausts == null || Exhausts.Count == 0)
-            return new ValidationError("at least one exhaust is required");
+            return new Error("at least one exhaust is required");
         if (!Enum.IsDefined(typeof(ChargerKind), ChargerKind))
-            return new ValidationError($"unknown charger kind {(int)ChargerKind}");
+            return new Error($"unknown charger kind {(int)ChargerKind}");
 
         foreach (var exhaust in Exhausts)
         {
@@ -77,14 +77,14 @@ public sealed class LocoProfile
         return null;
     }
 
-    private static ValidationError? ValidateExhaust(LocoExhaust exhaust)
+    private static Error? ValidateExhaust(LocoExhaust exhaust)
     {
-        if (exhaust == null) return new ValidationError("exhaust entry is null");
+        if (exhaust == null) return new Error("exhaust entry is null");
         if (!Enum.IsDefined(typeof(ExhaustKind), exhaust.Kind))
-            return new ValidationError($"unknown exhaust kind {(int)exhaust.Kind}");
-        if (!IsFinite(exhaust.Offset)) return new ValidationError("exhaust offset must be finite");
+            return new Error($"unknown exhaust kind {(int)exhaust.Kind}");
+        if (!IsFinite(exhaust.Offset)) return new Error("exhaust offset must be finite");
         if (exhaust.Kind == ExhaustKind.Replacement && string.IsNullOrWhiteSpace(exhaust.Path))
-            return new ValidationError("replacement exhausts need a particle system path");
+            return new Error("replacement exhausts need a particle system path");
 
         return null;
     }
@@ -99,7 +99,7 @@ public sealed class LocoProfile
     /// initialized to their default values. Settings for an unused charger kind are dropped.
     /// Returns an error if validation failed.
     /// </summary>
-    internal ValidationError? Complete()
+    internal Error? Complete()
     {
         var error = Validate();
         if (error != null) return error;

@@ -9,35 +9,23 @@ namespace TurboTurbo.Configuration;
 internal readonly struct ProfileRowContext
 {
     public readonly LiveryCatalog.LiveryInfo Livery;
-    public readonly LocoProfile BuiltIn;
-    public readonly LocoProfile Mod;
-    public readonly string ModName;
-    public readonly LocoProfile User;
+    public readonly ProfileResolution Resolution;
     public readonly bool Boarded;
     public readonly TrainCar Car;
     public readonly Orchestrator Orchestrator;
-    public readonly bool Authoring;
 
     public ProfileRowContext(
         LiveryCatalog.LiveryInfo livery,
-        LocoProfile builtIn,
-        LocoProfile mod,
-        string modName,
-        LocoProfile user,
+        ProfileResolution resolution,
         bool boarded,
         TrainCar car,
-        Orchestrator orchestrator,
-        bool authoring)
+        Orchestrator orchestrator)
     {
         Livery = livery;
-        BuiltIn = builtIn;
-        Mod = mod;
-        ModName = modName;
-        User = user;
+        Resolution = resolution;
         Boarded = boarded;
         Car = car;
         Orchestrator = orchestrator;
-        Authoring = authoring;
     }
 
     public string Id => Livery.Id;

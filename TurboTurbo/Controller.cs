@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 using DV;
 using DV.ThingTypes;
@@ -12,8 +11,6 @@ namespace TurboTurbo;
 public static class Controller
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("controller");
-
-    private static readonly Dictionary<string, LocoProfile> ConfigurationsByLiveryId = new();
 
     /// <summary>
     /// Registers a configuration for the given car type.
@@ -38,19 +35,14 @@ public static class Controller
         var options = new EngineOptions();
         configure(options);
 
-        var profile = options.TryBuild(liveryId);
-        if (profile == null) return;
-
-        ConfigurationsByLiveryId[liveryId] = profile;
-
-        Log.Info(
-            $"configured livery '{liveryId}' with charger={profile.ChargerKind} and {profile.Exhausts.Count} exhausts");
-    }
-
-    internal static LocoProfile TryGetConfiguration(string liveryId)
-    {
-        ConfigurationsByLiveryId.TryGetValue(liveryId, out var configuration);
-        return configuration;
+        options.TryBuild(liveryId).Switch(
+            profile =>
+            {
+                ProfileService.BuiltIn.Register(liveryId, profile);
+                Log.Info(
+                    $"configured livery '{liveryId}' with charger={profile.ChargerKind} and {profile.Exhausts.Count} exhausts");
+            },
+            error => Log.Error($"invalid engine configuration for '{liveryId}': {error}"));
     }
 
     private static string ResolveLiveryId(TrainCarType carType)

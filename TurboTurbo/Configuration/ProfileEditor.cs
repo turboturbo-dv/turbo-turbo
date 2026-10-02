@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TurboTurbo.Configuration.Sections;
 using TurboTurbo.Modeling;
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
@@ -230,7 +231,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         }
         else if (GUILayout.Button("Save"))
         {
-            var error = ProfileRepository.SaveProfile(_host.Profile.Clone());
+            var error = ProfileService.User.Save(_host.Profile.Clone());
             if (error != null) Log.Warn($"could not save profile '{_liveryId}': {error}");
             else
             {
@@ -250,7 +251,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private void SaveToAuthoringMod()
     {
         var profile = _host.Profile.Clone();
-        var error = ProfileRepository.WriteToAuthoringMod(profile);
+        var error = AuthoringService.Write(profile);
         if (error != null)
         {
             Log.Warn($"could not save to mod: {error}");
@@ -258,14 +259,14 @@ internal sealed class ProfileEditor : MonoBehaviour
             return;
         }
 
-        ProfileRepository.ReloadAuthoringMod();
+        AuthoringService.ReloadTarget();
         Log.Info($"saved profile '{_liveryId}' to '{ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId)}'");
         CloseSelf();
     }
 
     private void CopyXml()
     {
-        GUIUtility.systemCopyBuffer = ProfileWriter.SerializeFragment(_host.Profile.Clone());
+        GUIUtility.systemCopyBuffer = ModProfileWriter.SerializeFragment(_host.Profile.Clone());
         Log.Info("copied profile XML to the clipboard");
     }
 

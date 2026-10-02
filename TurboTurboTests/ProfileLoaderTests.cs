@@ -5,10 +5,11 @@ using System.IO;
 using Shouldly;
 
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 
 using Xunit;
 
-using static TurboTurbo.Profiles.ProfileLoader;
+using static TurboTurbo.Profiles.Storage.ProfileLoader;
 
 namespace TurboTurboTests
 {

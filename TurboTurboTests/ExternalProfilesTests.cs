@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using Shouldly;
 
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 
 using Xunit;
 
-using static TurboTurbo.Profiles.ProfileLoader;
-using static TurboTurbo.Profiles.ProfileRepository;
+using static TurboTurbo.Profiles.Storage.ProfileLoader;
 
 namespace TurboTurboTests
 {
     public class ExternalProfilesTests
     {
         [Fact]
-        public void SetSuppliedProfiles_StoresAndReplaces()
+        public void ModProfiles_StoreAndReplace()
         {
             var profile = new LocoProfile
             {
@@ -22,17 +22,17 @@ namespace TurboTurboTests
                 Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustEngineSmoke(Clone)" }],
             };
 
-            SetSuppliedProfiles(new Dictionary<string, ModProfile>
+            ProfileService.Mod.Replace(new Dictionary<string, ModProfile>
             {
                 ["test-livery"] = new ModProfile(profile, "mod-a", "Mod A"),
             });
 
-            TryGetModProfile("test-livery").Exhausts[0].Path.ShouldBe("ExhaustEngineSmoke(Clone)");
-            TryGetModProfile("missing").ShouldBeNull();
+            ProfileService.Mod.GetProfile("test-livery").Exhausts[0].Path.ShouldBe("ExhaustEngineSmoke(Clone)");
+            ProfileService.Mod.GetProfile("missing").ShouldBeNull();
 
-            SetSuppliedProfiles(new Dictionary<string, ModProfile>());
+            ProfileService.Mod.Replace(new Dictionary<string, ModProfile>());
 
-            TryGetModProfile("test-livery").ShouldBeNull();
+            ProfileService.Mod.GetProfile("test-livery").ShouldBeNull();
         }
     }
 }

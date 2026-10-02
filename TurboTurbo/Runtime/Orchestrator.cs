@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 
+using TurboTurbo.Configuration;
 using TurboTurbo.Profiles;
 
 using UnityEngine;
@@ -185,7 +186,8 @@ internal sealed class Orchestrator : MonoBehaviour
         if (!Enabled) return;
 
         // this is a fresh instance, so edits to a host stay local to that host
-        var matchingConfiguration = ProfileRepository.TryGetProfile(car);
+        var mode = SettingsStore.Current.ResolutionMode;
+        var matchingConfiguration = ProfileService.Resolve(car.carLivery.id, mode).Effective?.Profile.Clone();
 
         if (matchingConfiguration == null)
         {

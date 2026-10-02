@@ -4,16 +4,17 @@ using System.IO;
 using Shouldly;
 
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 
 using Xunit;
 
 namespace TurboTurboTests
 {
-    public class ProfileWriterTests : IDisposable
+    public class ModProfileWriterTests : IDisposable
     {
         private readonly string _dir;
 
-        public ProfileWriterTests()
+        public ModProfileWriterTests()
         {
             _dir = Path.Combine(Path.GetTempPath(), "turboturbo-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_dir);
@@ -44,9 +45,9 @@ namespace TurboTurboTests
         {
             var profile = Profile("loco-a", "Engine/ExhaustEngineSmoke");
 
-            ProfileWriter.Write(profile, _dir).ShouldBeNull();
+            ModProfileWriter.Write(profile, _dir).ShouldBeNull();
 
-            File.Exists(Path.Combine(_dir, ProfileWriter.ConfigFileName)).ShouldBeTrue();
+            File.Exists(Path.Combine(_dir, TurboConfigCodec.FileName)).ShouldBeTrue();
 
             var loaded = Load("loco-a");
             loaded.Profile.Exhausts[0].Path.ShouldBe("Engine/ExhaustEngineSmoke");
@@ -55,8 +56,8 @@ namespace TurboTurboTests
         [Fact]
         public void Write_Upserts_PreservingOtherProfiles()
         {
-            ProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
-            ProfileWriter.Write(Profile("loco-b", "ExhaustB"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-b", "ExhaustB"), _dir).ShouldBeNull();
 
             var source = new ProfileLoader.ModSource("mod-a", "Mod A", true, _dir);
             var loaded = ProfileLoader.LoadModProfile(source, "turbo");
@@ -69,8 +70,8 @@ namespace TurboTurboTests
         [Fact]
         public void Write_ReplacesExistingLivery()
         {
-            ProfileWriter.Write(Profile("loco-a", "OldPath"), _dir).ShouldBeNull();
-            ProfileWriter.Write(Profile("loco-a", "NewPath"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "OldPath"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "NewPath"), _dir).ShouldBeNull();
 
             var source = new ProfileLoader.ModSource("mod-a", "Mod A", true, _dir);
             var loaded = ProfileLoader.LoadModProfile(source, "turbo");
@@ -82,10 +83,10 @@ namespace TurboTurboTests
         [Fact]
         public void Delete_RemovesOnlyTheGivenLivery()
         {
-            ProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
-            ProfileWriter.Write(Profile("loco-b", "ExhaustB"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-b", "ExhaustB"), _dir).ShouldBeNull();
 
-            ProfileWriter.Delete("loco-a", _dir).ShouldBeNull();
+            ModProfileWriter.Delete("loco-a", _dir).ShouldBeNull();
 
             var source = new ProfileLoader.ModSource("mod-a", "Mod A", true, _dir);
             var loaded = ProfileLoader.LoadModProfile(source, "turbo");
@@ -96,23 +97,23 @@ namespace TurboTurboTests
         [Fact]
         public void Delete_MissingLivery_IsNoOp()
         {
-            ProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
 
-            ProfileWriter.Delete("missing", _dir).ShouldBeNull();
+            ModProfileWriter.Delete("missing", _dir).ShouldBeNull();
         }
 
         [Fact]
         public void Delete_WithoutFile_ReturnsError()
         {
-            ProfileWriter.Delete("loco-a", _dir).ShouldNotBeNull();
+            ModProfileWriter.Delete("loco-a", _dir).ShouldNotBeNull();
         }
 
         [Fact]
         public void Write_IsIndentedAndBomlessUtf8()
         {
-            ProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
+            ModProfileWriter.Write(Profile("loco-a", "ExhaustA"), _dir).ShouldBeNull();
 
-            var file = Path.Combine(_dir, ProfileWriter.ConfigFileName);
+            var file = Path.Combine(_dir, TurboConfigCodec.FileName);
 
             File.ReadAllBytes(file)[0].ShouldBe((byte)'<');
 
@@ -125,7 +126,7 @@ namespace TurboTurboTests
         [Fact]
         public void SerializeFragment_IsAParseableLocoProfile()
         {
-            var xml = ProfileWriter.SerializeFragment(Profile("loco-a", "ExhaustA"));
+            var xml = ModProfileWriter.SerializeFragment(Profile("loco-a", "ExhaustA"));
 
             xml.ShouldStartWith("<LocoProfile");
             xml.ShouldContain("<LiveryId>loco-a</LiveryId>");

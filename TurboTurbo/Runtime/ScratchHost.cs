@@ -7,17 +7,18 @@ internal static class ScratchHost
 {
     private static readonly Logger Log = TurboTurbo.Log.ForContext("editor");
 
-    public static EngineSimulationHost Create(TrainCar car)
+    public static Result<EngineSimulationHost> Create(TrainCar car)
     {
         var liveryId = car.carLivery.id;
+        var mode = SettingsStore.Current.ResolutionMode;
 
-        // TryGetProfile already returns a fresh instance, the user profile needs a clone.
+        // the resolver returns shared instances, so clone before the editor can tune it.
         // While authoring, the user tier is skipped entirely, to prevent it from interfering
         // with the authored profiles.
-        var profile = ProfileRepository.TryGetProfile(car);
-        if (profile == null && !SettingsStore.Current.IsAuthoring)
+        var profile = ProfileService.Resolve(liveryId, mode).Effective?.Profile.Clone();
+        if (profile == null && mode == ResolutionMode.Normal)
         {
-            profile = ProfileRepository.TryGetUserProfile(liveryId)?.Clone();
+            profile = ProfileService.User.Get(liveryId)?.Clone();
         }
 
         if (profile == null)
@@ -30,11 +31,7 @@ internal static class ScratchHost
         }
 
         var error = profile.Complete();
-        if (error != null)
-        {
-            Log.Warn($"cannot create a profile for '{car.DisplayId()}': {error}");
-            return null;
-        }
+        if (error is { } e) return e;
 
         var host = car.gameObject.AddComponent<EngineSimulationHost>();
         host.Configure(profile);

@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Xml.Serialization;
 
-namespace TurboTurbo.Profiles;
+namespace TurboTurbo.Profiles.Storage;
 
 internal static class ProfileLoader
 {
@@ -12,7 +11,6 @@ internal static class ProfileLoader
     internal record struct ModProfile(LocoProfile Profile, string SourceId, string ModName);
 
     private static readonly Logger Log = TurboTurbo.Log.ForContext("profiles");
-    private static readonly XmlSerializer Serializer = new XmlSerializer(typeof(TurboConfig));
 
     internal static Dictionary<string, ModProfile> LoadModProfiles(IEnumerable<ModSource> mods, string ownId)
     {
@@ -63,12 +61,12 @@ internal static class ProfileLoader
     {
         if (mod.Id == ownId) return null;
         if (!mod.Enabled) return null;
-        var file = Path.Combine(mod.Path, "TurboConfig.xml");
+        var file = Path.Combine(mod.Path, TurboConfigCodec.FileName);
         if (!File.Exists(file)) return null;
         try
         {
             using var stream = File.OpenRead(file);
-            var config = (TurboConfig)Serializer.Deserialize(stream);
+            var config = (TurboConfig)TurboConfigCodec.Serializer.Deserialize(stream);
             return config?.LocoProfiles == null ? null : config;
         }
         catch (Exception e)

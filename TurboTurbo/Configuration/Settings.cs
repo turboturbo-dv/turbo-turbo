@@ -17,4 +17,6 @@ public class Settings : UnityModManager.ModSettings
     public List<LocoProfile> LocoProfiles = new();
 
     public bool IsAuthoring => AuthoringMode && !string.IsNullOrEmpty(AuthoringTargetModId);
+
+    internal ResolutionMode ResolutionMode => IsAuthoring ? ResolutionMode.Authoring : ResolutionMode.Normal;
 }

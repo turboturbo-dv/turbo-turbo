@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
@@ -50,7 +51,6 @@ internal sealed class ProfileOverview
         GUILayout.Space(2f);
 
         var orchestrator = Orchestrator.Instance;
-        var authoring = SettingsStore.Current.IsAuthoring;
 
         GUILayout.BeginVertical(Styles.OverviewBox);
         DrawHeader();
@@ -58,7 +58,7 @@ internal sealed class ProfileOverview
         for (var i = 0; i < liveries.Count; i++)
         {
             if (i > 0) GUILayout.Space(RowSpacing);
-            DrawRow(BuildContext(liveries[i], boardedLiveryId, car, orchestrator, authoring));
+            DrawRow(BuildContext(liveries[i], boardedLiveryId, car, orchestrator));
         }
         GUILayout.EndVertical();
     }
@@ -93,19 +93,14 @@ internal sealed class ProfileOverview
         LiveryCatalog.LiveryInfo livery,
         string boardedLiveryId,
         TrainCar car,
-        Orchestrator orchestrator,
-        bool authoring)
+        Orchestrator orchestrator)
     {
         return new ProfileRowContext(
             livery,
-            Controller.TryGetConfiguration(livery.Id),
-            ProfileRepository.TryGetModProfile(livery.Id),
-            ProfileRepository.TryGetModName(livery.Id),
-            authoring ? null : ProfileRepository.TryGetUserProfile(livery.Id),
+            ProfileService.Resolve(livery.Id, SettingsStore.Current.ResolutionMode),
             livery.Id == boardedLiveryId,
             car,
-            orchestrator,
-            authoring);
+            orchestrator);
     }
 
     private void DrawRow(ProfileRowContext ctx)
@@ -132,22 +127,47 @@ internal sealed class ProfileOverview
     private static Dictionary<string, Layer> BuildLayers(ProfileRowContext ctx)
     {
         var present = new Dictionary<string, Layer>(3);
-        if (ctx.BuiltIn != null) present["Built-in"] = new Layer("Stock", "This profile is built into TurboTurbo", true, false);
-        if (ctx.Mod != null) present["Mod"] = new Layer("Mod", $"This profile is supplied by another mod ({ctx.ModName})", ctx.Mod.Enabled, false);
-        if (ctx.User != null) present["User"] = new Layer("User", "This profile was created by you", ctx.User.Enabled, false);
-
-        var effective = present.ContainsKey("User") ? "User"
-            : present.ContainsKey("Mod") ? "Mod"
-            : present.ContainsKey("Built-in") ? "Built-in"
-            : null;
-        if (effective != null)
+        foreach (var entry in ctx.Resolution.Present)
         {
-            var layer = present[effective];
-            present[effective] = new Layer(layer.Label, layer.Tooltip, layer.Enabled, true);
+            present[TierKey(entry.Tier)] = new Layer(TierLabel(entry.Tier), TierTooltip(entry), false, false);
+        }
+
+        if (ctx.Resolution.Winner is { } winner)
+        {
+            var key = TierKey(winner.Tier);
+            var layer = present[key];
+            present[key] = new Layer(layer.Label, layer.Tooltip, !ctx.Resolution.Disabled, true);
         }
 
         return present;
     }
+
+    private static ProfileEntry? UserEntry(ProfileResolution resolution) =>
+        resolution.Present.FirstOrNull(e => e.Tier == ProfileTier.User);
+
+    private static ProfileEntry? ModEntry(ProfileResolution resolution) =>
+        resolution.Present.FirstOrNull(e => e.Tier == ProfileTier.Mod);
+
+    private static string TierKey(ProfileTier tier) => tier switch
+    {
+        ProfileTier.BuiltIn => "Built-in",
+        ProfileTier.Mod => "Mod",
+        _ => "User",
+    };
+
+    private static string TierLabel(ProfileTier tier) => tier switch
+    {
+        ProfileTier.BuiltIn => "Stock",
+        ProfileTier.Mod => "Mod",
+        _ => "User",
+    };
+
+    private static string TierTooltip(ProfileEntry entry) => entry.Tier switch
+    {
+        ProfileTier.BuiltIn => "This profile is built into TurboTurbo",
+        ProfileTier.Mod => $"This profile is supplied by another mod ({entry.Origin})",
+        _ => "This profile was created by you",
+    };
 
     private void DrawLayerSlots(Dictionary<string, Layer> present)
     {
@@ -172,18 +192,20 @@ internal sealed class ProfileOverview
 
     private void DrawEnabled(ProfileRowContext ctx)
     {
-        if (ctx.User == null)
+        var user = UserEntry(ctx.Resolution);
+        if (user == null)
         {
             GUILayout.Label(GUIContent.none, Styles.EmptySlot, GUILayout.Width(16f));
             GUILayout.Space(EnabledWidth - 16f);
             return;
         }
 
-        var enabled = GUILayout.Toggle(ctx.User.Enabled, GUIContent.none, Styles.EnabledToggle, GUILayout.Width(16f));
+        var profile = user.Value.Profile;
+        var enabled = GUILayout.Toggle(profile.Enabled, GUIContent.none, Styles.EnabledToggle, GUILayout.Width(16f));
         GUILayout.Space(EnabledWidth - 16f);
-        if (enabled == ctx.User.Enabled) return;
+        if (enabled == profile.Enabled) return;
 
-        ProfileRepository.SetEnabled(ctx.Id, enabled);
+        ProfileService.User.SetEnabled(ctx.Id, enabled);
         ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
     }
 
@@ -191,23 +213,26 @@ internal sealed class ProfileOverview
     {
         GUILayout.BeginHorizontal(GUILayout.Width(ActionsWidth));
 
-        if (ctx.Authoring)
+        var user = UserEntry(ctx.Resolution);
+
+        if (ctx.Resolution.Mode == ResolutionMode.Authoring)
         {
-            var authored = ProfileRepository.ModSuppliesAuthoringLivery(ctx.Id);
+            var authored = AuthoringService.HasProfile(ctx.Id);
+            var modName = ModEntry(ctx.Resolution)?.Origin;
 
             if (ctx.Boarded)
             {
                 var content = authored
-                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in: {ctx.ModName}).")
-                    : new GUIContent("Create", $"Create a mod profile for this locomotive (written to: {ctx.ModName})");
+                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in: {modName}).")
+                    : new GUIContent("Create", $"Create a mod profile for this locomotive (written to '{modName}')");
                 if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
             }
 
             if (authored
-                && GUILayout.Button(new GUIContent("Delete", $"Delete this mod profile (removed from: {ctx.ModName})."), Styles.ActionButton))
+                && GUILayout.Button(new GUIContent("Delete", $"Delete this mod profile (removed from '{modName}')"), Styles.ActionButton))
             {
-                var error = ProfileRepository.DeleteFromAuthoringMod(ctx.Id);
-                if (error != null) Log.Warn($"could not delete mod profile '{ctx.Id}' from {ctx.ModName}: {error}");
+                var error = AuthoringService.Delete(ctx.Id);
+                if (error != null) Log.Warn($"could not delete mod profile '{ctx.Id}' from {modName}: {error}");
                 else ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
             }
         }
@@ -215,7 +240,7 @@ internal sealed class ProfileOverview
         {
             if (ctx.Boarded)
             {
-                var content = ctx.User == null
+                var content = user == null
                     ? new GUIContent("Create", "Create a new user profile for this locomotive.\n\n" +
                                                "If a builtin profile or a mod profile exists, the user profile will start out with those settings. " +
                                                "Otherwise, the DE6 defaults will be applied.")
@@ -223,10 +248,10 @@ internal sealed class ProfileOverview
                 if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
             }
 
-            if (ctx.User != null
+            if (user != null
                 && GUILayout.Button(new GUIContent("Delete", "Delete your user profile for this locomotive."), Styles.ActionButton))
             {
-                ProfileRepository.DeleteProfile(ctx.Id);
+                ProfileService.User.DeleteProfile(ctx.Id);
                 ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
                 Log.Info($"deleted profile '{ctx.Id}'");
             }

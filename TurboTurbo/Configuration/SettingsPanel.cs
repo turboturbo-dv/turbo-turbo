@@ -2,6 +2,7 @@ using System.Collections.Generic;
 
 using TurboTurbo.Configuration.Sections;
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 using TurboTurbo.Runtime;
 
 using UnityEngine;
@@ -103,7 +104,7 @@ internal static class SettingsPanel
         if (!string.IsNullOrEmpty(settings.AuthoringTargetModId))
         {
             var file = current != null
-                ? System.IO.Path.Combine(current.Path, ProfileWriter.ConfigFileName)
+                ? System.IO.Path.Combine(current.Path, TurboConfigCodec.FileName)
                 : "(target mod unavailable)";
             GUILayout.Label($"Profiles will be saved to {file}", Styles.WrappedLabel);
         }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace TurboTurbo;
 
 public static class Extensions
@@ -22,5 +25,14 @@ public static class Extensions
         if (car == null || car.logicCar == null) return "?";
 
         return string.IsNullOrWhiteSpace(car.ID) ? "?" : car.ID;
+    }
+    
+    public static T? FirstOrNull<T>(this IEnumerable<T> source, Func<T, bool> predicate) where T : struct
+    {
+        foreach (var item in source)
+        {
+            if (predicate(item)) return item;
+        }
+        return null;
     }
 }

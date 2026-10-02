@@ -36,7 +36,7 @@ public static class Main
 
         SettingsStore.Initialize(entry);
         SettingsPanel.Initialize();
-        ProfileRepository.Initialize();
+        ProfileService.Initialize();
 
         StockConfiguration.Apply();
 

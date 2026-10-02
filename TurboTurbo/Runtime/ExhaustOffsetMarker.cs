@@ -46,8 +46,6 @@ internal sealed class ExhaustOffsetMarker : MonoBehaviour
 
     public void SetLocalPosition(Vector3 local) => transform.localPosition = local;
 
-    public void SetVisible(bool visible) => gameObject.SetActive(visible);
-
     private static void EnsureMaterials()
     {
         if (_materials != null) return;

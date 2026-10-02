@@ -7,6 +7,7 @@ using TurboTurbo;
 using TurboTurbo.Configuration;
 using TurboTurbo.Modeling;
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage;
 using TurboTurbo.Setup;
 using TurboTurbo.WorkBench;
 
@@ -132,7 +133,7 @@ namespace TurboTurboTests
         {
             var config = new EngineOptions()
                 .AddEngineExhaust()
-                .TryBuild("test-livery");
+                .TryBuild("test-livery").ShouldSucceed();
 
             config.LiveryId.ShouldBe("test-livery");
             config.ChargerKind.ShouldBe(ChargerKind.Turbo);
@@ -155,7 +156,7 @@ namespace TurboTurboTests
                 .AddEngineExhaust()
                 .ConfigureTurboCharger(t => t.TauUp = 5f)
                 .ConfigureExhaustVelocity(v => v.Idle = 2.5f)
-                .TryBuild("test-livery");
+                .TryBuild("test-livery").ShouldSucceed();
 
             config.TurboCharger.TauUp.ShouldBe(5f);
             config.Velocity.Idle.ShouldBe(2.5f);
@@ -167,7 +168,7 @@ namespace TurboTurboTests
             var config = new EngineOptions()
                 .AddEngineExhaust()
                 .UseAtmosphericCharger(a => a.EtaPeak = 0.8f)
-                .TryBuild("test-livery");
+                .TryBuild("test-livery").ShouldSucceed();
 
             config.ChargerKind.ShouldBe(ChargerKind.Atmospheric);
             config.Atmospheric.EtaPeak.ShouldBe(0.8f);
@@ -181,7 +182,7 @@ namespace TurboTurboTests
             var config = new EngineOptions()
                 .AddEngineExhaust()
                 .ConfigureSmoke(s => { s.SootOpaqueLambda = 2f; s.SootOnsetLambda = 1f; })
-                .TryBuild("test-livery");
+                .TryBuild("test-livery").ShouldSucceed();
 
             var smoke = config.Smoke;
             smoke.SootOpaqueLambda.ShouldBeLessThan(smoke.SootOnsetLambda);
@@ -191,8 +192,8 @@ namespace TurboTurboTests
         public void Build_InvalidConfiguration_ReturnsNull()
         {
             // no exhausts, and an empty livery id: both structurally invalid, so Build refuses
-            new EngineOptions().TryBuild("test-livery").ShouldBeNull();
-            new EngineOptions().AddEngineExhaust().TryBuild("").ShouldBeNull();
+            new EngineOptions().TryBuild("test-livery").ShouldFail().Message.ShouldNotBeNullOrEmpty();
+            new EngineOptions().AddEngineExhaust().TryBuild("").ShouldFail().Message.ShouldNotBeNullOrEmpty();
         }
 
         [Fact]
@@ -444,71 +445,71 @@ namespace TurboTurboTests
         }
 
         [Fact]
-        public void Repository_SaveAndGet_RoundTrip()
+        public void UserSource_SaveAndGet_RoundTrip()
         {
             SettingsStore.Current = new Settings();
 
-            ProfileRepository.SaveProfile(ValidProfile("repo")).ShouldBeNull();
+            ProfileService.User.Save(ValidProfile("repo")).ShouldBeNull();
 
-            ProfileRepository.TryGetUserProfile("repo").LiveryId.ShouldBe("repo");
-            ProfileRepository.TryGetUserProfile("missing").ShouldBeNull();
+            ProfileService.User.Get("repo").LiveryId.ShouldBe("repo");
+            ProfileService.User.Get("missing").ShouldBeNull();
         }
 
         [Fact]
-        public void Repository_SaveInvalid_ReturnsErrorAndStoresNothing()
+        public void UserSource_SaveInvalid_ReturnsErrorAndStoresNothing()
         {
             SettingsStore.Current = new Settings();
             var profile = ValidProfile();
             profile.LiveryId = "";
 
-            ProfileRepository.SaveProfile(profile).ShouldNotBeNull();
-            ProfileRepository.TryGetUserProfile("").ShouldBeNull();
+            ProfileService.User.Save(profile).ShouldNotBeNull();
+            ProfileService.User.Get("").ShouldBeNull();
         }
 
         [Fact]
-        public void Repository_Save_ReplacesExisting()
+        public void UserSource_Save_ReplacesExisting()
         {
             var settings = new Settings();
             SettingsStore.Current = settings;
-            ProfileRepository.SaveProfile(ValidProfile("dup")).ShouldBeNull();
+            ProfileService.User.Save(ValidProfile("dup")).ShouldBeNull();
 
             var updated = ValidProfile("dup");
             updated.Enabled = false;
-            ProfileRepository.SaveProfile(updated).ShouldBeNull();
+            ProfileService.User.Save(updated).ShouldBeNull();
 
             settings.LocoProfiles.Count.ShouldBe(1);
-            ProfileRepository.TryGetUserProfile("dup").Enabled.ShouldBeFalse();
+            ProfileService.User.Get("dup").Enabled.ShouldBeFalse();
         }
 
         [Fact]
-        public void Repository_Delete_Removes()
+        public void UserSource_Delete_Removes()
         {
             SettingsStore.Current = new Settings();
-            ProfileRepository.SaveProfile(ValidProfile("gone")).ShouldBeNull();
+            ProfileService.User.Save(ValidProfile("gone")).ShouldBeNull();
 
-            ProfileRepository.DeleteProfile("gone").ShouldBeTrue();
-            ProfileRepository.TryGetUserProfile("gone").ShouldBeNull();
-            ProfileRepository.DeleteProfile("gone").ShouldBeFalse();
+            ProfileService.User.DeleteProfile("gone").ShouldBeTrue();
+            ProfileService.User.Get("gone").ShouldBeNull();
+            ProfileService.User.DeleteProfile("gone").ShouldBeFalse();
         }
 
         [Fact]
-        public void Repository_SetEnabled_Toggles()
+        public void UserSource_SetEnabled_Toggles()
         {
             var settings = new Settings();
             SettingsStore.Current = settings;
-            ProfileRepository.SaveProfile(ValidProfile("toggle")).ShouldBeNull();
+            ProfileService.User.Save(ValidProfile("toggle")).ShouldBeNull();
 
-            ProfileRepository.SetEnabled("toggle", false).ShouldBeTrue();
-            ProfileRepository.TryGetUserProfile("toggle").Enabled.ShouldBeFalse();
+            ProfileService.User.SetEnabled("toggle", false).ShouldBeTrue();
+            ProfileService.User.Get("toggle").Enabled.ShouldBeFalse();
 
             // the registry aliases the stored profile, so the flag must reach settings too
             settings.LocoProfiles[0].Enabled.ShouldBeFalse();
 
-            ProfileRepository.SetEnabled("missing", false).ShouldBeFalse();
+            ProfileService.User.SetEnabled("missing", false).ShouldBeFalse();
         }
 
         [Fact]
-        public void Repository_Reload_SkipsInvalid()
+        public void UserSource_Load_SkipsInvalid()
         {
             var settings = new Settings();
             var bad = ValidProfile();
@@ -517,22 +518,22 @@ namespace TurboTurboTests
             settings.LocoProfiles.Add(ValidProfile("good"));
 
             SettingsStore.Current = settings;
-            ProfileRepository.Initialize();
+            ProfileService.User.Load(SettingsStore.Current);
 
-            ProfileRepository.TryGetUserProfile("good").ShouldNotBeNull();
-            ProfileRepository.TryGetUserProfile("").ShouldBeNull();
+            ProfileService.User.Get("good").ShouldNotBeNull();
+            ProfileService.User.Get("").ShouldBeNull();
         }
 
         [Fact]
-        public void Repository_Reload_NullList_DoesNotThrow()
+        public void UserSource_Load_NullList_DoesNotThrow()
         {
             var settings = new Settings();
             settings.LocoProfiles = null;
 
             SettingsStore.Current = settings;
-            ProfileRepository.Initialize();
+            ProfileService.User.Load(SettingsStore.Current);
 
-            ProfileRepository.TryGetUserProfile("anything").ShouldBeNull();
+            ProfileService.User.Get("anything").ShouldBeNull();
         }
 
         private static string Serialize(LocoProfile profile)

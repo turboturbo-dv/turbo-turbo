@@ -6,7 +6,7 @@ using DV;
 using DV.Localization;
 using DV.ThingTypes;
 
-namespace TurboTurbo.Profiles;
+namespace TurboTurbo.Runtime;
 
 /// <summary>
 /// Enumerates the liveries the game knows about, including ones added by other mods.

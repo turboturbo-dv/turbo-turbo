@@ -74,9 +74,14 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
         var host = Orchestrator.Instance.FindHost(car);
         if (host == null)
         {
-            // will be null if creation fails
-            host = ScratchHost.Create(car);
-            if (host == null) return;
+            var result = ScratchHost.Create(car);
+            if (!result.IsSuccess)
+            {
+                Log.Warn($"cannot create a profile for '{car.DisplayId()}': {result.Error}");
+                return;
+            }
+
+            host = result.Value;
         }
 
         var go = new GameObject(Naming.Create("ProfileEditor"));
