@@ -33,7 +33,7 @@ internal sealed class ProfileEditor : MonoBehaviour
     private TrainCar _car;
     private EngineSimulationHost _host;
     private string _liveryId;
-    private Rect _windowRect = new(460f, 20f, 450f, 170f);
+    private Rect _windowRect = new(460f, 20f, Styles.DefaultWindowWidth, 170f);
 
     private EngineSimulationHost _boundHost;
     private readonly List<(string Key, IEditorPanel Panel)> _sections = new();

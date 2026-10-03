@@ -29,6 +29,8 @@ internal static class TelemetryView
         " * turbo boost will raise it above 1\n" +
         " * on naturally aspirated engines, charge is less than 1 due to intake restrictions that scale with RPM";
 
+    private const float ColumnWidth = Styles.DefaultWindowWidth / 2f;
+
     public static void Draw(EngineSimulationHost host)
     {
         GUILayout.BeginVertical(Styles.TelemetryBox);
@@ -46,11 +48,9 @@ internal static class TelemetryView
                 LambdaValueTooltip + $"\n\nOnce lambda drops below {host.Profile.Smoke.SootOnsetLambda:0.00}, soot starts forming.\n" +
                 $"When lambda reaches {host.Profile.Smoke.SootOpaqueLambda:0.00}, soot has reached maximum intensity.");
 
-            var column = ColumnWidth(governor, speed, lambda);
-
-            DrawRow(governor, new GUIContent($"RPM {model.RpmNorm * 100f:0}%"), column);
-            DrawRow(speed, new GUIContent($"Load {model.FuelNorm * 100f:0}%", LoadValueTooltip), column);
-            DrawRow(lambda, new GUIContent($"Charge {model.Charge:0.00}", ChargeValueTooltip), column);
+            DrawRow(governor, new GUIContent($"RPM {model.RpmNorm * 100f:0}%"), ColumnWidth);
+            DrawRow(speed, new GUIContent($"Load {model.FuelNorm * 100f:0}%", LoadValueTooltip), ColumnWidth);
+            DrawRow(lambda, new GUIContent($"Charge {model.Charge:0.00}", ChargeValueTooltip), ColumnWidth);
         }
 
         GUILayout.EndVertical();
@@ -60,19 +60,7 @@ internal static class TelemetryView
     {
         GUILayout.BeginHorizontal();
         GUILayout.Label(left, GUILayout.Width(column));
-        GUILayout.Label(right);
+        GUILayout.Label(right, GUILayout.Width(column));
         GUILayout.EndHorizontal();
-    }
-
-    private static float ColumnWidth(params GUIContent[] contents)
-    {
-        var style = GUI.skin.label;
-        var width = 0f;
-        foreach (var content in contents)
-        {
-            width = Mathf.Max(width, style.CalcSize(content).x);
-        }
-
-        return width;
     }
 }

@@ -8,6 +8,8 @@ internal static class Styles
 {
     public const float LabelWidth = 165f;
 
+    public const float DefaultWindowWidth = 450f;
+
     public const int ProfileOverviewRowMargin = 4;
 
     private static GUIStyle _separator;
