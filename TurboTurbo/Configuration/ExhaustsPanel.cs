@@ -161,7 +161,7 @@ internal sealed class ExhaustsPanel : IEditorPanel
 
     private void DrawDropdown(int index, string current)
     {
-        if (GUILayout.Button(new GUIContent(NameLabel(current) + "  ▾", "Choose which vanilla particle system this exhaust should replace.")))
+        if (GUILayout.Button(new GUIContent(NameLabel(current) + "  ▾", "Choose which existing exhaust particle system this exhaust should replace.")))
         {
             _openDropdown = _openDropdown == index ? -1 : index;
         }

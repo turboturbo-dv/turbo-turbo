@@ -46,7 +46,7 @@ internal static class SmokeModelSection
                            "Turn this down to model a cleaner burning engine.", 0f, 1f,
             m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v, TweakGrade.Basic);
 
-        Add("Clean burn load", "Load at which the idle haze colour has completely transformed into the clean smoke colour.", 0.05f, 1f,
+        Add("Clean burn load", "Load at which the idle haze colour has completely blended towards the clean smoke colour.", 0.05f, 1f,
             m => m.Tuning.CleanBurnHeat, (m, v) => m.Tuning.CleanBurnHeat = v);
 
         Add("Soot lambda curve shape", "Exponent shaping the soot curve over lambda deficit.\n" +
@@ -77,21 +77,22 @@ internal static class SmokeModelSection
                                        "up.\nHigher values increase the intensity of this effect.", 0f, 5f,
             m => m.Tuning.WetStackMistStrength, (m, v) => m.Tuning.WetStackMistStrength = v, TweakGrade.Basic);
 
-        Add("Wet stack fill load", "Load below which unburned fuel starts to accumulate in the exhaust stack.", 0f, 1f,
-            m => m.Tuning.WetStackFillHeat, (m, v) => m.Tuning.WetStackFillHeat = v);
-
-        Add("Wet stack release load", "Load above which unburned fuel starts to vaporise out of the exhaust stack, creating white smoke.", 0f, 1f,
-            m => m.Tuning.WetStackReleaseHeat, (m, v) => m.Tuning.WetStackReleaseHeat = v);
-
-        Add("Wet stack fill rate", "Wet stack fill rate at zero load.", 0f, 0.1f,
-            m => m.Tuning.WetStackFillRate, (m, v) => m.Tuning.WetStackFillRate = v);
-
-        Add("Wet stack release rate", "Wet stack release rate at full load.", 0f, 0.5f,
-            m => m.Tuning.WetStackReleaseRate, (m, v) => m.Tuning.WetStackReleaseRate = v);
-
-        Add("Wet stack weight", "Intensity of wet-stack mist, relative to other types of smoke.\n" +
-                                "Should not normally require adjustment, change mist strength instead.", 0f, 1f,
-            m => m.Tuning.WetStackMaxAlpha, (m, v) => m.Tuning.WetStackMaxAlpha = v);
+        // Disabled for now, as the wet-stack effect needs a modelling pass before we can expose these parameters.
+        // Add("Wet stack fill load", "Load below which unburned fuel starts to accumulate in the exhaust stack.", 0f, 1f,
+        //     m => m.Tuning.WetStackFillHeat, (m, v) => m.Tuning.WetStackFillHeat = v);
+        //
+        // Add("Wet stack release load", "Load above which unburned fuel starts to vaporise out of the exhaust stack, creating white smoke.", 0f, 1f,
+        //     m => m.Tuning.WetStackReleaseHeat, (m, v) => m.Tuning.WetStackReleaseHeat = v);
+        //
+        // Add("Wet stack fill rate", "Wet stack fill rate at zero load.", 0f, 0.1f,
+        //     m => m.Tuning.WetStackFillRate, (m, v) => m.Tuning.WetStackFillRate = v);
+        //
+        // Add("Wet stack release rate", "Wet stack release rate at full load.", 0f, 0.5f,
+        //     m => m.Tuning.WetStackReleaseRate, (m, v) => m.Tuning.WetStackReleaseRate = v);
+        //
+        // Add("Wet stack weight", "Intensity of wet-stack mist, relative to other types of smoke.\n" +
+        //                         "Should not normally require adjustment, change mist strength instead.", 0f, 1f,
+        //     m => m.Tuning.WetStackMaxAlpha, (m, v) => m.Tuning.WetStackMaxAlpha = v);
 
         Add("Oil tint strength", "Intensity of the oil-burning effect. At high RPM, more oil leaks into the cylinders, " +
                                  "tinting exhaust smoke blue as it burns.\n" +
