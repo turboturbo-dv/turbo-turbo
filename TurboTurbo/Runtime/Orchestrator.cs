@@ -217,9 +217,7 @@ internal sealed class Orchestrator : MonoBehaviour
         _log.Info($"attaching simulation host to {car.LogIdentifier()}");
 
         // host is a component of the car so it dies along with it if the car is fully removed
-        var host = car.gameObject.AddComponent<EngineSimulationHost>();
-        host.Configure(matchingConfiguration);
-        Hosts.Add(host);
+        HostFactory.Create(car, matchingConfiguration);
     }
 
     /// <summary>

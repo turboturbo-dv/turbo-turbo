@@ -290,15 +290,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         _markerController?.Clear();
         _colorPicker?.Close();
 
-        if (_host != null)
-        {
-            Destroy(_host);
-            _host = null;
-        }
-
-        _host = _car.gameObject.AddComponent<EngineSimulationHost>();
-        _host.Configure(profile);
-        Orchestrator.Instance.Hosts.Add(_host);
+        _host = HostFactory.Replace(_host, _car, profile);
     }
 
     private void OnDestroy()

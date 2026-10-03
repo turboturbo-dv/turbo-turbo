@@ -33,10 +33,7 @@ internal static class ScratchHost
         var error = profile.Complete();
         if (error is { } e) return e;
 
-        var host = car.gameObject.AddComponent<EngineSimulationHost>();
-        host.Configure(profile);
-        Orchestrator.Instance.Hosts.Add(host);
-        return host;
+        return HostFactory.Create(car, profile);
     }
 
     private static LocoExhaust DefaultExhaust(TrainCar car)
