@@ -57,8 +57,8 @@ internal static class StockConfiguration
             {
                 // raise base exhaust velocity so smoke clears the cab at high speed and low power
                 v.Idle = 3.05f;
-                // lower engine power, so slightly lower max exhaust velocity
-                v.FullLoad = 14f;
+                // lower engine power + large exhaust opening
+                v.FullLoad = 12f;
 
             })
             .ConfigureSmokeEmitter(e =>
