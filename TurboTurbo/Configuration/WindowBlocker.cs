@@ -6,17 +6,25 @@ using UnityEngine.UI;
 namespace TurboTurbo.Configuration;
 
 /// <summary>
-/// Transparent uGUI shield fitted to an IMGUI window. Stops clicks on the window
-/// from also reaching game UI behind it.
+/// A click-through blocker that can be applied to IMGUI windows. Because the
+/// game has a separate event stack, blocking clicks on IMGUI itself does
+/// not prevent click-through. This blocker 
 /// </summary>
 internal sealed class WindowBlocker : MonoBehaviour
 {
     private Func<Rect> _windowRect;
+    private GameObject _canvas;
     private RectTransform _blocker;
 
     public void Track(Func<Rect> windowRect)
     {
         _windowRect = windowRect;
+    }
+
+    /// <summary>Enables or disables click through blocking.</summary>
+    public void SetBlocking(bool on)
+    {
+        if (_canvas != null) _canvas.SetActive(on);
     }
 
     private void Awake()
@@ -26,6 +34,7 @@ internal sealed class WindowBlocker : MonoBehaviour
         var canvasComponent = canvas.GetComponent<Canvas>();
         canvasComponent.renderMode = RenderMode.ScreenSpaceOverlay;
         canvasComponent.sortingOrder = 32767;
+        _canvas = canvas;
 
         var image = new GameObject("Blocker", typeof(Image));
         image.transform.SetParent(canvas.transform, worldPositionStays: false);
@@ -39,7 +48,7 @@ internal sealed class WindowBlocker : MonoBehaviour
 
     private void Update()
     {
-        if (_windowRect == null || _blocker == null) return;
+        if (_windowRect == null || _blocker == null || _canvas == null || !_canvas.activeSelf) return;
 
         var rect = _windowRect();
         _blocker.offsetMin = new Vector2(rect.x, -(rect.y + rect.height));

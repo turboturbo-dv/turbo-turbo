@@ -30,6 +30,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
         var panel = go.AddComponent<TurboDevPanel>();
         panel._tooltip = go.AddComponent<TurboTooltipLayer>();
         panel.WindowRect = initialRect;
+        go.AddComponent<WindowBlocker>().Track(() => panel.WindowRect);
         return panel;
     }
 

@@ -10,15 +10,28 @@ internal sealed class ColorPickerWindow : MonoBehaviour
     private ColorSpec _spec;
     private string _hexEdit;
     private readonly string[] _channelEdit = new string[4];
+    private WindowBlocker _blocker;
+
+    private void Awake()
+    {
+        _blocker = gameObject.AddComponent<WindowBlocker>();
+        _blocker.Track(() => _rect);
+        _blocker.SetBlocking(false);
+    }
 
     public void Open(ColorSpec spec)
     {
         _spec = spec;
         _hexEdit = null;
         for (var i = 0; i < _channelEdit.Length; i++) _channelEdit[i] = null;
+        _blocker.SetBlocking(true);
     }
 
-    public void Close() => _spec = null;
+    public void Close()
+    {
+        _spec = null;
+        _blocker.SetBlocking(false);
+    }
 
     private void OnGUI()
     {

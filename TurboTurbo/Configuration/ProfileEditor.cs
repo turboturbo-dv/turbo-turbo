@@ -53,7 +53,9 @@ internal sealed class ProfileEditor : MonoBehaviour
         _host = host;
         _liveryId = liveryId;
         _markerController = new ExhaustMarkerController(() => _host);
-        _colorPicker = gameObject.AddComponent<ColorPickerWindow>();
+        var pickerGo = new GameObject(Naming.Create("ColorPicker"));
+        pickerGo.transform.SetParent(transform, worldPositionStays: false);
+        _colorPicker = pickerGo.AddComponent<ColorPickerWindow>();
         _tooltip = gameObject.AddComponent<TurboTooltipLayer>();
     }
 
