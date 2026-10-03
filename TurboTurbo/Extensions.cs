@@ -10,9 +10,9 @@ public static class Extensions
     /// </summary>
     public static string LogIdentifier(this TrainCar car)
     {
-        if (car == null) return "?/?";
+        if (car == null) return "<null car>";
 
-        var liveryId = string.IsNullOrWhiteSpace(car.carLivery?.id) ? "?" : car.carLivery.id;
+        var liveryId = car.carLivery == null || string.IsNullOrWhiteSpace(car.carLivery.id) ? "?" : car.carLivery.id;
         return $"{liveryId}/{car.DisplayId()}";
     }
 

@@ -10,23 +10,22 @@ internal readonly struct ProfileRowContext
 {
     public readonly LiveryCatalog.LiveryInfo Livery;
     public readonly ProfileResolution Resolution;
-    public readonly bool Boarded;
-    public readonly TrainCar Car;
+    public readonly TrainCar LiveryBoardedCar;
     public readonly Orchestrator Orchestrator;
 
     public ProfileRowContext(
         LiveryCatalog.LiveryInfo livery,
         ProfileResolution resolution,
-        bool boarded,
-        TrainCar car,
+        TrainCar liveryBoardedCar,
         Orchestrator orchestrator)
     {
         Livery = livery;
         Resolution = resolution;
-        Boarded = boarded;
-        Car = car;
+        LiveryBoardedCar = liveryBoardedCar;
         Orchestrator = orchestrator;
     }
 
     public string Id => Livery.Id;
+    public bool BoardedThisLivery => LiveryBoardedCar != null;
+    public bool Supported => LiveryBoardedCar != null && DieselEngineBinder.Supports(LiveryBoardedCar);
 }

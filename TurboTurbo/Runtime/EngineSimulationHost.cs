@@ -1,12 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using DV.Simulation.Cars;
-
-using HarmonyLib;
-
-using LocoSim.Implementations;
 
 using TurboTurbo.Assets;
 using TurboTurbo.Modeling;
@@ -50,10 +44,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private bool _loggedNoSim;
 
     private SimController _simController;
-
-    private Port _throttlePort;
-    private Func<float> _fuelNorm;
-    private Func<bool> _engineOn;
+    private DieselEngineBinding _engine;
 
     private readonly List<ParticleSystem> _replacedExhausts = new();
 
@@ -72,7 +63,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     /// <summary>True once the exhaust emitters have been built from the profile.</summary>
     public bool EffectsBound { get; private set; }
 
-    public bool EngineOn => CombustionModel != null && _engineOn();
+    public bool EngineOn => CombustionModel != null && _engine.EngineRunning;
 
     public float AbsSpeed => TrainCar.GetAbsSpeed();
 
@@ -100,7 +91,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         if (CombustionModel == null) return;
 
-        var engineOn = _engineOn();
+        var engineOn = _engine.EngineRunning;
         CombustionModel.Tick(Time.deltaTime, engineOn);
 
         // TODO: properly attach the combustion model to the simulation graph.
@@ -147,49 +138,24 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private void TryBindCombustion()
     {
         var flow = _simController.SimulationFlow;
-        var engine = flow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
-        if (engine == null)
+        var result = DieselEngineBinder.TryBind(flow);
+        if (!result.IsSuccess)
         {
-            _log.Warn("no DieselEngineDirect, engine model not bound");
+            _log.Warn($"engine model not bound: {result.Error}");
             return;
         }
 
-        // throttle is a port reference, the actual port hangs off a private field
-        var throttleRef = engine.GetAllPortReferences()
-            .FirstOrDefault(r => r.id.EndsWith(".THROTTLE", StringComparison.OrdinalIgnoreCase));
-        _throttlePort = throttleRef != null
-            ? Traverse.Create(throttleRef).Field("port").GetValue<Port>()
-            : null;
-
-        var rpmPort = engine.GetAllPorts()
-            .FirstOrDefault(p => p.id.EndsWith(".RPM_NORMALIZED", StringComparison.OrdinalIgnoreCase));
-        var fuelPort = engine.GetAllPorts()
-            .FirstOrDefault(p => p.id.EndsWith(".FUEL_CONSUMPTION_NORMALIZED", StringComparison.OrdinalIgnoreCase));
-        var engineOnPort = engine.GetAllPorts()
-            .FirstOrDefault(p => p.id.EndsWith(".ENGINE_ON", StringComparison.OrdinalIgnoreCase));
-
-        if (_throttlePort == null || rpmPort == null)
-        {
-            _log.Warn("could not resolve throttle/rpm ports, engine model not bound");
-            return;
-        }
+        _engine = result.Value;
 
         // suppliers: the model reads the ports through these closures
-        _fuelNorm = fuelPort != null
-            ? () => Mathf.Clamp01(fuelPort.Value)
-            : () => 0f;
-        _engineOn = engineOnPort != null
-            ? () => engineOnPort.Value > 0.5f
-            : () => rpmPort.Value > 0.05f;
-
         CombustionModel = new CombustionModel(
-            () => _throttlePort.Value,
-            _fuelNorm,
-            () => rpmPort.Value,
+            () => _engine.ThrottleValue,
+            () => _engine.FuelNormalized,
+            () => _engine.RpmNormalized,
             Profile.BuildCharger());
 
-        _log.Info($"combustion bound (throttle: {_throttlePort.id}, " +
-                     $"fuel: {(fuelPort != null ? fuelPort.id : "MISSING")})");
+        _log.Info($"combustion bound (throttle: {_engine.ThrottlePort.id}, " +
+                     $"fuel: {DieselEngineBinding.DescribePort(_engine.FuelPort)})");
     }
 
     /// <summary>

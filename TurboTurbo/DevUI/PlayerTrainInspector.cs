@@ -1,11 +1,9 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 using DV.Simulation.Cars;
 
-using LocoSim.Implementations;
+using TurboTurbo.Runtime;
 
 using UnityEngine;
 
@@ -64,26 +62,14 @@ internal static class PlayerTrainInspector
             return;
         }
 
-        var engine = sim.SimulationFlow.OrderedSimComps.OfType<DieselEngineDirect>().FirstOrDefault();
-        if (engine == null)
+        var result = DieselEngineBinder.TryBind(sim.SimulationFlow);
+        if (!result.IsSuccess)
         {
-            sb.AppendLine("sim: no DieselEngineDirect");
+            sb.AppendLine($"sim: {result.Error}");
             return;
         }
 
-        var throttleRef = engine.GetAllPortReferences()
-            .FirstOrDefault(r => r.id.EndsWith(".THROTTLE", StringComparison.OrdinalIgnoreCase));
-        sb.AppendLine($"ports: throttle={(throttleRef != null ? throttleRef.id : "MISSING")} " +
-            $"rpm={FindPort(engine, ".RPM_NORMALIZED")} " +
-            $"engineOn={FindPort(engine, ".ENGINE_ON")} " +
-            $"fuel={FindPort(engine, ".FUEL_CONSUMPTION_NORMALIZED")}");
-    }
-
-    private static string FindPort(DieselEngineDirect engine, string suffix)
-    {
-        var port = engine.GetAllPorts()
-            .FirstOrDefault(p => p.id.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
-        return port != null ? port.id : "MISSING";
+        sb.AppendLine($"ports: {result.Value.Describe()}");
     }
 
     private static string HierarchyPath(Transform root, Transform transform)

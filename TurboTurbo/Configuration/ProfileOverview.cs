@@ -20,6 +20,9 @@ internal sealed class ProfileOverview
     private const float ActionsWidth = 160f;
     private const float RowSpacing = 4f;
 
+    private const string UnsupportedTooltip =
+        "This locomotive has no diesel engine, so TurboTurbo cannot attach its simulation.";
+
     private static readonly string[] LayerOrder = { "Built-in", "Mod", "User" };
 
     // These locos have no diesel exhaust to simulate, so they get no profile row.
@@ -42,9 +45,9 @@ internal sealed class ProfileOverview
 
     public void Draw()
     {
-        var car = PlayerManager.Car;
-        var boardedLiveryId = car != null && car.IsLoco && car.carLivery != null
-            ? car.carLivery.id
+        var currentCar = PlayerManager.Car;
+        var boardedLiveryId = currentCar != null && currentCar.IsLoco && currentCar.carLivery != null
+            ? currentCar.carLivery.id
             : null;
 
         GUILayout.Label("Profiles", Styles.BoldLabel);
@@ -58,7 +61,7 @@ internal sealed class ProfileOverview
         for (var i = 0; i < liveries.Count; i++)
         {
             if (i > 0) GUILayout.Space(RowSpacing);
-            DrawRow(BuildContext(liveries[i], boardedLiveryId, car, orchestrator));
+            DrawRow(BuildContext(liveries[i], boardedLiveryId, currentCar, orchestrator));
         }
         GUILayout.EndVertical();
     }
@@ -92,14 +95,15 @@ internal sealed class ProfileOverview
     private static ProfileRowContext BuildContext(
         LiveryCatalog.LiveryInfo livery,
         string boardedLiveryId,
-        TrainCar car,
+        TrainCar boardedCar,
         Orchestrator orchestrator)
     {
+        var liveryBoardedCar = livery.Id == boardedLiveryId ? boardedCar : null;
+
         return new ProfileRowContext(
             livery,
             ProfileService.Resolve(livery.Id, SettingsStore.Current.ResolutionMode),
-            livery.Id == boardedLiveryId,
-            car,
+            liveryBoardedCar,
             orchestrator);
     }
 
@@ -109,7 +113,7 @@ internal sealed class ProfileOverview
 
         GUILayout.BeginHorizontal();
 
-        GUILayout.Label(ctx.Boarded ? new GUIContent("▶", "You have boarded this locomotive.") : GUIContent.none,
+        GUILayout.Label(ctx.BoardedThisLivery ? new GUIContent("▶", "You have boarded this locomotive.") : GUIContent.none,
             Styles.RowLabel, GUILayout.Width(MarkerWidth));
         GUILayout.Label(
             new GUIContent(ctx.Livery.Name, "Board this locomotive to create or edit its profile."),
@@ -220,16 +224,10 @@ internal sealed class ProfileOverview
             var authored = AuthoringService.HasProfile(ctx.Id);
             var modName = AuthoringService.TargetDisplayName;
 
-            if (ctx.Boarded)
-            {
-                var content = authored
-                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in '{modName}').")
-                    : new GUIContent("Create", $"Create a mod profile for this locomotive (written to '{modName}')");
-                if (GUILayout.Button(content, Styles.ActionButton) && ProfileEditorPresenter.Instance != null)
-                {
-                    ProfileEditorPresenter.Instance.Open(ctx.Car);
-                }
-            }
+            var content = authored
+                ? new GUIContent("Edit", $"Edit the mod profile definition (defined in '{modName}').")
+                : new GUIContent("Create", $"Create a mod profile for this locomotive (written to '{modName}')");
+            DrawCreateEditButton(content, ctx);
 
             if (authored
                 && GUILayout.Button(new GUIContent("Delete", $"Delete this mod profile (removed from '{modName}')"), Styles.ActionButton))
@@ -241,15 +239,12 @@ internal sealed class ProfileOverview
         }
         else
         {
-            if (ctx.Boarded)
-            {
-                var content = user == null
-                    ? new GUIContent("Create", "Create a new user profile for this locomotive.\n\n" +
-                                               "If a builtin profile or a mod profile exists, the user profile will start out with those settings. " +
-                                               "Otherwise, the DE6 defaults will be applied.")
-                    : new GUIContent("Edit", "Edit the profile.");
-                if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
-            }
+            var content = user == null
+                ? new GUIContent("Create", "Create a new user profile for this locomotive.\n\n" +
+                                           "If a builtin profile or a mod profile exists, the user profile will start out with those settings. " +
+                                           "Otherwise, the DE6 defaults will be applied.")
+                : new GUIContent("Edit", "Edit the profile.");
+            DrawCreateEditButton(content, ctx);
 
             if (user != null
                 && GUILayout.Button(new GUIContent("Delete", "Delete your user profile for this locomotive."), Styles.ActionButton))
@@ -261,6 +256,32 @@ internal sealed class ProfileOverview
         }
 
         GUILayout.EndHorizontal();
+    }
+
+    private static void DrawCreateEditButton(GUIContent content, ProfileRowContext ctx)
+    {
+        if (!ctx.BoardedThisLivery) return;
+
+        if (ctx.Supported)
+        {
+            if (GUILayout.Button(content, Styles.ActionButton) && ProfileEditorPresenter.Instance != null)
+            {
+                ProfileEditorPresenter.Instance.Open(ctx.LiveryBoardedCar);
+            }
+            return;
+        }
+
+        var disabled = new GUIContent(content.text, UnsupportedTooltip);
+        var wasEnabled = GUI.enabled;
+        GUI.enabled = false;
+        GUILayout.Button(disabled, Styles.ActionButton);
+        GUI.enabled = wasEnabled;
+
+        // disabled controls do not populate GUI.tooltip, so overlay a transparent
+        // button over the same rect to keep the hover tooltip working. it carries no
+        // text of its own, otherwise it would draw the label a second time.
+        var hover = new GUIContent(string.Empty, UnsupportedTooltip);
+        GUI.Button(GUILayoutUtility.GetLastRect(), hover, GUIStyle.none);
     }
 
     private readonly struct Layer

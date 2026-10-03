@@ -54,13 +54,19 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
 
         if (car == null || !car.IsLoco || car.carLivery == null)
         {
-            Log.Warn("profile editor needs a boarded locomotive");
+            Log.Warn($"cannot open profile editor for {car.LogIdentifier()}: it does not look like a valid locomotive");
+            return;
+        }
+
+        if (!DieselEngineBinder.Supports(car))
+        {
+            Log.Warn($"cannot open profile editor for {car.LogIdentifier()}: no diesel engine could be detected");
             return;
         }
 
         if (Orchestrator.Instance == null)
         {
-            Log.Warn("orchestrator not ready");
+            Log.Warn("cannot open profile editor: the orchestrator is not running");
             return;
         }
 
@@ -77,7 +83,7 @@ internal sealed class ProfileEditorPresenter : MonoBehaviour
             var result = ScratchHost.Create(car);
             if (!result.IsSuccess)
             {
-                Log.Warn($"cannot create a profile for '{car.DisplayId()}': {result.Error}");
+                Log.Warn($"cannot create a profile for {car.LogIdentifier()}: {result.Error}");
                 return;
             }
 
