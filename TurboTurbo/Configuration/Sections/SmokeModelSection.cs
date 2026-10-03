@@ -38,13 +38,15 @@ internal static class SmokeModelSection
                                         "This will generally be very low, as an idling engine should hardly produce smoke.", 0f, 0.1f,
             m => m.Tuning.CleanMinHeatAlpha, (m, v) => m.Tuning.CleanMinHeatAlpha = v, TweakGrade.Basic);
 
-        Add("Clean smoke weight (max)", "Intensity of clean exhaust smoke at full load, relative to other types of smoke.", 0f, 0.5f,
+        Add("Clean smoke weight (max)", "Intensity of clean exhaust smoke at full load, relative to other types of smoke.\n" +
+                                        "Turning this up will generate more smoke even when the engine is running lean.", 0f, 0.5f,
             m => m.Tuning.CleanMaxHeatAlpha, (m, v) => m.Tuning.CleanMaxHeatAlpha = v, TweakGrade.Basic);
 
-        Add("Soot weight", "Intensity of heavy soot produced by a maximally rich burning engine, relative to other types of smoke. ", 0f, 1f,
+        Add("Soot weight", "Intensity of heavy soot produced by a maximally rich burning engine, relative to other types of smoke.\n" +
+                           "Turn this down to model a cleaner burning engine.", 0f, 1f,
             m => m.Tuning.SootMaxAlpha, (m, v) => m.Tuning.SootMaxAlpha = v, TweakGrade.Basic);
 
-        Add("Clean burn load", "Load at which the idle haze is fully gone.", 0.05f, 1f,
+        Add("Clean burn load", "Load at which the idle haze colour has completely transformed into the clean smoke colour.", 0.05f, 1f,
             m => m.Tuning.CleanBurnHeat, (m, v) => m.Tuning.CleanBurnHeat = v);
 
         Add("Soot lambda curve shape", "Exponent shaping the soot curve over lambda deficit.\n" +

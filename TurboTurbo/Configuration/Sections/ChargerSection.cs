@@ -29,12 +29,12 @@ internal static class ChargerSection
             section.AddFloat("Lambda calibration",
                 LambdaCalibrationToolTip,
                 1f, 4f, false, () => t.LambdaCalibration, v => t.LambdaCalibration = v, TweakGrade.Basic);
-            section.AddFloat("Tau up",
+            section.AddFloat("Spool up",
                 "Time constant (in seconds) for building turbo boost pressure in the intake manifold.\n" +
                 "Higher values cause slower response when opening the throttle," +
                 "causing it to take longer before the soot clears and the engine runs clean again.",
                 0.25f, 8f, false, () => t.TauUp, v => t.TauUp = v, TweakGrade.Basic);
-            section.AddFloat("Tau down",
+            section.AddFloat("Spool down",
                 "Time constant (in seconds) for losing turbo boost pressure in the intake manifold.\n" +
                 "Higher values cause boost pressure to remain high for longer when closing the throttle," +
                 "producing less soot if the engine drops power briefly and then comes back on.",

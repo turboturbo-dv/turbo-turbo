@@ -223,7 +223,7 @@ internal sealed class ProfileOverview
             if (ctx.Boarded)
             {
                 var content = authored
-                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in: {modName}).")
+                    ? new GUIContent("Edit", $"Edit the mod profile definition (defined in '{modName}').")
                     : new GUIContent("Create", $"Create a mod profile for this locomotive (written to '{modName}')");
                 if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
             }
