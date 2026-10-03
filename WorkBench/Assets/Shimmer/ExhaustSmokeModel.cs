@@ -71,7 +71,7 @@ namespace TurboTurbo.Modeling
             internal const float DefaultCleanBurnHeat = 0.2f;
             internal const float DefaultSootOnsetLambda = 1.3f;
             internal const float DefaultSootOpaqueLambda = 1.05f;
-            internal const float DefaultSootCurveExponent = 1.5f;
+            internal const float DefaultSootCurveExponent = 2f;
             internal const float DefaultSootIncreaseTau = 0.08f;
             internal const float DefaultSootDecreaseTau = 0.4f;
             internal const float DefaultSootMaxAlpha = 0.95f;
