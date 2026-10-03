@@ -17,6 +17,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private float _densityFalloff = SmokeParticles.DensityFalloff;
     private float _softParticlesFade = SmokeParticles.SoftParticlesFade;
+    private float _fadeInSeconds = SmokeParticles.FadeInSeconds;
 
     private TurboTooltipLayer _tooltip;
 
@@ -58,6 +59,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
         DrawDensityFalloff();
         GUILayout.Space(4f);
         DrawSoftParticlesFade();
+        GUILayout.Space(4f);
+        DrawFadeInSeconds();
         GUILayout.Space(4f);
         DrawDiagnosticsButtons();
 
@@ -261,6 +264,38 @@ internal sealed class TurboDevPanel : MonoBehaviour
             foreach (var e in host.Exhausts)
             {
                 e.Smoke?.ApplySoftParticlesFade();
+            }
+        }
+    }
+
+    private void DrawFadeInSeconds()
+    {
+        GUILayout.BeginVertical(GUI.skin.box);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(new GUIContent($"Fade-in: {_fadeInSeconds:0.00} s",
+                "Absolute time for a newly spawned smoke particle to reach full opacity, independent of lifetime."),
+            GUILayout.Width(170f));
+        var next = GUILayout.HorizontalSlider(_fadeInSeconds, 0f, 0.25f);
+        GUILayout.EndHorizontal();
+        if (!Mathf.Approximately(next, _fadeInSeconds))
+        {
+            _fadeInSeconds = next;
+            SmokeParticles.FadeInSeconds = next;
+            ApplyFadeInSeconds();
+        }
+        GUILayout.EndVertical();
+    }
+
+    private void ApplyFadeInSeconds()
+    {
+        var orchestrator = Orchestrator.Instance;
+        if (orchestrator == null) return;
+
+        foreach (var host in orchestrator.Hosts)
+        {
+            foreach (var e in host.Exhausts)
+            {
+                e.Smoke?.ApplyFadeInSeconds();
             }
         }
     }

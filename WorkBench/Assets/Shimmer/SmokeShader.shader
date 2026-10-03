@@ -12,6 +12,7 @@ Shader "TurboTurbo/Smoke"
         _DensityScale ("Density Scale", Float) = 1
         _DensityFalloff ("Density Falloff", Float) = 1.5
         _SoftParticlesFade ("Soft Particles Fade (m)", Range(0, 1)) = 0.15
+        _FadeInSeconds ("Fade In (s)", Range(0, 0.25)) = 0.11
     }
     SubShader
     {
@@ -42,6 +43,7 @@ Shader "TurboTurbo/Smoke"
             float _DensityScale;
             float _DensityFalloff;
             float _SoftParticlesFade;
+            float _FadeInSeconds;
             sampler2D_float _CameraDepthTexture;
 
             struct appdata
@@ -49,6 +51,7 @@ Shader "TurboTurbo/Smoke"
                 float4 vertex : POSITION;
                 fixed4 color : COLOR; // rgb = tint, a = encoded particulate mass
                 float4 texcoords : TEXCOORD0; // xy = uv, z = size, w = normalized age
+                float invStartLifetime : TEXCOORD1; // x = 1/lifetime
             };
 
             struct v2f
@@ -83,8 +86,11 @@ Shader "TurboTurbo/Smoke"
                 // gamma decode -> rescale -> apply size fade
                 float tau = (v.color.a * v.color.a) * _DensityScale / pow(max(1e-6, size), _DensityFalloff);
 
-                // brief fade in at birth avoids pop-in
-                float fadeIn = saturate(age / 0.025);
+                // brief fade in at birth avoids pop-in.
+                // recover age in seconds to allow fade in to be constant over different lifetimes.
+                // lets you adjust plume length without opening/closing a gap above the exhaust stack.
+                float ageSeconds = age / max(1e-4, v.invStartLifetime);
+                float fadeIn = saturate(ageSeconds / max(1e-4, _FadeInSeconds));
                 
                 // size fade alone gives polynomial decay, which does not reach zero,
                 // so multiply by a smooth fade-to-zero at end of life
@@ -93,6 +99,7 @@ Shader "TurboTurbo/Smoke"
                 // decode + rescale process can result in tau > 1, which is deliberate as it allows particles
                 // to hold at max opacity for a while, so it needs a saturate
                 o.color.a = saturate(tau) * fadeIn * ageFade * camFade;
+
                 UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }
@@ -118,6 +125,7 @@ Shader "TurboTurbo/Smoke"
 
                 float3 L = _WorldSpaceLightPos0.xyz;
                 float facing = lerp(_FacingFloor, 1.0, saturate(L.y));
+
                 half3 light = ShadeSH9(half4(0, 1, 0, 1)) + _LightColor0.rgb * facing;
 
                 // de-intensify the light colour tint, otherwise the smoke turns
@@ -126,6 +134,7 @@ Shader "TurboTurbo/Smoke"
                 light = lerp(lightLum.xxx, light, _Saturation);
 
                 half4 col = half4(remappedTex * i.color.rgb * light, alpha);
+
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }

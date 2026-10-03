@@ -18,6 +18,7 @@ namespace TurboTurbo.WorkBench
         private static readonly int DensityScale = Shader.PropertyToID("_DensityScale");
         private static readonly int DensityFalloffId = Shader.PropertyToID("_DensityFalloff");
         private static readonly int SoftParticlesFadeId = Shader.PropertyToID("_SoftParticlesFade");
+        private static readonly int FadeInSecondsId = Shader.PropertyToID("_FadeInSeconds");
 
         // the CPU write and shader read of the encoded density must use reciprocal powers
         private const float DensityEncodeExponent = 0.5f;
@@ -27,6 +28,9 @@ namespace TurboTurbo.WorkBench
 
         /// <summary>Distance [m] over which smoke fades out as it approaches opaque geometry. 0 disables.</summary>
         public static float SoftParticlesFade = 0.15f;
+
+        /// <summary>Absolute time [s] for a new smoke particle to reach full opacity.</summary>
+        public static float FadeInSeconds = 0.11f;
 
         // near-camera fade range, in metres
         private const float FadeDistMin = 1.5f;
@@ -280,6 +284,7 @@ namespace TurboTurbo.WorkBench
                 ParticleSystemVertexStream.UV,
                 ParticleSystemVertexStream.SizeX,
                 ParticleSystemVertexStream.AgePercent,
+                ParticleSystemVertexStream.InvStartLifetime,
             });
             if (shader != null)
             {
@@ -292,6 +297,7 @@ namespace TurboTurbo.WorkBench
                 SetDensityScale(ComputeDensityScale());
                 ApplyDensityFalloff();
                 ApplySoftParticlesFade();
+                ApplyFadeInSeconds();
             }
         }
 
@@ -328,6 +334,11 @@ namespace TurboTurbo.WorkBench
         public void ApplySoftParticlesFade()
         {
             if (_renderer != null) _renderer.material.SetFloat(SoftParticlesFadeId, SoftParticlesFade);
+        }
+
+        public void ApplyFadeInSeconds()
+        {
+            if (_renderer != null) _renderer.material.SetFloat(FadeInSecondsId, FadeInSeconds);
         }
 
         private void Update()
