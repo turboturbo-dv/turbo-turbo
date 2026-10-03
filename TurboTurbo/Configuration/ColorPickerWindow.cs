@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using UnityEngine;
 
 namespace TurboTurbo.Configuration;
@@ -7,11 +9,13 @@ internal sealed class ColorPickerWindow : MonoBehaviour
     private Rect _rect = new(400f, 20f, 240f, 180f);
     private ColorSpec _spec;
     private string _hexEdit;
+    private readonly string[] _channelEdit = new string[4];
 
     public void Open(ColorSpec spec)
     {
         _spec = spec;
         _hexEdit = null;
+        for (var i = 0; i < _channelEdit.Length; i++) _channelEdit[i] = null;
     }
 
     public void Close() => _spec = null;
@@ -20,7 +24,7 @@ internal sealed class ColorPickerWindow : MonoBehaviour
     {
         if (_spec == null) return;
 
-        _rect = GUILayout.Window(GetInstanceID(), _rect, DrawWindow, _spec.Key);
+        _rect = GUILayout.Window(GetInstanceID(), _rect, DrawWindow, _spec.Key, Styles.Window);
     }
 
     private void DrawWindow(int id)
@@ -35,10 +39,10 @@ internal sealed class ColorPickerWindow : MonoBehaviour
         GUI.color = prev;
 
         var before = c;
-        c.r = LabeledSlider("R", c.r);
-        c.g = LabeledSlider("G", c.g);
-        c.b = LabeledSlider("B", c.b);
-        c.a = LabeledSlider("A", c.a);
+        c.r = ChannelSlider(0, "R", c.r);
+        c.g = ChannelSlider(1, "G", c.g);
+        c.b = ChannelSlider(2, "B", c.b);
+        c.a = ChannelSlider(3, "A", c.a);
         if (c != before)
         {
             _spec.SetValue(c);
@@ -57,8 +61,8 @@ internal sealed class ColorPickerWindow : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("close")) Close();
-        if (GUILayout.Button("copy hex")) GUIUtility.systemCopyBuffer = $"#{ColorUtility.ToHtmlStringRGBA(c)}";
+        if (GUILayout.Button("Close")) Close();
+        if (GUILayout.Button("Copy hex")) GUIUtility.systemCopyBuffer = $"#{ColorUtility.ToHtmlStringRGBA(c)}";
         GUILayout.EndHorizontal();
 
         var e = Event.current;
@@ -71,12 +75,24 @@ internal sealed class ColorPickerWindow : MonoBehaviour
         GUI.DragWindow();
     }
 
-    private static float LabeledSlider(string label, float value)
+    private float ChannelSlider(int index, string label, float value)
     {
         GUILayout.BeginHorizontal();
         GUILayout.Label(label, GUILayout.Width(24f));
         var v = GUILayout.HorizontalSlider(value, 0f, 1f);
-        GUILayout.Label(v.ToString("0.00"), GUILayout.Width(40f));
+        if (v != value) _channelEdit[index] = null;
+
+        var shown = _channelEdit[index]
+                    ?? Mathf.RoundToInt(Mathf.Clamp01(v) * 255f).ToString(CultureInfo.InvariantCulture);
+        var typed = GUILayout.TextField(shown, GUILayout.Width(30f));
+        if (typed != shown)
+        {
+            _channelEdit[index] = typed;
+            if (int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            {
+                v = Mathf.Clamp(parsed, 0, 255) / 255f;
+            }
+        }
         GUILayout.EndHorizontal();
         return v;
     }
