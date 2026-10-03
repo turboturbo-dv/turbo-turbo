@@ -1,4 +1,4 @@
-## Unreleased
+## v1.0.0
 
 ### Added
 - User profiles: These can be created in-game and are saved to user settings
