@@ -185,15 +185,21 @@ internal sealed class ColorSpec : SpecBase<Color>, ITweakSpec
 
     public void SetValue(Color value) => Commit(value);
 
+    /// <summary>Screen-space rect of the swatch.</summary>
+    public Rect SwatchScreenRect { get; private set; }
+
     public void Draw()
     {
         GUILayout.BeginHorizontal();
         GUILayout.Label(_label, GUILayout.Width(Styles.LabelWidth));
         var prev = GUI.backgroundColor;
         GUI.backgroundColor = _get();
-        if (GUILayout.Button(GUIContent.none, GUILayout.Width(120f), GUILayout.Height(18f))) RequestEdit?.Invoke();
+        var clicked = GUILayout.Button(GUIContent.none, GUILayout.Width(120f), GUILayout.Height(18f));
+        var last = GUILayoutUtility.GetLastRect();
+        SwatchScreenRect = new Rect(GUIUtility.GUIToScreenPoint(last.position), last.size);
         GUI.backgroundColor = prev;
         GUILayout.EndHorizontal();
+        if (clicked) RequestEdit?.Invoke();
     }
 
 }

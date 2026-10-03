@@ -188,7 +188,7 @@ internal sealed class ProfileEditor : MonoBehaviour
             _markerController.SetTarget));
         AddPanel("charger", ChargerSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddPanel("smoke-model", SmokeModelSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
-        AddPanel("colors", ColorsSection.Build(_host, () => _needsShrink = true, spec => _colorPicker.Open(spec)));
+        AddPanel("colors", ColorsSection.Build(_host, () => _needsShrink = true, OpenColorPicker));
         AddPanel("velocity", VelocitySection.Build(_host, () => _needsShrink = true));
         AddPanel("smoke-emitter", SmokeEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddPanel("shimmer-emitter", ShimmerEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
@@ -216,6 +216,12 @@ internal sealed class ProfileEditor : MonoBehaviour
         {
             if (_openState.TryGetValue(key, out var open)) panel.Open = open;
         }
+    }
+
+    private void OpenColorPicker(ColorSpec spec)
+    {
+        const float gap = 6f;
+        _colorPicker.Open(spec, new Vector2(_windowRect.xMax + gap, spec.SwatchScreenRect.y));
     }
 
     private void DrawFooter()

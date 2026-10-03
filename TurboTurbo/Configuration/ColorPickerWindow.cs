@@ -19,11 +19,17 @@ internal sealed class ColorPickerWindow : MonoBehaviour
         _blocker.SetBlocking(false);
     }
 
-    public void Open(ColorSpec spec)
+    public void Open(ColorSpec spec, Vector2 position)
     {
         _spec = spec;
         _hexEdit = null;
         for (var i = 0; i < _channelEdit.Length; i++) _channelEdit[i] = null;
+
+        position.x = Mathf.Clamp(position.x, 0f, Mathf.Max(0f, Screen.width - _rect.width));
+        position.y = Mathf.Clamp(position.y, 0f, Mathf.Max(0f, Screen.height - _rect.height));
+        _rect.x = position.x;
+        _rect.y = position.y;
+
         _blocker.SetBlocking(true);
     }
 
