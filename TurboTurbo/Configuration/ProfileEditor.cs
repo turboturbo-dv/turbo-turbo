@@ -229,7 +229,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         GUILayout.BeginHorizontal();
         if (SettingsStore.Current.IsAuthoring)
         {
-            if (GUILayout.Button($"Save to '{ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId)}'")) SaveToAuthoringMod();
+            if (GUILayout.Button($"Save to '{AuthoringService.TargetDisplayName}'")) SaveToAuthoringMod();
             if (GUILayout.Button(new GUIContent("copy XML",
                 "Copy this profile to the clipboard as a <LocoProfile> XML fragment, ready to paste into a mod's " +
                 "TurboConfig.xml.")))
@@ -268,7 +268,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         }
 
         AuthoringService.ReloadTarget();
-        Log.Info($"saved profile '{_liveryId}' to '{ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId)}'");
+        Log.Info($"saved profile '{_liveryId}' to '{AuthoringService.TargetDisplayName}'");
         CloseSelf();
     }
 

@@ -5,6 +5,10 @@ namespace TurboTurbo.Profiles.Storage;
 /// <summary>Writes profiles into, and reloads them from, the authored target mod.</summary>
 internal static class AuthoringService
 {
+    /// <summary>Display name of the mod currently being authored, or the id if unknown.</summary>
+    public static string TargetDisplayName =>
+        ModRegistry.DisplayName(SettingsStore.Current.AuthoringTargetModId);
+
     public static Error? Write(LocoProfile profile)
     {
         var target = SettingsStore.Current.AuthoringTargetModId;

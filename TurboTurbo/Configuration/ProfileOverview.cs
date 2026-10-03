@@ -145,9 +145,6 @@ internal sealed class ProfileOverview
     private static ProfileEntry? UserEntry(ProfileResolution resolution) =>
         resolution.Present.FirstOrNull(e => e.Tier == ProfileTier.User);
 
-    private static ProfileEntry? ModEntry(ProfileResolution resolution) =>
-        resolution.Present.FirstOrNull(e => e.Tier == ProfileTier.Mod);
-
     private static string TierKey(ProfileTier tier) => tier switch
     {
         ProfileTier.BuiltIn => "Built-in",
@@ -206,7 +203,10 @@ internal sealed class ProfileOverview
         if (enabled == profile.Enabled) return;
 
         ProfileService.User.SetEnabled(ctx.Id, enabled);
-        ctx.Orchestrator?.ReloadHostsForLivery(ctx.Id);
+        if (ctx.Orchestrator != null)
+        {
+            ctx.Orchestrator.ReloadHostsForLivery(ctx.Id);
+        }
     }
 
     private void DrawActions(ProfileRowContext ctx)
@@ -218,14 +218,17 @@ internal sealed class ProfileOverview
         if (ctx.Resolution.Mode == ResolutionMode.Authoring)
         {
             var authored = AuthoringService.HasProfile(ctx.Id);
-            var modName = ModEntry(ctx.Resolution)?.Origin;
+            var modName = AuthoringService.TargetDisplayName;
 
             if (ctx.Boarded)
             {
                 var content = authored
                     ? new GUIContent("Edit", $"Edit the mod profile definition (defined in '{modName}').")
                     : new GUIContent("Create", $"Create a mod profile for this locomotive (written to '{modName}')");
-                if (GUILayout.Button(content, Styles.ActionButton)) ProfileEditorPresenter.Instance?.Open(ctx.Car);
+                if (GUILayout.Button(content, Styles.ActionButton) && ProfileEditorPresenter.Instance != null)
+                {
+                    ProfileEditorPresenter.Instance.Open(ctx.Car);
+                }
             }
 
             if (authored
