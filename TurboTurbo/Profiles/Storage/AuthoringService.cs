@@ -13,7 +13,7 @@ internal static class AuthoringService
         var entry = ModRegistry.Find(target);
         if (entry == null || string.IsNullOrEmpty(entry.Path)) return new Error($"target mod '{target}' not found");
 
-        var error = profile.Complete();
+        var error = profile.Normalize();
         return error ?? ModProfileWriter.Write(profile, entry.Path);
     }
 

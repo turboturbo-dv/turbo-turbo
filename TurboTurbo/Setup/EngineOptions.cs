@@ -104,7 +104,7 @@ public class EngineOptions
             Velocity = _velocity,
         };
 
-        var error = profile.Complete();
+        var error = profile.Normalize();
         return profile.ToResult(error);
     }
 }

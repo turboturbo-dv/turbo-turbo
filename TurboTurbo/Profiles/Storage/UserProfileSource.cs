@@ -37,7 +37,7 @@ internal sealed class UserProfileSource : IProfileSource
     /// <summary>Validates, stores, and persists a profile. Returns an error or null.</summary>
     public Error? Save(LocoProfile profile)
     {
-        var error = profile.Complete();
+        var error = profile.Normalize();
         if (error != null) return error;
 
         var stored = SettingsStore.Current.LocoProfiles;

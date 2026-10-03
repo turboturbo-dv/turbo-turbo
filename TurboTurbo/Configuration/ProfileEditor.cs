@@ -275,7 +275,7 @@ internal sealed class ProfileEditor : MonoBehaviour
         var profile = _host.Profile.Clone();
         profile.ChargerKind = kind;
 
-        var error = profile.Complete();
+        var error = profile.Normalize();
         if (error != null)
         {
             Log.Warn($"cannot switch charger for '{_liveryId}': {error}");

@@ -30,7 +30,7 @@ internal static class ScratchHost
             };
         }
 
-        var error = profile.Complete();
+        var error = profile.Normalize();
         if (error is { } e) return e;
 
         return HostFactory.Create(car, profile);

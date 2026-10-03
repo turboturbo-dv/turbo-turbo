@@ -95,16 +95,18 @@ public sealed class LocoProfile
         && !float.IsNaN(v.z) && !float.IsInfinity(v.z);
 
     /// <summary>
-    /// Validates and completes this profile: any uninitialized settings blocks are
+    /// Validates and normalizes this profile: any uninitialized settings blocks are
     /// initialized to their default values. Settings for an unused charger kind are dropped.
-    /// Returns an error if validation failed.
+    /// Returns an error if validation failed. Note that this is a mutating operation.
     /// </summary>
-    internal Error? Complete()
+    internal Error? Normalize()
     {
         var error = Validate();
         if (error != null) return error;
 
         Smoke ??= new ExhaustSmokeModel.Settings();
+        Smoke.Validate();
+        
         SmokeEmitter ??= new SmokeParticles.Settings();
         ShimmerEmitter ??= new ShimmerParticles.Settings();
         Velocity ??= new ExhaustVelocitySettings();
@@ -121,7 +123,6 @@ public sealed class LocoProfile
             Atmospheric = null;
         }
 
-        Smoke.Validate();
         return null;
     }
 }

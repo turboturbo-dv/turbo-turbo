@@ -199,7 +199,7 @@ namespace TurboTurboTests
         [Fact]
         public void Complete_InvalidProfile_ReturnsError()
         {
-            new LocoProfile { LiveryId = "" }.Complete().ShouldNotBeNull();
+            new LocoProfile { LiveryId = "" }.Normalize().ShouldNotBeNull();
         }
 
         [Fact]

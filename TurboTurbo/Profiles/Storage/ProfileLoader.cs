@@ -43,7 +43,7 @@ internal static class ProfileLoader
         {
             if (profile == null) continue;
 
-            var error = profile.Complete();
+            var error = profile.Normalize();
             if (error != null)
             {
                 Log.Warn($"skipping loco profile '{profile.LiveryId}': {error}");
@@ -82,7 +82,7 @@ internal static class ProfileLoader
         {
             if (profile == null) continue;
 
-            var error = profile.Complete();
+            var error = profile.Normalize();
             if (error != null)
             {
                 Log.Warn($"skipping loco profile '{profile.LiveryId}' from '{source.ModName}': {error}");
