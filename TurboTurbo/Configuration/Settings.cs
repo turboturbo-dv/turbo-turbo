@@ -14,6 +14,8 @@ public class Settings : UnityModManager.ModSettings
     public bool AuthoringMode;
     public string AuthoringTargetModId = "";
 
+    public bool DeveloperMode;
+
     public List<LocoProfile> LocoProfiles = new();
 
     public bool IsAuthoring => AuthoringMode && !string.IsNullOrEmpty(AuthoringTargetModId);

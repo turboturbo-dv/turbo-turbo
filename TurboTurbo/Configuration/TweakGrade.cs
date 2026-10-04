@@ -4,4 +4,5 @@ internal enum TweakGrade
 {
     Basic,
     Advanced,
+    Developer
 }

@@ -29,21 +29,21 @@ internal sealed class Section : IEditorPanel
     public void AddFloat(string key, string tooltip, float min, float max, bool requiresReconfigure,
         Func<float> get, Action<float> set, TweakGrade grade = TweakGrade.Advanced)
     {
-        _specs.Add(new FloatSpec(key, tooltip, get, set, min, max,
+        _specs.Add(new FloatSpec(DisplayKey(key, grade), tooltip, get, set, min, max,
             requiresReconfigure ? _onRequiresReconfigure : null, grade));
     }
 
     public void AddBool(string key, string tooltip, bool requiresReconfigure,
         Func<bool> get, Action<bool> set, TweakGrade grade = TweakGrade.Advanced)
     {
-        _specs.Add(new BoolSpec(key, tooltip, get, set,
+        _specs.Add(new BoolSpec(DisplayKey(key, grade), tooltip, get, set,
             requiresReconfigure ? _onRequiresReconfigure : null, grade));
     }
 
     public ColorSpec AddColor(string key, string tooltip, Func<Color> get, Action<Color> set,
         TweakGrade grade = TweakGrade.Advanced)
     {
-        var spec = new ColorSpec(key, tooltip, get, set, grade);
+        var spec = new ColorSpec(DisplayKey(key, grade), tooltip, get, set, grade);
         _specs.Add(spec);
         return spec;
     }
@@ -51,15 +51,18 @@ internal sealed class Section : IEditorPanel
     public void AddProgressButton(string key, string tooltip, Action action,
         Func<float> progress = null, TweakGrade grade = TweakGrade.Advanced)
     {
-        _specs.Add(new ProgressButtonSpec(key, tooltip, action, grade, progress));
+        _specs.Add(new ProgressButtonSpec(DisplayKey(key, grade), tooltip, action, grade, progress));
     }
 
     public void AddInt(string key, string tooltip, int min, int max, bool requiresReconfigure,
         Func<int> get, Action<int> set, TweakGrade grade = TweakGrade.Advanced)
     {
-        _specs.Add(new IntSpec(key, tooltip, get, set, min, max,
+        _specs.Add(new IntSpec(DisplayKey(key, grade), tooltip, get, set, min, max,
             requiresReconfigure ? _onRequiresReconfigure : null, grade));
     }
+
+    private static string DisplayKey(string key, TweakGrade grade) =>
+        grade == TweakGrade.Developer ? key + " (dev)" : key;
 
     public void Draw()
     {

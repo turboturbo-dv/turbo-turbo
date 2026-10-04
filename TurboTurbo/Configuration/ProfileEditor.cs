@@ -194,12 +194,17 @@ internal sealed class ProfileEditor : MonoBehaviour
         AddPanel("shimmer-emitter", ShimmerEmitterSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
     }
 
+    private TweakGrade MaxGrade =>
+        _grade == TweakGrade.Advanced && SettingsStore.Current.DeveloperMode
+            ? TweakGrade.Developer
+            : _grade;
+
     private void AddPanel(string key, IEditorPanel panel)
     {
         if (panel == null) return;
         if (panel is Section section)
         {
-            section.MaxGrade = _grade;
+            section.MaxGrade = MaxGrade;
             section.HeaderWidth = (_windowRect.width - GUI.skin.window.padding.horizontal) * 0.4f;
         }
         _sections.Add((key, panel));
