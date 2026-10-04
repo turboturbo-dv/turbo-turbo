@@ -57,9 +57,44 @@ if (-not (Test-Path $bundle)) {
 }
 Copy-Item $bundle $stage
 
+# Compress-Archive generates different path separators depending on the PS
+# version used. Some mod managers can't backslashes, so we use the .NET API instead.
+function New-ModZip {
+    param(
+        [Parameter(Mandatory)][string]$SourceDirectory,
+        [Parameter(Mandatory)][string]$DestinationPath
+    )
+
+    Add-Type -AssemblyName System.IO.Compression -ErrorAction SilentlyContinue
+    if (-not ('System.IO.Compression.ZipFile' -as [type])) {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+    }
+
+    $source = (Resolve-Path -LiteralPath $SourceDirectory).Path
+    $rootName = Split-Path -Leaf $source
+
+    if (Test-Path -LiteralPath $DestinationPath) { Remove-Item -LiteralPath $DestinationPath -Force }
+
+    $archive = [System.IO.Compression.ZipFile]::Open($DestinationPath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in (Get-ChildItem -LiteralPath $source -Recurse -File)) {
+            $relative = $file.FullName.Substring($source.Length + 1).Replace('\', '/')
+            $entry = $archive.CreateEntry("$rootName/$relative", [System.IO.Compression.CompressionLevel]::Optimal)
+            $entryStream = $entry.Open()
+            try {
+                $input = [System.IO.File]::OpenRead($file.FullName)
+                try { $input.CopyTo($entryStream) } finally { $input.Dispose() }
+            } finally {
+                $entryStream.Dispose()
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 $zip = "$root\dist\TurboTurbo-$version.zip"
-if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path "$root\dist\stage\TurboTurbo" -DestinationPath $zip
+New-ModZip -SourceDirectory "$root\dist\stage\TurboTurbo" -DestinationPath $zip
 Remove-Item "$root\dist\stage" -Recurse -Force
 
 Write-Host "packaged: $zip"
