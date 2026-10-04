@@ -30,7 +30,7 @@ namespace TurboTurbo.WorkBench
         public static float SoftParticlesFade = 0.15f;
 
         /// <summary>Absolute time [s] for a new smoke particle to reach full opacity.</summary>
-        public static float FadeInSeconds = 0.11f;
+        public static float FadeInSeconds = 0.07f;
 
         // near-camera fade range, in metres
         private const float FadeDistMin = 1.5f;
