@@ -20,7 +20,6 @@ public interface ICharger
     float Boost { get; }
     bool Surging { get; }
     float LambdaCalibration { get; }
-    float ExhaustHeat { get; }
 
     void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn);
 

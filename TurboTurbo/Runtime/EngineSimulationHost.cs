@@ -253,7 +253,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     {
         var velocity = TrainCar.GetVelocity();
         var absSpeed = TrainCar.GetAbsSpeed();
-        var heat = CombustionModel.ExhaustHeat;
+        var heat = CombustionModel.ExhaustEnergy;
 
         foreach (var e in Exhausts)
         {

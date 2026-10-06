@@ -82,15 +82,6 @@ namespace TurboTurboTests
         }
 
         [Fact]
-        public void AtmosphericCharger_Heat_TracksFuelTimesCharge()
-        {
-            var charger = new AtmosphericCharger(new AtmosphericCharger.Settings());
-            charger.Tick(0.016f, 0.5f, 0f, 1f, 0.5f, engineOn: true);
-
-            charger.ExhaustHeat.ShouldBe(0.5f * charger.Charge, tolerance: 0.0001f);
-        }
-
-        [Fact]
         public void AtmosphericCharger_CopyConstructor_IsIndependent()
         {
             var template = new AtmosphericCharger.Settings { EtaPeak = 0.8f };

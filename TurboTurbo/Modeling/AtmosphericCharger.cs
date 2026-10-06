@@ -71,8 +71,6 @@ public sealed class AtmosphericCharger : ICharger
 
     public float LambdaCalibration => Tuning.LambdaCalibration;
 
-    public float ExhaustHeat { get; private set; }
-
     public AtmosphericCharger(Settings settings)
     {
         Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -88,7 +86,6 @@ public sealed class AtmosphericCharger : ICharger
 
         var chokeFactor = (1f - s.ChokeK * Mathf.Pow(rpmNorm, s.ChokeBeta));
         Charge = s.EtaPeak * chokeFactor;
-        ExhaustHeat = fuelPerStroke * Charge;
     }
 
     public ICharger Clone() => new AtmosphericCharger(new Settings(Tuning));

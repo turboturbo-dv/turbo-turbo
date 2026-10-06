@@ -65,11 +65,6 @@ public sealed class CombustionModel
     /// <summary>Fuel consumption per engine stroke, derived from <see cref="FuelNorm"/> and <see cref="RpmNorm"/>.</summary>
     public float FuelPerStroke { get; private set; }
 
-    /// <summary>
-    /// Exhaust-gas energy proxy [0..1], where 1 is max energy flow (full fuel consumption at full RPM).
-    /// </summary>
-    public float ExhaustHeat { get; private set; }
-
     /// <summary>Per-stroke cylinder charge supplied by the charger.</summary>
     public float Charge { get; private set; }
 
@@ -151,7 +146,6 @@ public sealed class CombustionModel
 
         Charger.Tick(delta, fuelPerStroke, Overfuel, rpm, governor, engineOn);
 
-        ExhaustHeat = Charger.ExhaustHeat;
         Boost = Charger.Boost;
         SurgeThisTick = Charger.Surging;
     }

@@ -76,9 +76,6 @@ public sealed class TurboCharger : ICharger
 
     public float LambdaCalibration => Tuning.LambdaCalibration;
 
-    /// <summary>Exhaust-gas energy proxy [0..1], the boost target.</summary>
-    public float ExhaustHeat { get; private set; }
-
     /// <summary>
     /// Per-stroke cylinder charge.
     /// </summary>
@@ -96,7 +93,6 @@ public sealed class TurboCharger : ICharger
         var s = Tuning;
 
         var target = fuelPerStroke * Mathf.Pow(rpmNorm, s.RpmBoostExponent);
-        ExhaustHeat = target;
 
         var tau = fuelPerStroke > Boost
             ? Mathf.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * overfuel))
