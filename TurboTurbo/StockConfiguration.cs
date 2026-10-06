@@ -43,6 +43,7 @@ internal static class StockConfiguration
                 t.TauUp = 2;
                 t.TauDown = 1;
             })
+            .ConfigureExhaustVelocity(v => v.ExhaustVelocityCoefficient = 4)
             .ConfigureSmoke(s =>
             {
                 s.Density = Dh4Density;
@@ -52,14 +53,6 @@ internal static class StockConfiguration
                 s.CleanMaxHeatAlpha = 0.12f;
                 s.WetStackMistStrength = 1.2f;
                 s.OilRpmExponent = 2.1f;
-            })
-            .ConfigureExhaustVelocity(v =>
-            {
-                // raise base exhaust velocity so smoke clears the cab at high speed and low power
-                v.Idle = 3.05f;
-                // lower engine power + large exhaust opening
-                v.FullLoad = 12f;
-
             })
             .ConfigureSmokeEmitter(e =>
             {
@@ -87,11 +80,6 @@ internal static class StockConfiguration
                 c.EtaPeak = 0.83f;
                 c.ChokeK = 0.26f;
                 c.LambdaCalibration = 0.55f;
-            })
-            .ConfigureExhaustVelocity(s =>
-            {
-                // again slightly lower max exhaust velocity
-                s.FullLoad = 12f;
             })
             .ConfigureSmoke(s =>
             {
@@ -142,12 +130,6 @@ internal static class StockConfiguration
                 s.WetStackMistStrength = 1f;
                 s.OilTintStrength = 0.35f;
             })
-            .ConfigureExhaustVelocity(e =>
-            {
-                // lower power, so lower exhaust velocity
-                e.Idle = 1f;
-                e.FullLoad = 10f;
-            })
             .ConfigureSmokeEmitter(e =>
             {
                 e.startSize = 0.25f;
@@ -179,10 +161,6 @@ internal static class StockConfiguration
                 c.EtaPeak = 0.83f;
                 c.ChokeK = 0.26f;
                 c.LambdaCalibration = 0.55f;
-            })
-            .ConfigureExhaustVelocity(s =>
-            {
-                s.FullLoad = 11f;
             })
             .ConfigureSmoke(s =>
             {

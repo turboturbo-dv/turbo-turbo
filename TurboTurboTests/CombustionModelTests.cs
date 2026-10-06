@@ -14,6 +14,7 @@ namespace TurboTurboTests
         private float _ambientTemperatureK = PhysicsConstants.ReferenceAmbientK;
         private readonly TurboCharger.Settings _chargerSettings = new TurboCharger.Settings();
         private readonly CombustionModel.Settings _combustionSettings = new CombustionModel.Settings();
+        private readonly ExhaustVelocitySettings _velocitySettings = new ExhaustVelocitySettings();
         private float _governor;
         private float _fuelNorm;
         private float _rpmNorm = 1f;
@@ -21,7 +22,7 @@ namespace TurboTurboTests
         private CombustionModel CreateModel()
         {
             return new CombustionModel(() => _governor, () => _fuelNorm, () => _rpmNorm,
-                () => _ambientTemperatureK, new TurboCharger(_chargerSettings), _combustionSettings);
+                () => _ambientTemperatureK, new TurboCharger(_chargerSettings), _combustionSettings, _velocitySettings);
         }
 
         [Fact]
@@ -283,7 +284,7 @@ namespace TurboTurboTests
         }
 
         [Fact]
-        public void GasTemperature_ReachesRatedTemp_AtFullPower()
+        public void GasTemperature_ManifoldReachesRatedTemp_AtFullPower()
         {
             var model = CreateModel();
             _fuelNorm = 1f;
@@ -294,7 +295,37 @@ namespace TurboTurboTests
             }
 
             model.Charge.ShouldBe(model.Charger.ChargeAtFullPower, tolerance: 0.01f);
-            model.GasTemperature.ShouldBe(CombustionModel.Settings.DefaultRatedExhaustTempK, tolerance: 0.5f);
+            var manifoldK = model.GasTemperature + model.TurbineTemperatureDropK;
+            manifoldK.ShouldBe(CombustionModel.Settings.DefaultRatedExhaustTempK, tolerance: 0.5f);
+        }
+
+        [Fact]
+        public void TurbineDrop_IsZero_WithoutBoost()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            // first tick: Charge = 1 (no boost), so the gas is not expanded by a turbine
+            model.TurbineTemperatureDropK.ShouldBe(0f, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void TurbineDrop_AtFullPower_MatchesIsentropicExpansion()
+        {
+            var model = CreateModel();
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+            for (var i = 0; i < 600; i++)
+            {
+                model.Tick(0.1f, engineOn: true);
+            }
+
+            // manifold 760 K expanded across the charge pressure ratio, gamma = 1.4 -> exponent 0.2857
+            var expectedDrop = CombustionModel.Settings.DefaultRatedExhaustTempK *
+                               (1f - (float)Math.Pow(model.Charger.ChargeAtFullPower, -0.28571));
+            model.TurbineTemperatureDropK.ShouldBe(expectedDrop, tolerance: 0.5f);
         }
 
         [Fact]
@@ -332,6 +363,84 @@ namespace TurboTurboTests
 
             // Lambda > 1, so burn = 1 and energy is the fuel rate itself
             model.ExhaustEnergy.ShouldBe(0.3f, tolerance: 0.001f);
+        }
+
+        // ------------------------------------------------------------
+        // exhaust velocity
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void VelocitySettings_CopyConstructor_IsIndependent()
+        {
+            var template = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 7f };
+            var clone = new ExhaustVelocitySettings(template);
+
+            clone.ExhaustVelocityCoefficient.ShouldBe(7f);
+            clone.ExhaustVelocityCoefficient = 3f;
+            template.ExhaustVelocityCoefficient.ShouldBe(7f);
+        }
+
+        [Fact]
+        public void VelocitySettings_Validate_FloorsCoefficient()
+        {
+            var settings = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 0f };
+            settings.Validate();
+
+            settings.ExhaustVelocityCoefficient.ShouldBeGreaterThan(0f);
+        }
+
+        [Fact]
+        public void VelocitySettings_Calculate_IsCoefficientTimesFlowOverDensity()
+        {
+            var settings = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 4f };
+
+            settings.Calculate(3f, 1.5f).ShouldBe(8f, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void ExhaustVelocity_IsCoefficientTimesFlowOverDensity()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.ExhaustVelocity.ShouldBe(
+                _velocitySettings.ExhaustVelocityCoefficient * model.MassFlow / model.GasDensity,
+                tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void ExhaustVelocity_ScalesWithCoefficient()
+        {
+            _velocitySettings.ExhaustVelocityCoefficient = 8f;
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.ExhaustVelocity.ShouldBe(8f * model.MassFlow / model.GasDensity, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void ExhaustVelocity_IsHigher_WithMoreBoostCharge()
+        {
+            var low = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            for (var i = 0; i < 600; i++)
+            {
+                low.Tick(0.1f, engineOn: true);
+            }
+
+            _chargerSettings.BoostChargeMultiplier = 3f;
+            var high = CreateModel();
+            for (var i = 0; i < 600; i++)
+            {
+                high.Tick(0.1f, engineOn: true);
+            }
+
+            high.ExhaustVelocity.ShouldBeGreaterThan(low.ExhaustVelocity);
         }
     }
 }

@@ -158,6 +158,12 @@ namespace TurboTurbo
         [Header("Engine signal (0..1)")]
         [Range(0f, 1f)] public float heat;
 
+        /// <summary>Exhaust mass-flow proxy, used by the coefficient velocity model.</summary>
+        public float massFlow;
+
+        /// <summary>Exhaust gas density [kg/m^3], used by the coefficient velocity model.</summary>
+        public float gasDensity;
+
         /// <summary>World velocity of the vehicle carrying this emitter.
         /// Particles inherit this at emission, then drag decays it.</summary>
         public Vector3 locoVelocity;
@@ -288,7 +294,7 @@ namespace TurboTurbo
                 // just a safety to avoid runaway particle counts if there's a long lag spike
                 n = Mathf.Min(n, 30);
 
-                var upSpeed = Mathf.Lerp(velocity.Idle, velocity.FullLoad, Mathf.Clamp01(heat));
+                var upSpeed = velocity.Calculate(massFlow, gasDensity);
 
                 // relative wind tears the plume apart with speed: shorter lifetime, more dispersion jitter
                 var speedNorm = Mathf.Clamp01(absSpeed / s.speedNormMax);

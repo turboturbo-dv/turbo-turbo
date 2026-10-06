@@ -21,7 +21,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private TurboTooltipLayer _tooltip;
 
-    public Rect WindowRect { get; private set; } = new(20f, 20f, 360f, 120f);
+    public Rect WindowRect { get; private set; } = new(20f, 20f, 540f, 120f);
 
     public static TurboDevPanel Create(Rect initialRect)
     {
@@ -192,9 +192,10 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"charge {m.Charge:0.000}   boost {m.Boost:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustEnergy {m.ExhaustEnergy:0.000}   massFlow {m.MassFlow:0.000}");
-        GUILayout.Label($"EGT (mouth) {m.GasTemperature:0.0} K   gasDensity {m.GasDensity:0.000}");
-        var egtC = m.GasTemperature + 150f - PhysicsConstants.KelvinOffset;
-        GUILayout.Label($"EGT (manif) {egtC:0.0} C");
+        GUILayout.Label($"EGT (manif) {m.GasTemperature + m.TurbineTemperatureDropK - PhysicsConstants.KelvinOffset:0.0} C");
+        GUILayout.Label($"turbineDrop {m.TurbineTemperatureDropK:0.0} C");
+        GUILayout.Label($"EGT (mouth) {m.GasTemperature - PhysicsConstants.KelvinOffset:0.0} C   gasDensity {m.GasDensity:0.000}");
+        GUILayout.Label($"exhaustVelocity {m.ExhaustVelocity:0.00} m/s");
         GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * PhysicsConstants.MpsToKmh:0.0} km/h)");
 
         for (var i = 0; i < host.Exhausts.Count; i++)

@@ -41,10 +41,16 @@ public sealed class CombustionModel
     }
 
     private readonly Settings _tuning;
+    private readonly ExhaustVelocitySettings _velocity;
+
     private readonly Func<float> _governorNorm;
     private readonly Func<float> _fuelNorm;
     private readonly Func<float> _rpmNorm;
     private readonly Func<float> _ambientTemperatureK;
+
+    // isentropic expansion exponent for the turbine drop
+    private const float IsentropicExponent =
+        (PhysicsConstants.SpecificHeatRatio - 1f) / PhysicsConstants.SpecificHeatRatio;
 
     public ICharger Charger { get; }
 
@@ -85,19 +91,26 @@ public sealed class CombustionModel
     /// <summary>Exhaust gas density [kg/m^3] at the exhaust mouth.</summary>
     public float GasDensity { get; private set; }
 
+    /// <summary>Temperature the turbine extracts before the exhaust reaches the mouth [K].</summary>
+    public float TurbineTemperatureDropK { get; private set; }
+
     /// <summary>
     /// Normalized exhaust heat-release rate [0..1]: mass flow weighted by combustion efficiency.
     /// </summary>
     public float ExhaustEnergy { get; private set; }
 
+    /// <summary>Exhaust plume speed [m/s] at the exhaust mouth.</summary>
+    public float ExhaustVelocity { get; private set; }
+
     /// <summary>True on the tick where the charger reported a surge. Reset on the next tick.</summary>
     public bool SurgeThisTick { get; private set; }
 
     public CombustionModel(Func<float> governorNorm, Func<float> fuelNorm, Func<float> rpmNorm,
-        Func<float> ambientTemperatureK, ICharger charger, Settings settings)
+        Func<float> ambientTemperatureK, ICharger charger, Settings settings, ExhaustVelocitySettings velocity)
     {
         Charger = charger ?? throw new ArgumentNullException(nameof(charger));
         _tuning = settings ?? throw new ArgumentNullException(nameof(settings));
+        _velocity = velocity ?? throw new ArgumentNullException(nameof(velocity));
         _governorNorm = governorNorm ?? throw new ArgumentNullException(nameof(governorNorm));
         _fuelNorm = fuelNorm ?? throw new ArgumentNullException(nameof(fuelNorm));
         _rpmNorm = rpmNorm ?? throw new ArgumentNullException(nameof(rpmNorm));
@@ -140,9 +153,15 @@ public sealed class CombustionModel
         // temperature at exhaust mouth should be, and the rest follows.
         var tempGainK = (s.RatedExhaustTempK - PhysicsConstants.ReferenceAmbientK) * Charger.ChargeAtFullPower;
 
-        GasTemperature = ambient + tempGainK * fuelPerStroke * burnFraction / Charge;
+        var manifoldTemperature = ambient + tempGainK * fuelPerStroke * burnFraction / Charge;
+        var turbinePressureRatio = Mathf.Max(1f, Charge);
+        TurbineTemperatureDropK = manifoldTemperature *
+                                  (1f - Mathf.Pow(turbinePressureRatio, -IsentropicExponent));
+
+        GasTemperature = manifoldTemperature - TurbineTemperatureDropK;
         GasDensity = PhysicsConstants.ReferenceAirDensity * ambient / Mathf.Max(1f, GasTemperature);
-        ExhaustEnergy = MassFlow * (GasTemperature - ambient) / tempGainK;
+        ExhaustEnergy = MassFlow * (manifoldTemperature - ambient) / tempGainK;
+        ExhaustVelocity = _velocity.Calculate(MassFlow, GasDensity);
 
         Charger.Tick(delta, fuelPerStroke, Overfuel, rpm, governor, engineOn);
 

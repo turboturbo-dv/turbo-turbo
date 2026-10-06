@@ -111,7 +111,9 @@ public sealed class LocoProfile
 
         SmokeEmitter ??= new SmokeParticles.Settings();
         ShimmerEmitter ??= new ShimmerParticles.Settings();
+
         Velocity ??= new ExhaustVelocitySettings();
+        Velocity.Validate();
 
         Combustion ??= new CombustionModel.Settings();
         Combustion.Validate();

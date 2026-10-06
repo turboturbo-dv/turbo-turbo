@@ -155,11 +155,11 @@ namespace TurboTurboTests
             var config = new EngineOptions()
                 .AddEngineExhaust()
                 .ConfigureTurboCharger(t => t.TauUp = 5f)
-                .ConfigureExhaustVelocity(v => v.Idle = 2.5f)
+                .ConfigureExhaustVelocity(v => v.ExhaustVelocityCoefficient = 2.5f)
                 .TryBuild("test-livery").ShouldSucceed();
 
             config.TurboCharger.TauUp.ShouldBe(5f);
-            config.Velocity.Idle.ShouldBe(2.5f);
+            config.Velocity.ExhaustVelocityCoefficient.ShouldBe(2.5f);
         }
 
         [Fact]
@@ -326,17 +326,15 @@ namespace TurboTurboTests
 
             var defaultXml = Serialize(defaults);
             defaultXml.ShouldContain("<Velocity");
-            defaultXml.ShouldNotContain("Idle");
-            defaultXml.ShouldNotContain("FullLoad");
+            defaultXml.ShouldNotContain("ExhaustVelocityCoefficient");
             defaultXml.ShouldContain("<Combustion");
             defaultXml.ShouldNotContain("RatedExhaustTempK");
 
             var tuned = ValidProfile("sparse");
-            tuned.Velocity = new ExhaustVelocitySettings { Idle = 2.5f };
+            tuned.Velocity = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 2.5f };
 
             var tunedXml = Serialize(tuned);
-            tunedXml.ShouldContain("Idle");
-            tunedXml.ShouldNotContain("FullLoad");
+            tunedXml.ShouldContain("ExhaustVelocityCoefficient");
         }
 
         [Fact]

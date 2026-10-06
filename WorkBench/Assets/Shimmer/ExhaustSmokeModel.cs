@@ -345,14 +345,14 @@ namespace TurboTurbo.Modeling
     /// </summary>
     public sealed class ExhaustVelocitySettings
     {
-        internal const float DefaultIdle = 2f;
-        internal const float DefaultFullLoad = 15f;
+        internal const float DefaultExhaustVelocityCoefficient = 5f;
 
-        [DefaultValue(DefaultIdle)]
-        public float Idle = DefaultIdle;
-
-        [DefaultValue(DefaultFullLoad)]
-        public float FullLoad = DefaultFullLoad;
+        /// <summary>
+        /// Exhaust velocity coefficient [m/s per unit mass flow per unit gas density].
+        /// Can be adjusted to represent a wider/narrower exhaust mouth resulting in lower/higher exhaust velocity.
+        /// </summary>
+        [DefaultValue(DefaultExhaustVelocityCoefficient)]
+        public float ExhaustVelocityCoefficient = DefaultExhaustVelocityCoefficient;
 
         public ExhaustVelocitySettings()
         {
@@ -360,8 +360,18 @@ namespace TurboTurbo.Modeling
 
         public ExhaustVelocitySettings(ExhaustVelocitySettings other)
         {
-            Idle = other.Idle;
-            FullLoad = other.FullLoad;
+            ExhaustVelocityCoefficient = other.ExhaustVelocityCoefficient;
+        }
+
+        public void Validate()
+        {
+            ExhaustVelocityCoefficient = Mathf.Max(0.01f, ExhaustVelocityCoefficient);
+        }
+
+        /// <summary>Exhaust plume speed [m/s] from the current mass flow and gas density.</summary>
+        public float Calculate(float massFlow, float gasDensity)
+        {
+            return ExhaustVelocityCoefficient * massFlow / Mathf.Max(0.0001f, gasDensity);
         }
     }
 

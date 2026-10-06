@@ -155,7 +155,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             () => _engine.RpmNormalized,
             () => PhysicsConstants.ReferenceAmbientK,
             Profile.BuildCharger(),
-            Profile.Combustion);
+            Profile.Combustion,
+            Profile.Velocity);
 
         _log.Info($"combustion bound (throttle: {_engine.ThrottlePort.id}, " +
                      $"fuel: {DieselEngineBinding.DescribePort(_engine.FuelPort)})");
@@ -254,6 +255,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         var velocity = TrainCar.GetVelocity();
         var absSpeed = TrainCar.GetAbsSpeed();
         var heat = CombustionModel.ExhaustEnergy;
+        var massFlow = CombustionModel.MassFlow;
+        var gasDensity = CombustionModel.GasDensity;
 
         foreach (var e in Exhausts)
         {
@@ -261,6 +264,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             smoke.lambda = CombustionModel.Lambda;
             smoke.rpmNorm = CombustionModel.RpmNorm;
             smoke.heat = heat;
+            smoke.massFlow = massFlow;
+            smoke.gasDensity = gasDensity;
             smoke.engineOn = engineOn;
             smoke.locoVelocity = velocity;
             smoke.absSpeed = absSpeed;
@@ -270,6 +275,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             if (engineOn)
             {
                 shimmer.SetFlow(heat);
+                shimmer.massFlow = massFlow;
+                shimmer.gasDensity = gasDensity;
                 shimmer.locoVelocity = velocity;
                 shimmer.absSpeed = absSpeed;
             }

@@ -23,7 +23,7 @@ namespace TurboTurboTests
             @"<Exhausts><LocoExhaust><Kind>Replacement</Kind><Path>ExhaustEngineSmoke(Clone)</Path></LocoExhaust></Exhausts>" +
             @"<ChargerKind>Turbo</ChargerKind>" +
             @"<TurboCharger><LambdaCalibration>1.6</LambdaCalibration></TurboCharger>" +
-            @"<Velocity><Idle>4.0</Idle></Velocity>" +
+            @"<Velocity><ExhaustVelocityCoefficient>4.0</ExhaustVelocityCoefficient></Velocity>" +
             @"</LocoProfile></LocoProfiles>" +
             @"</TurboConfig>";
 

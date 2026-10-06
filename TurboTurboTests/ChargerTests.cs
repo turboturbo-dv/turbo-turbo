@@ -96,7 +96,8 @@ namespace TurboTurboTests
         public void CombustionModel_WithAtmosphericCharger_Lambda_UsesAspiratedCalibration()
         {
             var model = new CombustionModel(() => 1f, () => 1f, () => 1f, () => PhysicsConstants.ReferenceAmbientK,
-                new AtmosphericCharger(new AtmosphericCharger.Settings()), new CombustionModel.Settings());
+                new AtmosphericCharger(new AtmosphericCharger.Settings()), new CombustionModel.Settings(),
+                new ExhaustVelocitySettings());
             // arrange: settle the charger
             model.Tick(0.016f, engineOn: true);
 
