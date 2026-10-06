@@ -6,6 +6,7 @@ using Shouldly;
 
 using TurboTurbo.Profiles;
 using TurboTurbo.Profiles.Storage;
+using TurboTurbo.Profiles.Storage.V1;
 
 using Xunit;
 
@@ -107,12 +108,12 @@ namespace TurboTurboTests
             LoadUserProfiles(null).ShouldBeEmpty();
         }
 
-        private static LocoProfile ValidLocoProfile()
+        private static LocoProfileXml ValidLocoProfile()
         {
-            return new LocoProfile
+            return new LocoProfileXml
             {
                 LiveryId = "test-livery",
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustEngineSmoke(Clone)" }],
+                Exhausts = [new ExhaustXml { Kind = ExhaustKind.Replacement, Path = "ExhaustEngineSmoke(Clone)" }],
             };
         }
 

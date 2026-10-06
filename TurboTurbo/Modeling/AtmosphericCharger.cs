@@ -1,6 +1,4 @@
 using System;
-using System.ComponentModel;
-using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -15,7 +13,6 @@ namespace TurboTurbo.Modeling;
 public sealed class AtmosphericCharger : ICharger
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
-    [XmlType("AtmosphericChargerSettings")]
     public sealed class Settings
     {
         internal const float DefaultEtaPeak = 0.9f;
@@ -23,20 +20,16 @@ public sealed class AtmosphericCharger : ICharger
         internal const float DefaultChokeBeta = 2f;
         internal const float DefaultLambdaCalibration = 0.49f;
 
-        [DefaultValue(DefaultEtaPeak)]
         public float EtaPeak { get; set; } = DefaultEtaPeak;
 
-        [DefaultValue(DefaultChokeK)]
         public float ChokeK { get; set; } = DefaultChokeK;
 
         /// <summary>
         /// Exponent shaping the choke curve. 2 is physically accurate, as pressure drop across a restriction scales
         /// with the square of velocity.
         /// </summary>
-        [DefaultValue(DefaultChokeBeta)]
         public float ChokeBeta { get; set; } = DefaultChokeBeta;
 
-        [DefaultValue(DefaultLambdaCalibration)]
         public float LambdaCalibration { get; set; } = DefaultLambdaCalibration;
 
         public Settings()

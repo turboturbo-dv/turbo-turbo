@@ -8,6 +8,7 @@ using TurboTurbo.Configuration;
 using TurboTurbo.Modeling;
 using TurboTurbo.Profiles;
 using TurboTurbo.Profiles.Storage;
+using TurboTurbo.Profiles.Storage.V1;
 using TurboTurbo.Setup;
 using TurboTurbo.WorkBench;
 
@@ -205,17 +206,16 @@ namespace TurboTurboTests
         [Fact]
         public void LoadUserProfiles_CompletesSparseProfile()
         {
-            var sparse = new LocoProfile
+            var sparse = new LocoProfileXml
             {
                 LiveryId = "sparse",
                 Enabled = false,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
+                Exhausts = [new ExhaustXml { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
             };
 
             var loaded = ProfileLoader.LoadUserProfiles([sparse]);
 
             var completed = loaded["sparse"];
-            completed.ShouldBeSameAs(sparse);
             completed.LiveryId.ShouldBe("sparse");
             completed.Enabled.ShouldBeFalse();
             completed.ChargerKind.ShouldBe(ChargerKind.Turbo);
@@ -231,11 +231,11 @@ namespace TurboTurboTests
         [Fact]
         public void LoadUserProfiles_CompleteAtmosphericProfile_NullsTurboBlock()
         {
-            var sparse = new LocoProfile
+            var sparse = new LocoProfileXml
             {
                 LiveryId = "sparse-na",
                 ChargerKind = ChargerKind.Atmospheric,
-                Exhausts = [new LocoExhaust { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
+                Exhausts = [new ExhaustXml { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
             };
 
             var completed = ProfileLoader.LoadUserProfiles([sparse])["sparse-na"];
@@ -376,7 +376,7 @@ namespace TurboTurboTests
             xml.ShouldNotContain("ColorOilBurnHex");
 
             var restored = Deserialize(xml);
-            restored.Smoke.ColorIdleHaze.ShouldBe(new Color(1f, 0f, 0f, 1f));
+            restored.Smoke.ColorIdleHazeHex.ShouldBe("FF0000FF");
         }
 
         [Fact]
@@ -426,7 +426,7 @@ namespace TurboTurboTests
             restored.Exhausts[0].Offset.ShouldBe(new Vector3(1f, 2f, 3f));
             restored.Exhausts[1].Kind.ShouldBe(ExhaustKind.Independent);
             restored.TurboCharger.TauUp.ShouldBe(5f);
-            restored.Validate().ShouldBeNull();
+            ProfileMapper.ToRuntime(restored).Validate().ShouldBeNull();
         }
 
         [Fact]
@@ -440,9 +440,56 @@ namespace TurboTurboTests
                 @"<TurboCharger><TauUp>5</TauUp></TurboCharger></LocoProfile>");
 
             restored.TurboCharger.TauUp.ShouldBe(5f);
-            restored.TurboCharger.TauDown.ShouldBe(TurboCharger.Settings.DefaultTauDown);
+            restored.TurboCharger.TauDown.ShouldBe(TurboChargerXml.DefaultTauDown);
             restored.Exhausts[0].Offset.ShouldBe(Vector3.zero);
+            ProfileMapper.ToRuntime(restored).Validate().ShouldBeNull();
+        }
+
+        [Fact]
+        public void Xml_RoundTrip_PreservesFullTunedSettings()
+        {
+            var profile = ValidProfile("full");
+            profile.TurboCharger = new TurboCharger.Settings { LambdaCalibration = 1.7f, TauUp = 4f, ThermalK = 1.1f };
+            profile.Smoke = new ExhaustSmokeModel.Settings
+            {
+                Density = 90f,
+                ColorOilBurn = new Color(0f, 1f, 0f, 1f),
+                SootMaxAlpha = 0.5f,
+            };
+            profile.SmokeEmitter = new SmokeParticles.Settings { idleEmissionRate = 11f, drag = 0.9f };
+            profile.ShimmerEmitter = new ShimmerParticles.Settings { strength = 0.02f, yOffset = 0.3f };
+            profile.Velocity = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 3.25f };
+            profile.Combustion = new CombustionModel.Settings { RatedExhaustTempK = 800f };
+
+            var restored = ProfileMapper.ToRuntime(Deserialize(Serialize(profile)));
+
+            restored.TurboCharger.LambdaCalibration.ShouldBe(1.7f);
+            restored.TurboCharger.TauUp.ShouldBe(4f);
+            restored.TurboCharger.ThermalK.ShouldBe(1.1f);
+            restored.Smoke.Density.ShouldBe(90f);
+            restored.Smoke.ColorOilBurn.ShouldBe(new Color(0f, 1f, 0f, 1f));
+            restored.Smoke.SootMaxAlpha.ShouldBe(0.5f);
+            restored.SmokeEmitter.idleEmissionRate.ShouldBe(11f);
+            restored.SmokeEmitter.drag.ShouldBe(0.9f);
+            restored.ShimmerEmitter.strength.ShouldBe(0.02f);
+            restored.ShimmerEmitter.yOffset.ShouldBe(0.3f);
+            restored.Velocity.ExhaustVelocityCoefficient.ShouldBe(3.25f);
+            restored.Combustion.RatedExhaustTempK.ShouldBe(800f);
             restored.Validate().ShouldBeNull();
+        }
+
+        [Fact]
+        public void Xml_UnknownElement_IsIgnored()
+        {
+            // a legacy field that no longer exists must not break loading
+            var restored = Deserialize(
+                @"<LocoProfile><Version>1</Version><LiveryId>legacy</LiveryId>" +
+                @"<Exhausts><LocoExhaust><Kind>Replacement</Kind><Path>ExhaustSmoke</Path></LocoExhaust></Exhausts>" +
+                @"<Velocity><FullLoad>12</FullLoad><ExhaustVelocityCoefficient>4</ExhaustVelocityCoefficient></Velocity>" +
+                @"</LocoProfile>");
+
+            restored.Velocity.ExhaustVelocityCoefficient.ShouldBe(4f);
+            ProfileMapper.ToRuntime(restored).Validate().ShouldBeNull();
         }
 
         [Fact]
@@ -515,8 +562,8 @@ namespace TurboTurboTests
             var settings = new Settings();
             var bad = ValidProfile();
             bad.LiveryId = "";
-            settings.LocoProfiles.Add(bad);
-            settings.LocoProfiles.Add(ValidProfile("good"));
+            settings.LocoProfiles.Add(ProfileMapper.ToXml(bad));
+            settings.LocoProfiles.Add(ProfileMapper.ToXml(ValidProfile("good")));
 
             SettingsStore.Current = settings;
             ProfileService.User.Load(SettingsStore.Current);
@@ -537,19 +584,21 @@ namespace TurboTurboTests
             ProfileService.User.Get("anything").ShouldBeNull();
         }
 
-        private static string Serialize(LocoProfile profile)
+        private static string Serialize(LocoProfile profile) => Serialize(ProfileMapper.ToXml(profile));
+
+        private static string Serialize(LocoProfileXml xml)
         {
-            var serializer = new XmlSerializer(typeof(LocoProfile));
+            var serializer = new XmlSerializer(typeof(LocoProfileXml));
             using var writer = new StringWriter();
-            serializer.Serialize(writer, profile);
+            serializer.Serialize(writer, xml);
             return writer.ToString();
         }
 
-        private static LocoProfile Deserialize(string xml)
+        private static LocoProfileXml Deserialize(string xml)
         {
-            var serializer = new XmlSerializer(typeof(LocoProfile));
+            var serializer = new XmlSerializer(typeof(LocoProfileXml));
             using var reader = new StringReader(xml);
-            return (LocoProfile)serializer.Deserialize(reader);
+            return (LocoProfileXml)serializer.Deserialize(reader);
         }
     }
 }

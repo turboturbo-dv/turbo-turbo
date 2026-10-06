@@ -41,9 +41,10 @@ internal sealed class UserProfileSource : IProfileSource
         if (error != null) return error;
 
         var stored = SettingsStore.Current.LocoProfiles;
+        var xml = ProfileMapper.ToXml(profile);
         var index = stored.FindIndex(p => p.LiveryId == profile.LiveryId);
-        if (index >= 0) stored[index] = profile;
-        else stored.Add(profile);
+        if (index >= 0) stored[index] = xml;
+        else stored.Add(xml);
 
         Put(profile);
         SettingsStore.Save();
@@ -65,6 +66,9 @@ internal sealed class UserProfileSource : IProfileSource
         if (profile == null) return false;
 
         profile.Enabled = enabled;
+        var stored = SettingsStore.Current.LocoProfiles.Find(p => p.LiveryId == liveryId);
+        if (stored != null) stored.Enabled = enabled;
+
         SettingsStore.Save();
         return true;
     }

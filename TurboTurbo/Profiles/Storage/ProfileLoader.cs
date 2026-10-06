@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
+using TurboTurbo.Profiles.Storage.V1;
+
 namespace TurboTurbo.Profiles.Storage;
 
 internal static class ProfileLoader
@@ -35,14 +37,15 @@ internal static class ProfileLoader
         return loaded;
     }
 
-    internal static Dictionary<string, LocoProfile> LoadUserProfiles(IEnumerable<LocoProfile> stored)
+    internal static Dictionary<string, LocoProfile> LoadUserProfiles(IEnumerable<LocoProfileXml> stored)
     {
         var loaded = new Dictionary<string, LocoProfile>();
         if (stored == null) return loaded;
-        foreach (var profile in stored)
+        foreach (var xml in stored)
         {
-            if (profile == null) continue;
+            if (xml == null) continue;
 
+            var profile = ProfileMapper.ToRuntime(ProfileMigrator.Migrate(xml));
             var error = profile.Normalize();
             if (error != null)
             {
@@ -57,7 +60,7 @@ internal static class ProfileLoader
         return loaded;
     }
 
-    private static TurboConfig LoadConfig(ModSource mod, string ownId)
+    private static TurboConfigXml LoadConfig(ModSource mod, string ownId)
     {
         if (mod.Id == ownId) return null;
         if (!mod.Enabled) return null;
@@ -66,7 +69,7 @@ internal static class ProfileLoader
         try
         {
             using var stream = File.OpenRead(file);
-            var config = (TurboConfig)TurboConfigCodec.Serializer.Deserialize(stream);
+            var config = (TurboConfigXml)TurboConfigCodec.Serializer.Deserialize(stream);
             return config?.LocoProfiles == null ? null : config;
         }
         catch (Exception e)
@@ -76,12 +79,13 @@ internal static class ProfileLoader
         }
     }
 
-    private static void MergeInto(Dictionary<string, ModProfile> merged, ModSource source, TurboConfig config)
+    private static void MergeInto(Dictionary<string, ModProfile> merged, ModSource source, TurboConfigXml config)
     {
-        foreach (var profile in config.LocoProfiles)
+        foreach (var xml in config.LocoProfiles)
         {
-            if (profile == null) continue;
+            if (xml == null) continue;
 
+            var profile = ProfileMapper.ToRuntime(ProfileMigrator.Migrate(xml));
             var error = profile.Normalize();
             if (error != null)
             {

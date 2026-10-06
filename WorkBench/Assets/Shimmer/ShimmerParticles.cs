@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Xml.Serialization;
 
 using TurboTurbo.Modeling;
 
@@ -19,7 +17,6 @@ namespace TurboTurbo
         private static readonly int Outline = Shader.PropertyToID("_Outline");
         private static readonly int Debug1 = Shader.PropertyToID("_Debug");
 
-        [XmlType("ShimmerEmitterSettings")]
         public sealed class Settings
         {
             internal const float DefaultIdleRate = 5f;
@@ -46,73 +43,50 @@ namespace TurboTurbo
             internal const float DefaultDecayK = 4f;
             internal const float DefaultYOffset = 0.1f;
 
-            [DefaultValue(DefaultIdleRate)]
             public float idleRate = DefaultIdleRate;
 
-            [DefaultValue(DefaultFullRate)]
             public float fullRate = DefaultFullRate;
 
-            [DefaultValue(DefaultLifetime)]
             public float lifetime = DefaultLifetime;
 
-            [DefaultValue(DefaultStartSize)]
             public float startSize = DefaultStartSize;
 
-            [DefaultValue(DefaultStartSizeVariance)]
             public float startSizeVariance = DefaultStartSizeVariance;
 
-            [DefaultValue(DefaultSizeOverLifetimeEnd)]
             public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
 
-            [DefaultValue(DefaultSizeOverLifetimeExponent)]
             public float sizeOverLifetimeExponent = DefaultSizeOverLifetimeExponent;
 
-            [DefaultValue(DefaultDrag)]
             public float drag = DefaultDrag;
 
-            [DefaultValue(DefaultBuoyancy)]
             public float buoyancy = DefaultBuoyancy;
 
-            [DefaultValue(DefaultSpeedNormMax)]
             public float speedNormMax = DefaultSpeedNormMax;
 
-            [DefaultValue(DefaultSpeedLifetimeScale)]
             public float speedLifetimeScale = DefaultSpeedLifetimeScale;
 
-            [DefaultValue(DefaultSpeedJitter)]
             public float speedJitter = DefaultSpeedJitter;
 
-            [DefaultValue(DefaultStrength)]
             public float strength = DefaultStrength;
 
-            [DefaultValue(DefaultBaseStrength)]
             public float baseStrength = DefaultBaseStrength;
 
-            [DefaultValue(DefaultFreq)]
             public float freq = DefaultFreq;
 
-            [DefaultValue(DefaultIdleRadius)]
             public float idleRadius = DefaultIdleRadius;
 
-            [DefaultValue(DefaultFullRadius)]
             public float fullRadius = DefaultFullRadius;
 
-            [DefaultValue(DefaultIdleAnimSpeed)]
             public float idleAnimSpeed = DefaultIdleAnimSpeed;
 
-            [DefaultValue(DefaultFullAnimSpeed)]
             public float fullAnimSpeed = DefaultFullAnimSpeed;
 
-            [DefaultValue(DefaultSpeedMultiplier)]
             public float speedMultiplier = DefaultSpeedMultiplier;
 
-            [DefaultValue(DefaultShimmerHoldTime)]
             public float shimmerHoldTime = DefaultShimmerHoldTime;
 
-            [DefaultValue(DefaultDecayK)]
             public float decayK = DefaultDecayK;
 
-            [DefaultValue(DefaultYOffset)]
             public float yOffset = DefaultYOffset;
 
             public Settings()

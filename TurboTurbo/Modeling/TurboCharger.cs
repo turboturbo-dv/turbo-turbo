@@ -1,6 +1,4 @@
 using System;
-using System.ComponentModel;
-using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -11,7 +9,6 @@ namespace TurboTurbo.Modeling;
 public sealed class TurboCharger : ICharger
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
-    [XmlType("TurboChargerSettings")]
     public sealed class Settings
     {
         internal const float DefaultLambdaCalibration = 1.41f;
@@ -23,29 +20,21 @@ public sealed class TurboCharger : ICharger
         internal const float DefaultThermalK = 0.8f;
         internal const float DefaultSurgeRateThreshold = 15f;
 
-        [DefaultValue(DefaultLambdaCalibration)]
         public float LambdaCalibration { get; set; } = DefaultLambdaCalibration;
 
-        [DefaultValue(DefaultBoostChargeMultiplier)]
         public float BoostChargeMultiplier { get; set; } = DefaultBoostChargeMultiplier;
 
-        [DefaultValue(DefaultRpmBoostExponent)]
         public float RpmBoostExponent { get; set; } = DefaultRpmBoostExponent;
 
-        [DefaultValue(DefaultTauUp)]
         public float TauUp { get; set; } = DefaultTauUp;
 
-        [DefaultValue(DefaultTauDown)]
         public float TauDown { get; set; } = DefaultTauDown;
 
-        [DefaultValue(DefaultMinSpoolTau)]
         public float MinSpoolTau { get; set; } = DefaultMinSpoolTau;
 
-        [DefaultValue(DefaultThermalK)]
         public float ThermalK { get; set; } = DefaultThermalK;
 
         /// <summary>Governor drop rate [1/s] that triggers a surge while boost is high.</summary>
-        [DefaultValue(DefaultSurgeRateThreshold)]
         public float SurgeRateThreshold { get; set; } = DefaultSurgeRateThreshold;
 
         public Settings()

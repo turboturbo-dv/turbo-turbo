@@ -1,6 +1,4 @@
 using System;
-using System.ComponentModel;
-using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -13,7 +11,6 @@ namespace TurboTurbo.Modeling;
 public sealed class CombustionModel
 {
     /// <summary>Configuration constants for the exhaust-state quantities. Defaults give a reasonable starting point.</summary>
-    [XmlType("CombustionSettings")]
     public sealed class Settings
     {
         internal const float DefaultRatedExhaustTempK = 760f;
@@ -22,7 +19,6 @@ public sealed class CombustionModel
         /// Rated exhaust gas temperature [K] at the exhaust mouth at full power. Note that this is a target value;
         /// transient conditions may overshoot it.
         /// </summary>
-        [DefaultValue(DefaultRatedExhaustTempK)]
         public float RatedExhaustTempK { get; set; } = DefaultRatedExhaustTempK;
 
         public Settings()

@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Xml.Serialization;
 
 using TurboTurbo.Modeling;
 
@@ -36,7 +34,6 @@ namespace TurboTurbo.WorkBench
         private const float FadeDistMin = 1.5f;
         private const float FadeDistMax = 2.5f;
 
-        [XmlType("SmokeEmitterSettings")]
         public sealed class Settings
         {
             internal const float DefaultIdleEmissionRate = 15f;
@@ -58,58 +55,40 @@ namespace TurboTurbo.WorkBench
             internal const float DefaultLightSaturation = 0.35f;
             internal const float DefaultMaxShadowFloor = 0.65f;
 
-            [DefaultValue(DefaultIdleEmissionRate)]
             public float idleEmissionRate = DefaultIdleEmissionRate;
 
-            [DefaultValue(DefaultFullEmissionRate)]
             public float fullEmissionRate = DefaultFullEmissionRate;
 
-            [DefaultValue(DefaultLifetime)]
             public float lifetime = DefaultLifetime;
 
-            [DefaultValue(DefaultStartSize)]
             public float startSize = DefaultStartSize;
 
-            [DefaultValue(DefaultStartSizeVariance)]
             public float startSizeVariance = DefaultStartSizeVariance;
 
-            [DefaultValue(DefaultSizeOverLifetimeEnd)]
             public float sizeOverLifetimeEnd = DefaultSizeOverLifetimeEnd;
 
-            [DefaultValue(DefaultSizeOverLifetimeExponent)]
             public float sizeOverLifetimeExponent = DefaultSizeOverLifetimeExponent;
 
-            [DefaultValue(DefaultBuoyancy)]
             public float buoyancy = DefaultBuoyancy;
 
-            [DefaultValue(DefaultDrag)]
             public float drag = DefaultDrag;
 
-            [DefaultValue(DefaultAngularVelocityMax)]
             public float angularVelocityMax = DefaultAngularVelocityMax;
 
-            [DefaultValue(DefaultSpeedNormMax)]
             public float speedNormMax = DefaultSpeedNormMax;
 
-            [DefaultValue(DefaultSpeedLifetimeScale)]
             public float speedLifetimeScale = DefaultSpeedLifetimeScale;
 
-            [DefaultValue(DefaultSpeedJitter)]
             public float speedJitter = DefaultSpeedJitter;
 
-            [DefaultValue(DefaultTurbulenceStrength)]
             public float turbulenceStrength = DefaultTurbulenceStrength;
 
-            [DefaultValue(DefaultTurbulenceFrequency)]
             public float turbulenceFrequency = DefaultTurbulenceFrequency;
 
-            [DefaultValue(DefaultTurbulenceScrollSpeed)]
             public float turbulenceScrollSpeed = DefaultTurbulenceScrollSpeed;
 
-            [DefaultValue(DefaultLightSaturation)]
             public float lightSaturation = DefaultLightSaturation;
 
-            [DefaultValue(DefaultMaxShadowFloor)]
             public float maxShadowFloor = DefaultMaxShadowFloor;
 
             public Settings()

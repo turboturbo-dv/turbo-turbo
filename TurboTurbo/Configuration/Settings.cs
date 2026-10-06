@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 
 using TurboTurbo.Profiles;
+using TurboTurbo.Profiles.Storage.V1;
 
 using UnityModManagerNet;
 
@@ -16,7 +17,7 @@ public class Settings : UnityModManager.ModSettings
 
     public bool DeveloperMode;
 
-    public List<LocoProfile> LocoProfiles = new();
+    public List<LocoProfileXml> LocoProfiles = new();
 
     public bool IsAuthoring => AuthoringMode && !string.IsNullOrEmpty(AuthoringTargetModId);
 

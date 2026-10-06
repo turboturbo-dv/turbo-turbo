@@ -1,7 +1,5 @@
 using System;
-using System.ComponentModel;
 using System.Globalization;
-using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -9,62 +7,24 @@ namespace TurboTurbo.Modeling
 {
     public class ExhaustSmokeModel
     {
-        [XmlType("SmokeSettings")]
         public sealed class Settings
         {
             internal const float DefaultDensity = 150f;
 
-            // colors cannot be [DefaultValue] constants, so they serialize as hex.
-            // the hex is the source of truth, so the default round-trips byte-exact and is omitted.
+            // we use hex here for easy comparison with stored values, as those are hex-serialized too
             internal const string DefaultColorIdleHazeHex = "9E9678FF";
             internal const string DefaultColorCleanBurnHex = "737373FF";
             internal const string DefaultColorHeavySootHex = "0D0D0DFF";
             internal const string DefaultColorWetStackHex = "FFFFF2FF";
             internal const string DefaultColorOilBurnHex = "7085D9FF";
 
-            [XmlIgnore] public Color ColorIdleHaze = ColorHex.Parse(DefaultColorIdleHazeHex);
-            [XmlIgnore] public Color ColorCleanBurn = ColorHex.Parse(DefaultColorCleanBurnHex);
-            [XmlIgnore] public Color ColorHeavySoot = ColorHex.Parse(DefaultColorHeavySootHex);
-            [XmlIgnore] public Color ColorWetStack = ColorHex.Parse(DefaultColorWetStackHex);
-            [XmlIgnore] public Color ColorOilBurn = ColorHex.Parse(DefaultColorOilBurnHex);
+            public Color ColorIdleHaze = ColorHex.Parse(DefaultColorIdleHazeHex);
+            public Color ColorCleanBurn = ColorHex.Parse(DefaultColorCleanBurnHex);
+            public Color ColorHeavySoot = ColorHex.Parse(DefaultColorHeavySootHex);
+            public Color ColorWetStack = ColorHex.Parse(DefaultColorWetStackHex);
+            public Color ColorOilBurn = ColorHex.Parse(DefaultColorOilBurnHex);
 
-            [DefaultValue(DefaultDensity)]
             public float Density = DefaultDensity;
-
-            [DefaultValue(DefaultColorIdleHazeHex)]
-            public string ColorIdleHazeHex
-            {
-                get => ColorHex.Format(ColorIdleHaze);
-                set => ColorIdleHaze = ColorHex.Parse(value);
-            }
-
-            [DefaultValue(DefaultColorCleanBurnHex)]
-            public string ColorCleanBurnHex
-            {
-                get => ColorHex.Format(ColorCleanBurn);
-                set => ColorCleanBurn = ColorHex.Parse(value);
-            }
-
-            [DefaultValue(DefaultColorHeavySootHex)]
-            public string ColorHeavySootHex
-            {
-                get => ColorHex.Format(ColorHeavySoot);
-                set => ColorHeavySoot = ColorHex.Parse(value);
-            }
-
-            [DefaultValue(DefaultColorWetStackHex)]
-            public string ColorWetStackHex
-            {
-                get => ColorHex.Format(ColorWetStack);
-                set => ColorWetStack = ColorHex.Parse(value);
-            }
-
-            [DefaultValue(DefaultColorOilBurnHex)]
-            public string ColorOilBurnHex
-            {
-                get => ColorHex.Format(ColorOilBurn);
-                set => ColorOilBurn = ColorHex.Parse(value);
-            }
 
             internal const float DefaultCleanMinHeatAlpha = 0.002f;
             internal const float DefaultCleanMaxHeatAlpha = 0.08f;
@@ -86,61 +46,42 @@ namespace TurboTurbo.Modeling
             internal const float DefaultOilTintStrength = 0.3f;
             internal const float DefaultOilRpmExponent = 2.5f;
 
-            [DefaultValue(DefaultCleanMinHeatAlpha)]
             public float CleanMinHeatAlpha = DefaultCleanMinHeatAlpha;
 
-            [DefaultValue(DefaultCleanMaxHeatAlpha)]
             public float CleanMaxHeatAlpha = DefaultCleanMaxHeatAlpha;
 
-            [DefaultValue(DefaultCleanBurnHeat)]
             public float CleanBurnHeat = DefaultCleanBurnHeat;
 
-            [DefaultValue(DefaultSootOnsetLambda)]
             public float SootOnsetLambda = DefaultSootOnsetLambda;
 
-            [DefaultValue(DefaultSootOpaqueLambda)]
             public float SootOpaqueLambda = DefaultSootOpaqueLambda;
 
-            [DefaultValue(DefaultSootCurveExponent)]
             public float SootCurveExponent = DefaultSootCurveExponent;
 
-            [DefaultValue(DefaultSootIncreaseTau)]
             public float SootIncreaseTau = DefaultSootIncreaseTau;
 
-            [DefaultValue(DefaultSootDecreaseTau)]
             public float SootDecreaseTau = DefaultSootDecreaseTau;
 
-            [DefaultValue(DefaultSootMaxAlpha)]
             public float SootMaxAlpha = DefaultSootMaxAlpha;
 
-            [DefaultValue(DefaultSootPowerFloor)]
             public float SootPowerFloor = DefaultSootPowerFloor;
 
-            [DefaultValue(DefaultSootPowerExponent)]
             public float SootPowerExponent = DefaultSootPowerExponent;
 
-            [DefaultValue(DefaultWetStackFillHeat)]
             public float WetStackFillHeat = DefaultWetStackFillHeat;
 
-            [DefaultValue(DefaultWetStackReleaseHeat)]
             public float WetStackReleaseHeat = DefaultWetStackReleaseHeat;
 
-            [DefaultValue(DefaultWetStackFillRate)]
             public float WetStackFillRate = DefaultWetStackFillRate;
 
-            [DefaultValue(DefaultWetStackReleaseRate)]
             public float WetStackReleaseRate = DefaultWetStackReleaseRate;
 
-            [DefaultValue(DefaultWetStackMistStrength)]
             public float WetStackMistStrength = DefaultWetStackMistStrength;
 
-            [DefaultValue(DefaultWetStackMaxAlpha)]
             public float WetStackMaxAlpha = DefaultWetStackMaxAlpha;
 
-            [DefaultValue(DefaultOilTintStrength)]
             public float OilTintStrength = DefaultOilTintStrength;
 
-            [DefaultValue(DefaultOilRpmExponent)]
             public float OilRpmExponent = DefaultOilRpmExponent;
 
             public Settings()
@@ -351,7 +292,6 @@ namespace TurboTurbo.Modeling
         /// Exhaust velocity coefficient [m/s per unit mass flow per unit gas density].
         /// Can be adjusted to represent a wider/narrower exhaust mouth resulting in lower/higher exhaust velocity.
         /// </summary>
-        [DefaultValue(DefaultExhaustVelocityCoefficient)]
         public float ExhaustVelocityCoefficient = DefaultExhaustVelocityCoefficient;
 
         public ExhaustVelocitySettings()

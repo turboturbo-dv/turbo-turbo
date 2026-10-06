@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 
 using TurboTurbo.Modeling;
@@ -23,7 +22,6 @@ public sealed class LocoProfile
     public List<LocoExhaust> Exhausts { get; set; } = new();
     public ChargerKind ChargerKind { get; set; } = ChargerKind.Turbo;
 
-    // XmlSerializer needs unique type names, so each nested settings class needs an XmlType attribute
     public TurboCharger.Settings TurboCharger { get; set; }
     public AtmosphericCharger.Settings Atmospheric { get; set; }
     public ExhaustSmokeModel.Settings Smoke { get; set; }
@@ -143,7 +141,6 @@ public sealed class LocoExhaust
     /// Car-relative transform path of the particle system to replace. Leave unset
     /// for independent exhausts.
     /// </summary>
-    [DefaultValue("")]
     public string Path { get; set; } = "";
 
     public Vector3 Offset { get; set; }

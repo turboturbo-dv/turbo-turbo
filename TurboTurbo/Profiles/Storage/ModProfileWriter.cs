@@ -7,6 +7,8 @@ using System.Xml.Linq;
 
 using JetBrains.Annotations;
 
+using TurboTurbo.Profiles.Storage.V1;
+
 namespace TurboTurbo.Profiles.Storage;
 
 /// <summary>
@@ -130,11 +132,11 @@ internal static class ModProfileWriter
 
     private static XElement ToElement(LocoProfile profile)
     {
-        var config = new TurboConfig { LocoProfiles = { profile } };
+        var config = new TurboConfigXml { LocoProfiles = { ProfileMapper.ToXml(profile) } };
         using var writer = new StringWriter();
         TurboConfigCodec.Serializer.Serialize(writer, config);
         var document = XDocument.Parse(writer.ToString());
-        return document.Root?.Element("LocoProfiles")?.Element("LocoProfile") 
+        return document.Root?.Element("LocoProfiles")?.Element("LocoProfile")
                ?? throw new InvalidOperationException("could not serialize profile");
     }
 }
