@@ -2,6 +2,7 @@ using System;
 
 using Shouldly;
 
+using TurboTurbo;
 using TurboTurbo.Modeling;
 
 using Xunit;
@@ -10,14 +11,17 @@ namespace TurboTurboTests
 {
     public class CombustionModelTests
     {
+        private float _ambientTemperatureK = PhysicsConstants.ReferenceAmbientK;
         private readonly TurboCharger.Settings _chargerSettings = new TurboCharger.Settings();
+        private readonly CombustionModel.Settings _combustionSettings = new CombustionModel.Settings();
         private float _governor;
         private float _fuelNorm;
         private float _rpmNorm = 1f;
 
         private CombustionModel CreateModel()
         {
-            return new CombustionModel(() => _governor, () => _fuelNorm, () => _rpmNorm, new TurboCharger(_chargerSettings));
+            return new CombustionModel(() => _governor, () => _fuelNorm, () => _rpmNorm,
+                () => _ambientTemperatureK, new TurboCharger(_chargerSettings), _combustionSettings);
         }
 
         [Fact]
@@ -216,6 +220,118 @@ namespace TurboTurboTests
             }
 
             model.SurgeThisTick.ShouldBeFalse();
+        }
+
+        // ------------------------------------------------------------
+        // exhaust state
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void CombustionSettings_CopyConstructor_IsIndependent()
+        {
+            var template = new CombustionModel.Settings();
+            var clone = new CombustionModel.Settings(template);
+
+            clone.RatedExhaustTempK.ShouldBe(template.RatedExhaustTempK);
+            clone.RatedExhaustTempK = 123f;
+            template.RatedExhaustTempK.ShouldNotBe(123f);
+        }
+
+        [Fact]
+        public void CombustionSettings_Validate_FloorsRatedExhaustTemp()
+        {
+            var settings = new CombustionModel.Settings { RatedExhaustTempK = 100f };
+            settings.Validate();
+
+            settings.RatedExhaustTempK.ShouldBeGreaterThan(PhysicsConstants.ReferenceAmbientK);
+        }
+
+        [Fact]
+        public void MassFlow_IsChargeTimesRpm()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 0.5f;
+            model.Tick(0.016f, engineOn: true);
+
+            // first tick: Charge = 1 (zero boost), rpm = 0.5
+            model.MassFlow.ShouldBe(0.5f, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void GasTemperature_Lean_UsesSpecificHeatRelease()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.GasTemperature.ShouldBe(789.178f, tolerance: 0.01f);
+        }
+
+        [Fact]
+        public void GasDensity_Falls_AsTemperatureRises()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.GasDensity.ShouldBe(
+                PhysicsConstants.ReferenceAirDensity * PhysicsConstants.ReferenceAmbientK / 789.178f,
+                tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void GasTemperature_ReachesRatedTemp_AtFullPower()
+        {
+            var model = CreateModel();
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+            for (var i = 0; i < 600; i++)
+            {
+                model.Tick(0.1f, engineOn: true);
+            }
+
+            model.Charge.ShouldBe(model.Charger.ChargeAtFullPower, tolerance: 0.01f);
+            model.GasTemperature.ShouldBe(CombustionModel.Settings.DefaultRatedExhaustTempK, tolerance: 0.5f);
+        }
+
+        [Fact]
+        public void GasTemperature_TracksAmbientInput()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.5f;
+            _rpmNorm = 1f;
+            _ambientTemperatureK = PhysicsConstants.ReferenceAmbientK - 20f;
+            model.Tick(0.016f, engineOn: true);
+
+            // gain is fixed, so EGT shifts down by the same 20 K the ambient input dropped
+            model.GasTemperature.ShouldBe(789.178f - 20f, tolerance: 0.01f);
+        }
+
+        [Fact]
+        public void ExhaustEnergy_IsScaledByCombustionEfficiency()
+        {
+            var model = CreateModel();
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.ExhaustEnergy.ShouldBe(1f / 1.41f, tolerance: 0.001f);
+            model.Overfuel.ShouldBeGreaterThan(0f);
+        }
+
+        [Fact]
+        public void ExhaustEnergy_IsHigher_WhenLean()
+        {
+            var model = CreateModel();
+            _fuelNorm = 0.3f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            // Lambda > 1, so burn = 1 and energy is the fuel rate itself
+            model.ExhaustEnergy.ShouldBe(0.3f, tolerance: 0.001f);
         }
     }
 }

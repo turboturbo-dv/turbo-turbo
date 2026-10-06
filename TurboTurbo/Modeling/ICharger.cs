@@ -10,6 +10,13 @@ public enum ChargerKind
 public interface ICharger
 {
     float Charge { get; }
+
+    /// <summary>
+    /// Rated charge at full power. This is a theoretical number intended for calibration; charge under actual simulation
+    /// circumstances may deviate from this.
+    /// </summary>
+    float ChargeAtFullPower { get; }
+
     float Boost { get; }
     bool Surging { get; }
     float LambdaCalibration { get; }

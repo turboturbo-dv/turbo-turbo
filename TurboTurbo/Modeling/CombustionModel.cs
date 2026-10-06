@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Xml.Serialization;
 
 using UnityEngine;
 
@@ -10,11 +12,43 @@ namespace TurboTurbo.Modeling;
 /// </summary>
 public sealed class CombustionModel
 {
+    /// <summary>Configuration constants for the exhaust-state quantities. Defaults give a reasonable starting point.</summary>
+    [XmlType("CombustionSettings")]
+    public sealed class Settings
+    {
+        internal const float DefaultRatedExhaustTempK = 760f;
+
+        /// <summary>
+        /// Rated exhaust gas temperature [K] at the exhaust mouth at full power. Note that this is a target value;
+        /// transient conditions may overshoot it.
+        /// </summary>
+        [DefaultValue(DefaultRatedExhaustTempK)]
+        public float RatedExhaustTempK { get; set; } = DefaultRatedExhaustTempK;
+
+        public Settings()
+        {
+        }
+
+        public Settings(Settings other)
+        {
+            RatedExhaustTempK = other.RatedExhaustTempK;
+        }
+
+        public void Validate()
+        {
+            RatedExhaustTempK = Mathf.Max(PhysicsConstants.ReferenceAmbientK + 0.01f, RatedExhaustTempK);
+        }
+    }
+
+    private readonly Settings _tuning;
     private readonly Func<float> _governorNorm;
     private readonly Func<float> _fuelNorm;
     private readonly Func<float> _rpmNorm;
+    private readonly Func<float> _ambientTemperatureK;
 
     public ICharger Charger { get; }
+
+    public Settings Tuning => _tuning;
 
     /// <summary>Current charger boost pressure ratio [0..1], 0 when naturally aspirated.</summary>
     public float Boost { get; private set; }
@@ -47,15 +81,32 @@ public sealed class CombustionModel
     /// <summary>Overfueling amount [0..1]: portion of fuel consumption that has no air left to burn.</summary>
     public float Overfuel { get; private set; }
 
+    /// <summary>Exhaust mass-flow proxy (per-stroke charge times engine speed).</summary>
+    public float MassFlow { get; private set; }
+
+    /// <summary>Exhaust gas temperature [K] at the exhaust mouth.</summary>
+    public float GasTemperature { get; private set; }
+
+    /// <summary>Exhaust gas density [kg/m^3] at the exhaust mouth.</summary>
+    public float GasDensity { get; private set; }
+
+    /// <summary>
+    /// Normalized exhaust heat-release rate [0..1]: mass flow weighted by combustion efficiency.
+    /// </summary>
+    public float ExhaustEnergy { get; private set; }
+
     /// <summary>True on the tick where the charger reported a surge. Reset on the next tick.</summary>
     public bool SurgeThisTick { get; private set; }
 
-    public CombustionModel(Func<float> governorNorm, Func<float> fuelNorm, Func<float> rpmNorm, ICharger charger)
+    public CombustionModel(Func<float> governorNorm, Func<float> fuelNorm, Func<float> rpmNorm,
+        Func<float> ambientTemperatureK, ICharger charger, Settings settings)
     {
         Charger = charger ?? throw new ArgumentNullException(nameof(charger));
+        _tuning = settings ?? throw new ArgumentNullException(nameof(settings));
         _governorNorm = governorNorm ?? throw new ArgumentNullException(nameof(governorNorm));
         _fuelNorm = fuelNorm ?? throw new ArgumentNullException(nameof(fuelNorm));
         _rpmNorm = rpmNorm ?? throw new ArgumentNullException(nameof(rpmNorm));
+        _ambientTemperatureK = ambientTemperatureK ?? throw new ArgumentNullException(nameof(ambientTemperatureK));
     }
 
     /// <summary>
@@ -66,6 +117,8 @@ public sealed class CombustionModel
         var governor = Mathf.Clamp01(_governorNorm());
         var fuel = Mathf.Clamp01(_fuelNorm());
         var rpm = Mathf.Clamp01(_rpmNorm());
+
+        var s = _tuning;
 
         var fuelPerStroke = fuel / Mathf.Max(0.01f, rpm);
 
@@ -79,6 +132,22 @@ public sealed class CombustionModel
         Lambda = Charge / (calibration * Mathf.Max(0.01f, fuelPerStroke));
 
         Overfuel = Mathf.Max(0f, fuelPerStroke - Charge / calibration);
+
+        // simplified model for now; in reality, burn fraction already starts dropping before lambda reaches 1, as
+        // non-perfect mixing causes local rich pockets to start to form in the cylinder even while global lambda is still lean
+        var burnFraction = Mathf.Min(1f, Lambda);
+        var ambient = Mathf.Max(1f, _ambientTemperatureK());
+
+        MassFlow = Charge * rpm; // fuel mass is so small relative to air mass as to be negligible
+
+        // dynamically derive temperature gain based on rated exhaust temperature at load.
+        // this makes it easier to alter temperature behaviour of the engine: just say what the rated exhaust gas
+        // temperature at exhaust mouth should be, and the rest follows.
+        var tempGainK = (s.RatedExhaustTempK - PhysicsConstants.ReferenceAmbientK) * Charger.ChargeAtFullPower;
+
+        GasTemperature = ambient + tempGainK * fuelPerStroke * burnFraction / Charge;
+        GasDensity = PhysicsConstants.ReferenceAirDensity * ambient / Mathf.Max(1f, GasTemperature);
+        ExhaustEnergy = MassFlow * (GasTemperature - ambient) / tempGainK;
 
         Charger.Tick(delta, fuelPerStroke, Overfuel, rpm, governor, engineOn);
 

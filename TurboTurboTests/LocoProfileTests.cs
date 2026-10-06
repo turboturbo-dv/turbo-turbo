@@ -322,11 +322,14 @@ namespace TurboTurboTests
         {
             var defaults = ValidProfile("sparse");
             defaults.Velocity = new ExhaustVelocitySettings();
+            defaults.Combustion = new CombustionModel.Settings();
 
             var defaultXml = Serialize(defaults);
             defaultXml.ShouldContain("<Velocity");
             defaultXml.ShouldNotContain("Idle");
             defaultXml.ShouldNotContain("FullLoad");
+            defaultXml.ShouldContain("<Combustion");
+            defaultXml.ShouldNotContain("RatedExhaustTempK");
 
             var tuned = ValidProfile("sparse");
             tuned.Velocity = new ExhaustVelocitySettings { Idle = 2.5f };

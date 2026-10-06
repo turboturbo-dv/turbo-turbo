@@ -1,5 +1,6 @@
 using Shouldly;
 
+using TurboTurbo;
 using TurboTurbo.Modeling;
 
 using Xunit;
@@ -48,6 +49,25 @@ namespace TurboTurboTests
         }
 
         [Fact]
+        public void TurboCharger_ChargeAtFullPower_IsOnePlusMultiplier()
+        {
+            var settings = new TurboCharger.Settings();
+            var charger = new TurboCharger(settings);
+
+            charger.ChargeAtFullPower.ShouldBe(1f + settings.BoostChargeMultiplier, tolerance: 0.0001f);
+        }
+
+        [Fact]
+        public void AtmosphericCharger_ChargeAtFullPower_UsesRpmOneChoke()
+        {
+            var settings = new AtmosphericCharger.Settings();
+            var charger = new AtmosphericCharger(settings);
+
+            charger.ChargeAtFullPower.ShouldBe(
+                settings.EtaPeak * (1f - settings.ChokeK), tolerance: 0.0001f);
+        }
+
+        [Fact]
         public void AtmosphericCharger_Boost_IsZero_And_NeverSurges()
         {
             var charger = new AtmosphericCharger(new AtmosphericCharger.Settings());
@@ -84,8 +104,8 @@ namespace TurboTurboTests
         [Fact]
         public void CombustionModel_WithAtmosphericCharger_Lambda_UsesAspiratedCalibration()
         {
-            var model = new CombustionModel(() => 1f, () => 1f, () => 1f,
-                new AtmosphericCharger(new AtmosphericCharger.Settings()));
+            var model = new CombustionModel(() => 1f, () => 1f, () => 1f, () => PhysicsConstants.ReferenceAmbientK,
+                new AtmosphericCharger(new AtmosphericCharger.Settings()), new CombustionModel.Settings());
             // arrange: settle the charger
             model.Tick(0.016f, engineOn: true);
 

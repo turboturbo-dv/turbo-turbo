@@ -39,6 +39,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             Shimmer.transform.localPosition = LocalPosition;
         }
     }
+
     private Logger _log;
     private bool _simBound;
     private bool _loggedNoSim;
@@ -152,7 +153,9 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             () => _engine.ThrottleValue,
             () => _engine.FuelNormalized,
             () => _engine.RpmNormalized,
-            Profile.BuildCharger());
+            () => PhysicsConstants.ReferenceAmbientK,
+            Profile.BuildCharger(),
+            Profile.Combustion);
 
         _log.Info($"combustion bound (throttle: {_engine.ThrottlePort.id}, " +
                      $"fuel: {DieselEngineBinding.DescribePort(_engine.FuelPort)})");

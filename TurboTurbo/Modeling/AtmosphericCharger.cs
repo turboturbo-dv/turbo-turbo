@@ -6,7 +6,12 @@ using UnityEngine;
 
 namespace TurboTurbo.Modeling;
 
-/// <summary>Models naturally aspirated charging. Charge depends only on engine RPM.</summary>
+/// <summary>
+/// Models naturally aspirated charging.
+/// A naturally aspirated engine always charges to a slight vacuum, as the only way to get air into the cylinders is
+/// through suction. As RPM rises, this effect becomes more pronounced, because the same cylinder volume needs to be
+/// filled in less time.
+/// </summary>
 public sealed class AtmosphericCharger : ICharger
 {
     /// <summary>Configuration constants. Defaults give a reasonable starting point.</summary>
@@ -24,6 +29,10 @@ public sealed class AtmosphericCharger : ICharger
         [DefaultValue(DefaultChokeK)]
         public float ChokeK { get; set; } = DefaultChokeK;
 
+        /// <summary>
+        /// Exponent shaping the choke curve. 2 is physically accurate, as pressure drop across a restriction scales
+        /// with the square of velocity.
+        /// </summary>
         [DefaultValue(DefaultChokeBeta)]
         public float ChokeBeta { get; set; } = DefaultChokeBeta;
 
@@ -50,23 +59,23 @@ public sealed class AtmosphericCharger : ICharger
         }
     }
 
-    private readonly Settings _tuning;
-
-    public Settings Tuning => _tuning;
+    public Settings Tuning { get; }
 
     public float Charge { get; private set; }
+
+    public float ChargeAtFullPower => Tuning.EtaPeak * (1f - Tuning.ChokeK);
 
     public float Boost => 0f;
 
     public bool Surging => false;
 
-    public float LambdaCalibration => _tuning.LambdaCalibration;
+    public float LambdaCalibration => Tuning.LambdaCalibration;
 
     public float ExhaustHeat { get; private set; }
 
     public AtmosphericCharger(Settings settings)
     {
-        _tuning = settings ?? throw new ArgumentNullException(nameof(settings));
+        Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
 
         // make sure a fresh instance always reads a valid charge level right away (0 isn't valid).
         // without this, the combustion model div by zero as it calculates lambda on its first tick
@@ -75,12 +84,12 @@ public sealed class AtmosphericCharger : ICharger
 
     public void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn)
     {
-        var s = _tuning;
+        var s = Tuning;
 
         var chokeFactor = (1f - s.ChokeK * Mathf.Pow(rpmNorm, s.ChokeBeta));
         Charge = s.EtaPeak * chokeFactor;
         ExhaustHeat = fuelPerStroke * Charge;
     }
 
-    public ICharger Clone() => new AtmosphericCharger(new Settings(_tuning));
+    public ICharger Clone() => new AtmosphericCharger(new Settings(Tuning));
 }

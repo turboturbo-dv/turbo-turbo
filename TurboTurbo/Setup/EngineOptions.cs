@@ -18,6 +18,7 @@ public class EngineOptions
     private readonly SmokeParticles.Settings _smokeEmitter = new();
     private readonly ShimmerParticles.Settings _shimmer = new();
     private readonly ExhaustVelocitySettings _velocity = new();
+    private readonly CombustionModel.Settings _combustion = new();
 
     private ChargerKind _chargerKind = ChargerKind.Turbo;
 
@@ -85,6 +86,13 @@ public class EngineOptions
         return this;
     }
 
+    /// <summary>Tunes the exhaust-state calibration from its defaults.</summary>
+    public EngineOptions ConfigureCombustion(Action<CombustionModel.Settings> configure)
+    {
+        configure(_combustion);
+        return this;
+    }
+
     /// <summary>
     /// Builds the assembled configuration into a complete, valid <see cref="LocoProfile"/>,
     /// or a failed result when the configuration is invalid.
@@ -102,6 +110,7 @@ public class EngineOptions
             SmokeEmitter = _smokeEmitter,
             ShimmerEmitter = _shimmer,
             Velocity = _velocity,
+            Combustion = _combustion,
         };
 
         var error = profile.Normalize();

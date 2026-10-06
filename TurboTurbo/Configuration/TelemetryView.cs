@@ -43,7 +43,7 @@ internal static class TelemetryView
         else
         {
             var governor = new GUIContent($"Governor {model.GovernorNorm * 100f:0}%", GovernorValueTooltip);
-            var speed = new GUIContent($"Speed {host.AbsSpeed * 3.6f:0.0} km/h");
+            var speed = new GUIContent($"Speed {host.AbsSpeed * PhysicsConstants.MpsToKmh:0.0} km/h");
             var lambda = new GUIContent($"Lambda {model.Lambda:0.00}",
                 LambdaValueTooltip + $"\n\nOnce lambda drops below {host.Profile.Smoke.SootOnsetLambda:0.00}, soot starts forming.\n" +
                 $"When lambda reaches {host.Profile.Smoke.SootOpaqueLambda:0.00}, soot has reached maximum intensity.");

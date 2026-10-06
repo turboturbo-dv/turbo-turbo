@@ -192,7 +192,11 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"charge {m.Charge:0.000}");
         GUILayout.Label($"lambda {m.Lambda:0.000}   rpm {m.RpmNorm:0.000}");
         GUILayout.Label($"exhaustHeat {m.ExhaustHeat:0.000}   boost {m.Boost:0.000}");
-        GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * 3.6f:0.0} km/h)");
+        GUILayout.Label($"exhaustEnergy {m.ExhaustEnergy:0.000}   massFlow {m.MassFlow:0.000}");
+        GUILayout.Label($"EGT (mouth) {m.GasTemperature:0.0} K   gasDensity {m.GasDensity:0.000}");
+        var egtC = m.GasTemperature + 150f - PhysicsConstants.KelvinOffset;
+        GUILayout.Label($"EGT {egtC:0.0} C");
+        GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * PhysicsConstants.MpsToKmh:0.0} km/h)");
 
         for (var i = 0; i < host.Exhausts.Count; i++)
         {
