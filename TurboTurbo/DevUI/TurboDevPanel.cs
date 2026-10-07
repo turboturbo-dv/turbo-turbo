@@ -21,7 +21,7 @@ internal sealed class TurboDevPanel : MonoBehaviour
 
     private TurboTooltipLayer _tooltip;
 
-    public Rect WindowRect { get; private set; } = new(20f, 20f, 540f, 120f);
+    public Rect WindowRect { get; private set; } = new(20f, 20f, 540f, 180f);
 
     public static TurboDevPanel Create(Rect initialRect)
     {
@@ -195,6 +195,8 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"EGT (manif) {m.GasTemperature + m.TurbineTemperatureDropK - PhysicsConstants.KelvinOffset:0.0} C");
         GUILayout.Label($"turbineDrop {m.TurbineTemperatureDropK:0.0} C");
         GUILayout.Label($"EGT (mouth) {m.GasTemperature - PhysicsConstants.KelvinOffset:0.0} C   gasDensity {m.GasDensity:0.000}");
+        GUILayout.Label($"burn air {m.BurnFractionAir:0.000}   burn temp {m.BurnFractionTemp:0.000}   burn {m.BurnFraction:0.000}");
+        GUILayout.Label($"cylTemp {m.CylinderTempK - PhysicsConstants.KelvinOffset:0.0} C   blockTemp {m.EngineTempK - PhysicsConstants.KelvinOffset:0.0} C   thermostat {m.ThermostatOpen:0.00}");
         GUILayout.Label($"exhaustVelocity {m.ExhaustVelocity:0.00} m/s");
         GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * PhysicsConstants.MpsToKmh:0.0} km/h)");
 

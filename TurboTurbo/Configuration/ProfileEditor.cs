@@ -187,6 +187,7 @@ internal sealed class ProfileEditor : MonoBehaviour
             () => _needsShrink = true,
             _markerController.SetTarget));
         AddPanel("charger", ChargerSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
+        AddPanel("thermal", ThermalSection.Build(_host, () => _needsShrink = true));
         AddPanel("smoke-model", SmokeModelSection.Build(_host, MarkRequiresReconfigure, () => _needsShrink = true));
         AddPanel("colors", ColorsSection.Build(_host, () => _needsShrink = true, OpenColorPicker));
         AddPanel("velocity", VelocitySection.Build(_host, () => _needsShrink = true));

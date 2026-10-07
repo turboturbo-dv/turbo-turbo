@@ -329,6 +329,10 @@ namespace TurboTurboTests
             defaultXml.ShouldNotContain("ExhaustVelocityCoefficient");
             defaultXml.ShouldContain("<Combustion");
             defaultXml.ShouldNotContain("RatedExhaustTempK");
+            defaultXml.ShouldNotContain("TauCylinder");
+            defaultXml.ShouldNotContain("TauCooldownOpen");
+            defaultXml.ShouldNotContain("TauCooldownClosed");
+            defaultXml.ShouldNotContain("MinBurnFractionAtCold");
 
             var tuned = ValidProfile("sparse");
             tuned.Velocity = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 2.5f };
@@ -459,7 +463,8 @@ namespace TurboTurboTests
             profile.SmokeEmitter = new SmokeParticles.Settings { idleEmissionRate = 11f, drag = 0.9f };
             profile.ShimmerEmitter = new ShimmerParticles.Settings { strength = 0.02f, yOffset = 0.3f };
             profile.Velocity = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 3.25f };
-            profile.Combustion = new CombustionModel.Settings { RatedExhaustTempK = 800f };
+            profile.Combustion = new CombustionModel.Settings
+            { RatedExhaustTempK = 800f, TauCylinder = 9f, TauCooldownOpen = 420f, TauCooldownClosed = 3600f };
 
             var restored = ProfileMapper.ToRuntime(Deserialize(Serialize(profile)));
 
@@ -475,6 +480,9 @@ namespace TurboTurboTests
             restored.ShimmerEmitter.yOffset.ShouldBe(0.3f);
             restored.Velocity.ExhaustVelocityCoefficient.ShouldBe(3.25f);
             restored.Combustion.RatedExhaustTempK.ShouldBe(800f);
+            restored.Combustion.TauCylinder.ShouldBe(9f);
+            restored.Combustion.TauCooldownOpen.ShouldBe(420f);
+            restored.Combustion.TauCooldownClosed.ShouldBe(3600f);
             restored.Validate().ShouldBeNull();
         }
 

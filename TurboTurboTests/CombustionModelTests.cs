@@ -13,16 +13,26 @@ namespace TurboTurboTests
     {
         private float _ambientTemperatureK = PhysicsConstants.ReferenceAmbientK;
         private readonly TurboCharger.Settings _chargerSettings = new TurboCharger.Settings();
-        private readonly CombustionModel.Settings _combustionSettings = new CombustionModel.Settings();
+
+        // the legacy assertions describe a fully warmed engine, so park the temperature
+        // thresholds below ambient to hold the temperature factor at 1
+        private readonly CombustionModel.Settings _combustionSettings = new CombustionModel.Settings
+        {
+            ColdWallFloorK = 0f,
+            WarmWallTargetK = 1f,
+        };
+
         private readonly ExhaustVelocitySettings _velocitySettings = new ExhaustVelocitySettings();
         private float _governor;
         private float _fuelNorm;
         private float _rpmNorm = 1f;
 
-        private CombustionModel CreateModel()
+        private CombustionModel CreateModel() => CreateModel(_combustionSettings);
+
+        private CombustionModel CreateModel(CombustionModel.Settings combustion)
         {
             return new CombustionModel(() => _governor, () => _fuelNorm, () => _rpmNorm,
-                () => _ambientTemperatureK, new TurboCharger(_chargerSettings), _combustionSettings, _velocitySettings);
+                () => _ambientTemperatureK, new TurboCharger(_chargerSettings), combustion, _velocitySettings);
         }
 
         [Fact]
@@ -235,6 +245,9 @@ namespace TurboTurboTests
             clone.RatedExhaustTempK.ShouldBe(template.RatedExhaustTempK);
             clone.RatedExhaustTempK = 123f;
             template.RatedExhaustTempK.ShouldNotBe(123f);
+            clone.TauCylinder.ShouldBe(template.TauCylinder);
+            clone.CylinderGainK += 10f;
+            template.CylinderGainK.ShouldNotBe(clone.CylinderGainK);
         }
 
         [Fact]
@@ -362,6 +375,106 @@ namespace TurboTurboTests
 
             // Lambda > 1, so burn = 1 and energy is the fuel rate itself
             model.ExhaustEnergy.ShouldBe(0.3f, tolerance: 0.001f);
+        }
+
+        // ------------------------------------------------------------
+        // thermal tracking
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void Thermal_ColdStart_HoldsBurnFractionAtFloor()
+        {
+            var cold = new CombustionModel.Settings
+            {
+                ColdWallFloorK = PhysicsConstants.ReferenceAmbientK,
+                WarmWallTargetK = PhysicsConstants.ReferenceAmbientK + 100f,
+            };
+            var model = CreateModel(cold);
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+            model.Tick(0.016f, engineOn: true);
+
+            model.CylinderTempK.ShouldBe(PhysicsConstants.ReferenceAmbientK, tolerance: 0.1f);
+            model.EngineTempK.ShouldBe(PhysicsConstants.ReferenceAmbientK, tolerance: 0.1f);
+            model.BurnFractionTemp.ShouldBe(cold.MinBurnFractionAtCold, tolerance: 0.001f);
+            model.BurnFraction.ShouldBe(model.BurnFractionAir * cold.MinBurnFractionAtCold, tolerance: 0.001f);
+        }
+
+        [Fact]
+        public void Thermal_ColdEngine_ProducesLessExhaustEnergyThanWarm()
+        {
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+
+            var cold = CreateModel(new CombustionModel.Settings());
+            cold.Tick(0.016f, engineOn: true);
+
+            var warm = CreateModel(_combustionSettings);
+            warm.Tick(0.016f, engineOn: true);
+
+            cold.ExhaustEnergy.ShouldBeLessThan(warm.ExhaustEnergy);
+        }
+
+        [Fact]
+        public void Thermal_WarmsUp_AndRecoversCombustionEfficiency()
+        {
+            var cold = new CombustionModel.Settings();
+            var model = CreateModel(cold);
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+
+            for (var i = 0; i < 20000; i++)
+            {
+                model.Tick(0.1f, engineOn: true);
+            }
+
+            model.CylinderTempK.ShouldBeGreaterThan(cold.WarmWallTargetK);
+            model.EngineTempK.ShouldBeLessThan(model.CylinderTempK);
+            model.BurnFractionTemp.ShouldBe(1f, tolerance: 0.01f);
+        }
+
+        [Fact]
+        public void Thermostat_OpensAcrossBand_AsBlockWarms()
+        {
+            var model = CreateModel(new CombustionModel.Settings());
+            _fuelNorm = 1f;
+            _rpmNorm = 1f;
+
+            model.Tick(0.1f, engineOn: true);
+            model.ThermostatOpen.ShouldBe(0f);
+
+            for (var i = 0; i < 20000; i++)
+            {
+                model.Tick(0.1f, engineOn: true);
+            }
+
+            model.EngineTempK.ShouldBeGreaterThan(CombustionModel.Settings.ThermostatOpenK);
+            model.ThermostatOpen.ShouldBeGreaterThan(0.9f);
+        }
+
+        [Fact]
+        public void Thermal_Validate_ClampsGainsAndThresholds()
+        {
+            var settings = new CombustionModel.Settings
+            {
+                TauCylinder = 500f,
+                TauEngine = 100f,
+                CylinderGainK = -1f,
+                TauCooldownOpen = -5f,
+                TauCooldownClosed = -5f,
+                ColdWallFloorK = 600f,
+                WarmWallTargetK = 100f,
+                MinBurnFractionAtCold = 0f,
+            };
+
+            settings.Validate();
+
+            settings.TauEngine.ShouldBeGreaterThan(settings.TauCylinder);
+            settings.CylinderGainK.ShouldBeGreaterThan(0f);
+            settings.TauCooldownOpen.ShouldBeGreaterThan(0f);
+            settings.TauCooldownClosed.ShouldBeGreaterThan(0f);
+            settings.WarmWallTargetK.ShouldBeGreaterThan(settings.ColdWallFloorK);
+            settings.MinBurnFractionAtCold.ShouldBeGreaterThan(0f);
         }
 
         // ------------------------------------------------------------

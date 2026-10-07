@@ -14,12 +14,36 @@ public sealed class CombustionModel
     public sealed class Settings
     {
         internal const float DefaultRatedExhaustTempK = 760f;
+        internal const float DefaultTauCylinder = 10f;
+        internal const float DefaultTauEngine = 55f;
+        internal const float DefaultTauCooldownOpen = 65f;
+        internal const float DefaultTauCooldownClosed = 1200f;
+        internal const float DefaultCylinderGainK = 60f;
+        internal const float DefaultColdWallFloorK = 260f;
+        internal const float DefaultWarmWallTargetK = 370f;
+        internal const float DefaultMinBurnFractionAtCold = 0.85f;
+
+        /// <summary>Block temperature [K] where the radiator thermostat begins to open.</summary>
+        public const float ThermostatOpenK = 65f + PhysicsConstants.KelvinOffset;
+
+        /// <summary>Block temperature [K] where the radiator thermostat is fully open.</summary>
+        public const float ThermostatFullOpenK = 85f + PhysicsConstants.KelvinOffset;
 
         /// <summary>
         /// Rated exhaust gas temperature [K] at the exhaust mouth at full power. Note that this is a target value;
         /// transient conditions may overshoot it.
         /// </summary>
         public float RatedExhaustTempK { get; set; } = DefaultRatedExhaustTempK;
+        public float TauCylinder { get; set; } = DefaultTauCylinder;
+        public float TauEngine { get; set; } = DefaultTauEngine;
+        public float TauCooldownOpen { get; set; } = DefaultTauCooldownOpen;
+        public float TauCooldownClosed { get; set; } = DefaultTauCooldownClosed;
+        public float CylinderGainK { get; set; } = DefaultCylinderGainK;
+        public float ColdWallFloorK { get; set; } = DefaultColdWallFloorK;
+        public float WarmWallTargetK { get; set; } = DefaultWarmWallTargetK;
+
+        /// <summary>Floor on the temperature efficiency factor at the coldest extreme (0..1].</summary>
+        public float MinBurnFractionAtCold { get; set; } = DefaultMinBurnFractionAtCold;
 
         public Settings()
         {
@@ -28,11 +52,27 @@ public sealed class CombustionModel
         public Settings(Settings other)
         {
             RatedExhaustTempK = other.RatedExhaustTempK;
+            TauCylinder = other.TauCylinder;
+            TauEngine = other.TauEngine;
+            TauCooldownOpen = other.TauCooldownOpen;
+            TauCooldownClosed = other.TauCooldownClosed;
+            CylinderGainK = other.CylinderGainK;
+            ColdWallFloorK = other.ColdWallFloorK;
+            WarmWallTargetK = other.WarmWallTargetK;
+            MinBurnFractionAtCold = other.MinBurnFractionAtCold;
         }
 
         public void Validate()
         {
             RatedExhaustTempK = Mathf.Max(PhysicsConstants.ReferenceAmbientK + 0.01f, RatedExhaustTempK);
+            TauCylinder = Mathf.Max(0.01f, TauCylinder);
+            TauEngine = Mathf.Max(TauCylinder + 0.01f, TauEngine);
+            TauCooldownOpen = Mathf.Max(0.01f, TauCooldownOpen);
+            TauCooldownClosed = Mathf.Max(TauCooldownOpen, TauCooldownClosed);
+            CylinderGainK = Mathf.Max(0.01f, CylinderGainK);
+            ColdWallFloorK = Mathf.Max(0f, ColdWallFloorK);
+            WarmWallTargetK = Mathf.Max(ColdWallFloorK + 0.01f, WarmWallTargetK);
+            MinBurnFractionAtCold = Mathf.Clamp(MinBurnFractionAtCold, 0.01f, 1f);
         }
     }
 
@@ -97,6 +137,24 @@ public sealed class CombustionModel
     /// <summary>Exhaust plume speed [m/s] at the exhaust mouth.</summary>
     public float ExhaustVelocity { get; private set; }
 
+    /// <summary>Temperature [K] of the cylinder walls.</summary>
+    public float CylinderTempK { get; private set; }
+
+    /// <summary>Temperature [K] of the engine block and oil.</summary>
+    public float EngineTempK { get; private set; }
+
+    /// <summary>Thermostat opening fraction [0..1]: 1 = fully open.</summary>
+    public float ThermostatOpen { get; private set; }
+
+    /// <summary>Air-limited combustion efficiency factor [0..1].</summary>
+    public float BurnFractionAir { get; private set; }
+
+    /// <summary>Temperature-limited combustion efficiency factor [0..1].</summary>
+    public float BurnFractionTemp { get; private set; }
+
+    /// <summary>Combined combustion efficiency factor [0..1].</summary>
+    public float BurnFraction { get; private set; }
+
     /// <summary>True on the tick where the charger reported a surge. Reset on the next tick.</summary>
     public bool SurgeThisTick { get; private set; }
 
@@ -110,6 +168,10 @@ public sealed class CombustionModel
         _fuelNorm = fuelNorm ?? throw new ArgumentNullException(nameof(fuelNorm));
         _rpmNorm = rpmNorm ?? throw new ArgumentNullException(nameof(rpmNorm));
         _ambientTemperatureK = ambientTemperatureK ?? throw new ArgumentNullException(nameof(ambientTemperatureK));
+
+        var ambient = Mathf.Max(1f, _ambientTemperatureK());
+        CylinderTempK = ambient;
+        EngineTempK = ambient;
     }
 
     /// <summary>
@@ -125,6 +187,9 @@ public sealed class CombustionModel
 
         var fuelPerStroke = fuel / Mathf.Max(0.01f, rpm);
 
+        var ambient = Mathf.Max(1f, _ambientTemperatureK());
+        var lastExhaustEnergy = ExhaustEnergy;
+
         GovernorNorm = governor;
         FuelNorm = fuel;
         RpmNorm = rpm;
@@ -136,10 +201,28 @@ public sealed class CombustionModel
 
         Overfuel = Mathf.Max(0f, fuelPerStroke - Charge / calibration);
 
+        // combustion heat warms up the cylinders, the block cools the cylinders
+        var cylinderTarget = EngineTempK + s.CylinderGainK * lastExhaustEnergy;
+        CylinderTempK += (cylinderTarget - CylinderTempK) * (1f - Mathf.Exp(-delta / s.TauCylinder));
+
+        // the thermostat governs engine block cooling rate
+        ThermostatOpen = Smoothstep(Settings.ThermostatOpenK, Settings.ThermostatFullOpenK, EngineTempK);
+        var cooldownTau = Mathf.Lerp(s.TauCooldownClosed, s.TauCooldownOpen, ThermostatOpen);
+
+        // hot cylinders warm up the block, heat flows out of the block into the environment
+        var engineTau = (s.TauEngine * cooldownTau) / (s.TauEngine + cooldownTau);
+        var engineTarget = (CylinderTempK * cooldownTau + ambient * s.TauEngine)
+                           / (s.TauEngine + cooldownTau);
+        EngineTempK += (engineTarget - EngineTempK) * (1f - Mathf.Exp(-delta / engineTau));
+
+        // heavy overfueling reduces combustion efficiency.
         // simplified model for now; in reality, burn fraction already starts dropping before lambda reaches 1, as
         // non-perfect mixing causes local rich pockets to start to form in the cylinder even while global lambda is still lean
-        var burnFraction = Mathf.Min(1f, Lambda);
-        var ambient = Mathf.Max(1f, _ambientTemperatureK());
+        BurnFractionAir = Mathf.Min(1f, Lambda);
+        // cold cylinder walls also reduce combustion efficiency
+        BurnFractionTemp = Mathf.Lerp(s.MinBurnFractionAtCold, 1f,
+            Smoothstep(s.ColdWallFloorK, s.WarmWallTargetK, CylinderTempK));
+        BurnFraction = BurnFractionAir * BurnFractionTemp; 
 
         MassFlow = Charge * rpm; // fuel mass is so small relative to air mass as to be negligible
 
@@ -148,7 +231,7 @@ public sealed class CombustionModel
         // temperature at exhaust mouth should be, and the rest follows.
         var tempGainK = (s.RatedExhaustTempK - PhysicsConstants.ReferenceAmbientK) * Charger.ChargeAtFullPower;
 
-        var manifoldTemperature = ambient + tempGainK * fuelPerStroke * burnFraction / Charge;
+        var manifoldTemperature = ambient + tempGainK * fuelPerStroke * BurnFraction / Charge;
         var turbinePressureRatio = Mathf.Max(1f, Charge);
         TurbineTemperatureDropK = manifoldTemperature *
                                   (1f - Mathf.Pow(turbinePressureRatio, -IsentropicExponent));
@@ -162,5 +245,11 @@ public sealed class CombustionModel
 
         Boost = Charger.Boost;
         SurgeThisTick = Charger.Surging;
+    }
+
+    private static float Smoothstep(float edge0, float edge1, float x)
+    {
+        var t = Mathf.Clamp01(Mathf.InverseLerp(edge0, edge1, x));
+        return t * t * (3f - 2f * t);
     }
 }

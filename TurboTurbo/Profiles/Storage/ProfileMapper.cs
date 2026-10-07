@@ -269,8 +269,34 @@ internal static class ProfileMapper
         settings == null ? null : new VelocityXml { ExhaustVelocityCoefficient = settings.ExhaustVelocityCoefficient };
 
     private static CombustionModel.Settings ToRuntime(CombustionXml xml) =>
-        xml == null ? null : new CombustionModel.Settings { RatedExhaustTempK = xml.RatedExhaustTempK };
+        xml == null
+            ? null
+            : new CombustionModel.Settings
+            {
+                RatedExhaustTempK = xml.RatedExhaustTempK,
+                TauCylinder = xml.TauCylinder,
+                TauEngine = xml.TauEngine,
+                TauCooldownOpen = xml.TauCooldownOpen,
+                TauCooldownClosed = xml.TauCooldownClosed,
+                CylinderGainK = xml.CylinderGainK,
+                ColdWallFloorK = xml.ColdWallFloorK,
+                WarmWallTargetK = xml.WarmWallTargetK,
+                MinBurnFractionAtCold = xml.MinBurnFractionAtCold,
+            };
 
     private static CombustionXml ToXml(CombustionModel.Settings settings) =>
-        settings == null ? null : new CombustionXml { RatedExhaustTempK = settings.RatedExhaustTempK };
+        settings == null
+            ? null
+            : new CombustionXml
+            {
+                RatedExhaustTempK = settings.RatedExhaustTempK,
+                TauCylinder = settings.TauCylinder,
+                TauEngine = settings.TauEngine,
+                TauCooldownOpen = settings.TauCooldownOpen,
+                TauCooldownClosed = settings.TauCooldownClosed,
+                CylinderGainK = settings.CylinderGainK,
+                ColdWallFloorK = settings.ColdWallFloorK,
+                WarmWallTargetK = settings.WarmWallTargetK,
+                MinBurnFractionAtCold = settings.MinBurnFractionAtCold,
+            };
 }
