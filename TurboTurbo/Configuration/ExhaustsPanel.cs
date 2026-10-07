@@ -25,7 +25,6 @@ internal sealed class ExhaustsPanel : IEditorPanel
     private readonly Action _onNeedsShrink;
     private readonly Action<int> _setMarkerTarget;
 
-    private bool _open;
     private EngineSimulationHost _boundHost;
     private LocoProfile _profile;
     private TrainCar _candidateSource;
@@ -36,11 +35,7 @@ internal sealed class ExhaustsPanel : IEditorPanel
     private int _markedTarget = -1;
     private readonly string[] _editText = new string[3];
 
-    public bool Open
-    {
-        get => _open;
-        set => _open = value;
-    }
+    public bool Open { get; set; }
 
     public ExhaustsPanel(
         Func<EngineSimulationHost> host,
@@ -73,7 +68,7 @@ internal sealed class ExhaustsPanel : IEditorPanel
         SyncMarker(host, entries);
 
         DrawHeader(profile, host.TrainCar);
-        if (!_open) return;
+        if (!Open) return;
 
         for (var i = 0; i < entries.Count; i++)
         {
@@ -105,11 +100,11 @@ internal sealed class ExhaustsPanel : IEditorPanel
         GUILayout.BeginHorizontal();
         if (GUILayout.Button(
             new GUIContent(
-                (_open ? "▾ " : "▸ ") + "Exhausts",
+                (Open ? "▾ " : "▸ ") + "Exhausts",
                 "Add or remove exhaust outlets on this locomotive. Each exhaust gets its own smoke and shimmer emitters."),
             Styles.SectionHeader))
         {
-            _open = !_open;
+            Open = !Open;
             _onNeedsShrink();
         }
         GUILayout.FlexibleSpace();
@@ -305,7 +300,7 @@ internal sealed class ExhaustsPanel : IEditorPanel
     private void SyncMarker(EngineSimulationHost host, List<Entry> entries)
     {
         var index = -1;
-        if (_open
+        if (Open
             && host.EffectsBound
             && _openPosition >= 0
             && _openPosition < entries.Count

@@ -150,7 +150,6 @@ namespace TurboTurbo.WorkBench
 
         private ParticleSystem _ps;
         private ParticleSystemRenderer _renderer;
-        private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
         private float _emitAccumulator;
         private AnimationCurve _sizeCurve;
         private float _densityScale = 1f;
@@ -158,7 +157,7 @@ namespace TurboTurbo.WorkBench
         public int ParticleCount => _ps.particleCount;
 
         /// <summary>The internal appearance model (dev panel edits its settings).</summary>
-        internal ExhaustSmokeModel Model => _model;
+        internal ExhaustSmokeModel Model { get; } = new ExhaustSmokeModel();
 
         private void OnValidate()
         {
@@ -290,7 +289,7 @@ namespace TurboTurbo.WorkBench
         private float ComputeDensityScale()
         {
             var minRate = Mathf.Min(tuning.idleEmissionRate, tuning.fullEmissionRate);
-            return Mathf.Max(1e-4f, _model.MaxParticulateMass / Mathf.Max(1f, minRate));
+            return Mathf.Max(1e-4f, Model.MaxParticulateMass / Mathf.Max(1f, minRate));
         }
 
         public void SetLightSaturation(float value)
@@ -330,7 +329,7 @@ namespace TurboTurbo.WorkBench
         {
             var dt = Time.deltaTime;
 
-            _model.Update(lambda, rpmNorm, heat, engineOn, dt);
+            Model.Update(lambda, rpmNorm, heat, engineOn, dt);
 
             var s = tuning;
 
@@ -364,7 +363,7 @@ namespace TurboTurbo.WorkBench
 
                 var lifetime = s.lifetime * Mathf.Lerp(1f, s.speedLifetimeScale, speedNorm);
 
-                var spawnColor = EncodeDensityColor(_model.Color, emissionRate);
+                var spawnColor = EncodeDensityColor(Model.Color, emissionRate);
 
                 for (var i = 0; i < n; i++)
                 {
@@ -402,7 +401,7 @@ namespace TurboTurbo.WorkBench
             // for our current particle emitter. we also apply a gamma curve to shift some more detail into the
             // low-density range, where subtle variations matter more.
             var density = emissionRate > 0f
-                ? Mathf.Clamp01(_model.ParticulateMass / emissionRate / _densityScale)
+                ? Mathf.Clamp01(Model.ParticulateMass / emissionRate / _densityScale)
                 : 0f;
             var q = Mathf.Pow(density, DensityEncodeExponent);
             return new Color(modelColor.r, modelColor.g, modelColor.b, q);

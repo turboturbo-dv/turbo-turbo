@@ -36,7 +36,6 @@ public sealed class CombustionModel
         }
     }
 
-    private readonly Settings _tuning;
     private readonly ExhaustVelocitySettings _velocity;
 
     private readonly Func<float> _governorNorm;
@@ -50,7 +49,7 @@ public sealed class CombustionModel
 
     public ICharger Charger { get; }
 
-    public Settings Tuning => _tuning;
+    public Settings Tuning { get; }
 
     /// <summary>Current charger boost pressure ratio [0..1], 0 when naturally aspirated.</summary>
     public float Boost { get; private set; }
@@ -105,7 +104,7 @@ public sealed class CombustionModel
         Func<float> ambientTemperatureK, ICharger charger, Settings settings, ExhaustVelocitySettings velocity)
     {
         Charger = charger ?? throw new ArgumentNullException(nameof(charger));
-        _tuning = settings ?? throw new ArgumentNullException(nameof(settings));
+        Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
         _velocity = velocity ?? throw new ArgumentNullException(nameof(velocity));
         _governorNorm = governorNorm ?? throw new ArgumentNullException(nameof(governorNorm));
         _fuelNorm = fuelNorm ?? throw new ArgumentNullException(nameof(fuelNorm));
@@ -122,7 +121,7 @@ public sealed class CombustionModel
         var fuel = Mathf.Clamp01(_fuelNorm());
         var rpm = Mathf.Clamp01(_rpmNorm());
 
-        var s = _tuning;
+        var s = Tuning;
 
         var fuelPerStroke = fuel / Mathf.Max(0.01f, rpm);
 
