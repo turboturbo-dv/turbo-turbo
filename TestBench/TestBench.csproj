@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>TestBench</AssemblyName>
+    <RootNamespace>TestBench</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)..\GameDir.props"
+          Condition="'$(GameDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\GameDir.props')" />
+
+  <PropertyGroup>
+    <ManagedDir>$(GameDir)\DerailValley_Data\Managed</ManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TurboTurbo\TurboTurbo.csproj" AdditionalProperties="DeployMod=false" />
+  </ItemGroup>
+
+  <!-- UnityEngine.CoreModule supplies UnityEngine.Mathf, which the model reads. TestBench runs
+       outside the game, so the assembly is copied next to the exe. -->
+  <ItemGroup>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(GameDir)' == ''">
+    <Error Text="GameDir is not set. Run build.ps1 once, or set GameDir via an environment variable or build property." />
+  </Target>
+
+</Project>
