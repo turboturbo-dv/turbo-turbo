@@ -112,10 +112,9 @@ namespace TurboTurboTests
             _rpmNorm = 1f;
             model.Tick(1f, engineOn: true);
 
-            var overfuel = 1f - 1f / TurboCharger.Settings.DefaultLambdaCalibration;
             var tau = TurboCharger.Settings.DefaultTauUp
-                / (1f + TurboCharger.Settings.DefaultThermalK * overfuel);
-            model.Boost.ShouldBe(1f - (float)Math.Exp(-1f / tau), tolerance: 0.001f);
+                / (1f + TurboCharger.Settings.DefaultThermalK * model.Overfuel);
+            model.Boost.ShouldBe(model.ExhaustEnergy * (1f - (float)Math.Exp(-1f / tau)), tolerance: 0.001f);
         }
 
         [Fact]

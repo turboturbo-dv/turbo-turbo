@@ -63,7 +63,6 @@ internal static class ProfileMapper
         {
             LambdaCalibration = xml.LambdaCalibration,
             BoostChargeMultiplier = xml.BoostChargeMultiplier,
-            RpmBoostExponent = xml.RpmBoostExponent,
             TauUp = xml.TauUp,
             TauDown = xml.TauDown,
             MinSpoolTau = xml.MinSpoolTau,
@@ -76,7 +75,6 @@ internal static class ProfileMapper
         {
             LambdaCalibration = settings.LambdaCalibration,
             BoostChargeMultiplier = settings.BoostChargeMultiplier,
-            RpmBoostExponent = settings.RpmBoostExponent,
             TauUp = settings.TauUp,
             TauDown = settings.TauDown,
             MinSpoolTau = settings.MinSpoolTau,

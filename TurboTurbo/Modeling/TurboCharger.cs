@@ -13,7 +13,6 @@ public sealed class TurboCharger : ICharger
     {
         internal const float DefaultLambdaCalibration = 1.41f;
         internal const float DefaultBoostChargeMultiplier = 1.125f;
-        internal const float DefaultRpmBoostExponent = 1.2f;
         internal const float DefaultTauUp = 3.0f;
         internal const float DefaultTauDown = 1.5f;
         internal const float DefaultMinSpoolTau = 0.5f;
@@ -23,8 +22,6 @@ public sealed class TurboCharger : ICharger
         public float LambdaCalibration { get; set; } = DefaultLambdaCalibration;
 
         public float BoostChargeMultiplier { get; set; } = DefaultBoostChargeMultiplier;
-
-        public float RpmBoostExponent { get; set; } = DefaultRpmBoostExponent;
 
         public float TauUp { get; set; } = DefaultTauUp;
 
@@ -45,7 +42,6 @@ public sealed class TurboCharger : ICharger
         {
             LambdaCalibration = other.LambdaCalibration;
             BoostChargeMultiplier = other.BoostChargeMultiplier;
-            RpmBoostExponent = other.RpmBoostExponent;
             TauUp = other.TauUp;
             TauDown = other.TauDown;
             MinSpoolTau = other.MinSpoolTau;
@@ -77,13 +73,14 @@ public sealed class TurboCharger : ICharger
         Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-    public void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn)
+    public void Tick(float delta, float overfuel, float rpmNorm, float governorNorm,
+        float exhaustEnergy, bool engineOn)
     {
         var s = Tuning;
 
-        var target = fuelPerStroke * Mathf.Pow(rpmNorm, s.RpmBoostExponent);
+        var target = exhaustEnergy;
 
-        var tau = fuelPerStroke > Boost
+        var tau = target > Boost
             ? Mathf.Max(s.MinSpoolTau, s.TauUp / (1f + s.ThermalK * overfuel))
             : s.TauDown;
         Boost += (target - Boost) * (1f - Mathf.Exp(-delta / tau));

@@ -159,7 +159,7 @@ public sealed class CombustionModel
         ExhaustEnergy = MassFlow * (manifoldTemperature - ambient) / tempGainK;
         ExhaustVelocity = _velocity.Calculate(MassFlow, GasDensity);
 
-        Charger.Tick(delta, fuelPerStroke, Overfuel, rpm, governor, engineOn);
+        Charger.Tick(delta, Overfuel, rpm, governor, ExhaustEnergy, engineOn);
 
         Boost = Charger.Boost;
         SurgeThisTick = Charger.Surging;

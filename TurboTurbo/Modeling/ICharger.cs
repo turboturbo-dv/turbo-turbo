@@ -21,7 +21,8 @@ public interface ICharger
     bool Surging { get; }
     float LambdaCalibration { get; }
 
-    void Tick(float delta, float fuelPerStroke, float overfuel, float rpmNorm, float governorNorm, bool engineOn);
+    void Tick(float delta, float overfuel, float rpmNorm, float governorNorm,
+        float exhaustEnergy, bool engineOn);
 
     ICharger Clone();
 }

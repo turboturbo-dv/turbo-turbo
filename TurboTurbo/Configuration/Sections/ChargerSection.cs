@@ -47,10 +47,6 @@ internal static class ChargerSection
                 "Adjusting this affects available air at full power, and therefore may require you to make a " +
                 "corresponding change to lambda calibration as well.",
                 0f, 3f, false, () => t.BoostChargeMultiplier, v => t.BoostChargeMultiplier = v);
-            section.AddFloat("Boost curve shape",
-                "The exponent that shapes the load-to-target boost curve. Values above 1 make it more exponential, " +
-                "requiring less boost at low load, and more boost at high load, which matches real-world behaviour.",
-                0f, 3f, false, () => t.RpmBoostExponent, v => t.RpmBoostExponent = v);
             section.AddFloat("Thermal K",
                 "Thermal feedback strength. Higher values cause quicker boost build-up when overfueling.",
                 0f, 3f, false, () => t.ThermalK, v => t.ThermalK = v);

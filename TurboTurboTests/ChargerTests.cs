@@ -25,7 +25,7 @@ namespace TurboTurboTests
         public void AtmosphericCharger_Charge_AtZeroRpm_IsEtaPeak()
         {
             var charger = new AtmosphericCharger(new AtmosphericCharger.Settings());
-            charger.Tick(0.016f, 1f, 0f, 0f, 1f, engineOn: true);
+            charger.Tick(0.016f, 0f, 0f, 1f, 0f, engineOn: true);
 
             charger.Charge.ShouldBe(charger.Tuning.EtaPeak, tolerance: 0.0001f);
         }
@@ -35,11 +35,11 @@ namespace TurboTurboTests
         {
             var charger = new AtmosphericCharger(new AtmosphericCharger.Settings());
 
-            charger.Tick(0.016f, 1f, 0f, 0f, 1f, engineOn: true);
+            charger.Tick(0.016f, 0f, 0f, 1f, 0f, engineOn: true);
             var low = charger.Charge;
-            charger.Tick(0.016f, 1f, 0f, 0.5f, 1f, engineOn: true);
+            charger.Tick(0.016f, 0f, 0.5f, 1f, 0f, engineOn: true);
             var mid = charger.Charge;
-            charger.Tick(0.016f, 1f, 0f, 1f, 1f, engineOn: true);
+            charger.Tick(0.016f, 0f, 1f, 1f, 0f, engineOn: true);
             var high = charger.Charge;
 
             // defaults: 0.9, 0.9 x (1 - 0.25 x 0.25) = 0.84375, 0.9 x 0.75 = 0.675
@@ -74,7 +74,7 @@ namespace TurboTurboTests
 
             for (var i = 0; i < 10; i++)
             {
-                charger.Tick(0.1f, 1f, 0f, 1f, 1f, engineOn: true);
+                charger.Tick(0.1f, 0f, 1f, 1f, 0f, engineOn: true);
             }
 
             charger.Boost.ShouldBe(0f);

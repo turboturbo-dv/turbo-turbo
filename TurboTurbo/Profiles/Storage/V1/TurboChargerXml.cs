@@ -6,7 +6,6 @@ public sealed class TurboChargerXml
 {
     internal const float DefaultLambdaCalibration = 1.41f;
     internal const float DefaultBoostChargeMultiplier = 1.125f;
-    internal const float DefaultRpmBoostExponent = 1.2f;
     internal const float DefaultTauUp = 3.0f;
     internal const float DefaultTauDown = 1.5f;
     internal const float DefaultMinSpoolTau = 0.5f;
@@ -18,9 +17,6 @@ public sealed class TurboChargerXml
 
     [DefaultValue(DefaultBoostChargeMultiplier)]
     public float BoostChargeMultiplier { get; set; } = DefaultBoostChargeMultiplier;
-
-    [DefaultValue(DefaultRpmBoostExponent)]
-    public float RpmBoostExponent { get; set; } = DefaultRpmBoostExponent;
 
     [DefaultValue(DefaultTauUp)]
     public float TauUp { get; set; } = DefaultTauUp;
