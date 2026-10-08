@@ -143,6 +143,7 @@ namespace TurboTurboTests
             config.SmokeEmitter.ShouldNotBeNull();
             config.ShimmerEmitter.ShouldNotBeNull();
             config.Velocity.ShouldNotBeNull();
+            config.Stack.ShouldNotBeNull();
             config.TurboCharger.ShouldNotBeNull();
             config.Atmospheric.ShouldBeNull();
             config.TurboCharger.TauUp.ShouldBe(3f);
@@ -223,6 +224,7 @@ namespace TurboTurboTests
             completed.SmokeEmitter.ShouldNotBeNull();
             completed.ShimmerEmitter.ShouldNotBeNull();
             completed.Velocity.ShouldNotBeNull();
+            completed.Stack.ShouldNotBeNull();
             completed.TurboCharger.ShouldNotBeNull();
             completed.Atmospheric.ShouldBeNull();
             completed.Validate().ShouldBeNull();
@@ -465,6 +467,7 @@ namespace TurboTurboTests
             profile.Velocity = new ExhaustVelocitySettings { ExhaustVelocityCoefficient = 3.25f };
             profile.Combustion = new CombustionModel.Settings
             { RatedExhaustTempK = 800f, TauCylinder = 9f, TauCooldownOpen = 420f, TauCooldownClosed = 3600f };
+            profile.Stack = new StackModel.Settings { FillTime = 75f, ClearTime = 45f, StickMax = 0.6f };
 
             var restored = ProfileMapper.ToRuntime(Deserialize(Serialize(profile)));
 
@@ -483,7 +486,24 @@ namespace TurboTurboTests
             restored.Combustion.TauCylinder.ShouldBe(9f);
             restored.Combustion.TauCooldownOpen.ShouldBe(420f);
             restored.Combustion.TauCooldownClosed.ShouldBe(3600f);
+            restored.Stack.FillTime.ShouldBe(75f);
+            restored.Stack.ClearTime.ShouldBe(45f);
+            restored.Stack.StickMax.ShouldBe(0.6f);
             restored.Validate().ShouldBeNull();
+        }
+
+        [Fact]
+        public void Xml_StackBlock_IsSparse()
+        {
+            var profile = ValidProfile("sparse");
+            profile.Stack = new StackModel.Settings { FillTime = 30f };
+
+            var xml = Serialize(profile);
+
+            xml.ShouldContain("<Stack");
+            xml.ShouldContain("FillTime");
+            xml.ShouldNotContain("ClearTime");
+            xml.ShouldNotContain("TauWall");
         }
 
         [Fact]

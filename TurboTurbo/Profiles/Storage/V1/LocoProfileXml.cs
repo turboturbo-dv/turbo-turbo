@@ -27,6 +27,7 @@ public sealed class LocoProfileXml
     public ShimmerEmitterXml ShimmerEmitter { get; set; }
     public VelocityXml Velocity { get; set; }
     public CombustionXml Combustion { get; set; }
+    public StackXml Stack { get; set; }
 }
 
 [XmlType("LocoExhaust")]

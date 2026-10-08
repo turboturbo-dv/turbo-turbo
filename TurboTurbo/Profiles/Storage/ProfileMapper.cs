@@ -28,6 +28,7 @@ internal static class ProfileMapper
             ShimmerEmitter = ToRuntime(xml.ShimmerEmitter),
             Velocity = ToRuntime(xml.Velocity),
             Combustion = ToRuntime(xml.Combustion),
+            Stack = ToRuntime(xml.Stack),
         };
     }
 
@@ -49,6 +50,7 @@ internal static class ProfileMapper
             ShimmerEmitter = ToXml(profile.ShimmerEmitter),
             Velocity = ToXml(profile.Velocity),
             Combustion = ToXml(profile.Combustion),
+            Stack = ToXml(profile.Stack),
         };
     }
 
@@ -120,11 +122,6 @@ internal static class ProfileMapper
             SootMaxAlpha = xml.SootMaxAlpha,
             SootPowerFloor = xml.SootPowerFloor,
             SootPowerExponent = xml.SootPowerExponent,
-            WetStackFillHeat = xml.WetStackFillHeat,
-            WetStackReleaseHeat = xml.WetStackReleaseHeat,
-            WetStackFillRate = xml.WetStackFillRate,
-            WetStackReleaseRate = xml.WetStackReleaseRate,
-            WetStackMistStrength = xml.WetStackMistStrength,
             WetStackMaxAlpha = xml.WetStackMaxAlpha,
             OilTintStrength = xml.OilTintStrength,
             OilRpmExponent = xml.OilRpmExponent,
@@ -150,11 +147,6 @@ internal static class ProfileMapper
             SootMaxAlpha = settings.SootMaxAlpha,
             SootPowerFloor = settings.SootPowerFloor,
             SootPowerExponent = settings.SootPowerExponent,
-            WetStackFillHeat = settings.WetStackFillHeat,
-            WetStackReleaseHeat = settings.WetStackReleaseHeat,
-            WetStackFillRate = settings.WetStackFillRate,
-            WetStackReleaseRate = settings.WetStackReleaseRate,
-            WetStackMistStrength = settings.WetStackMistStrength,
             WetStackMaxAlpha = settings.WetStackMaxAlpha,
             OilTintStrength = settings.OilTintStrength,
             OilRpmExponent = settings.OilRpmExponent,
@@ -298,5 +290,43 @@ internal static class ProfileMapper
                 ColdWallFloorK = settings.ColdWallFloorK,
                 WarmWallTargetK = settings.WarmWallTargetK,
                 MinBurnFractionAtCold = settings.MinBurnFractionAtCold,
+            };
+
+    private static StackModel.Settings ToRuntime(StackXml xml) =>
+        xml == null
+            ? null
+            : new StackModel.Settings
+            {
+                FillTime = xml.FillTime,
+                ClearTime = xml.ClearTime,
+                TauWall = xml.TauWall,
+                FlowWarmBias = xml.FlowWarmBias,
+                CaptureColdK = xml.CaptureColdK,
+                CaptureHotK = xml.CaptureHotK,
+                ClearStartK = xml.ClearStartK,
+                ClearFullK = xml.ClearFullK,
+                ContactIdle = xml.ContactIdle,
+                ContactFullFlow = xml.ContactFullFlow,
+                StickMax = xml.StickMax,
+                ReferenceUnburned = xml.ReferenceUnburned,
+            };
+
+    private static StackXml ToXml(StackModel.Settings settings) =>
+        settings == null
+            ? null
+            : new StackXml
+            {
+                FillTime = settings.FillTime,
+                ClearTime = settings.ClearTime,
+                TauWall = settings.TauWall,
+                FlowWarmBias = settings.FlowWarmBias,
+                CaptureColdK = settings.CaptureColdK,
+                CaptureHotK = settings.CaptureHotK,
+                ClearStartK = settings.ClearStartK,
+                ClearFullK = settings.ClearFullK,
+                ContactIdle = settings.ContactIdle,
+                ContactFullFlow = settings.ContactFullFlow,
+                StickMax = settings.StickMax,
+                ReferenceUnburned = settings.ReferenceUnburned,
             };
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using TurboTurbo.Modeling;
 using TurboTurbo.Runtime;
@@ -72,27 +71,11 @@ internal static class SmokeModelSection
                                  " exhaust stack, even during a rapid throttle cut where combustion instantly goes clean.", 0.01f, 2f,
             m => m.Tuning.SootDecreaseTau, (m, v) => m.Tuning.SootDecreaseTau = v);
 
-        Add("Wet stack mist strength", "Intensity of the wet-stacking effect. Prolonged idling causes unburned fuel to " +
-                                       "accumulate in the exhaust stack, which is released as white smoke when throttling " +
-                                       "up.\nHigher values increase the intensity of this effect.", 0f, 5f,
-            m => m.Tuning.WetStackMistStrength, (m, v) => m.Tuning.WetStackMistStrength = v, TweakGrade.Basic);
-
-        // Developer-grade; the wet-stack effect still needs a modelling pass before wider exposure.
-        Add("Wet stack fill load", "Load below which unburned fuel starts to accumulate in the exhaust stack.", 0f, 1f,
-            m => m.Tuning.WetStackFillHeat, (m, v) => m.Tuning.WetStackFillHeat = v, TweakGrade.Developer);
-
-        Add("Wet stack release load", "Load above which unburned fuel starts to vaporise out of the exhaust stack, creating white smoke.", 0f, 1f,
-            m => m.Tuning.WetStackReleaseHeat, (m, v) => m.Tuning.WetStackReleaseHeat = v, TweakGrade.Developer);
-
-        Add("Wet stack fill rate", "Wet stack fill rate at zero load.", 0f, 0.1f,
-            m => m.Tuning.WetStackFillRate, (m, v) => m.Tuning.WetStackFillRate = v, TweakGrade.Developer);
-
-        Add("Wet stack release rate", "Wet stack release rate at full load.", 0f, 0.5f,
-            m => m.Tuning.WetStackReleaseRate, (m, v) => m.Tuning.WetStackReleaseRate = v, TweakGrade.Developer);
-
-        Add("Wet stack weight", "Intensity of wet-stack mist, relative to other types of smoke.\n" +
-                                "Should not normally require adjustment, change mist strength instead.", 0f, 1f,
-            m => m.Tuning.WetStackMaxAlpha, (m, v) => m.Tuning.WetStackMaxAlpha = v, TweakGrade.Developer);
+        Add("Wet stack weight", "Intensity of wet-stack mist, relative to other types of smoke. Prolonged idling " +
+                                "causes unburned fuel to accumulate in the exhaust stack, which is released as white " +
+                                "smoke when throttling up.\nRaise this to make fuel vapour weigh more heavily in the " +
+                                "plume.", 0f, 1f,
+            m => m.Tuning.WetStackMaxAlpha, (m, v) => m.Tuning.WetStackMaxAlpha = v, TweakGrade.Basic);
 
         Add("Oil tint strength", "Intensity of the oil-burning effect. At high RPM, more oil leaks into the cylinders, " +
                                  "tinting exhaust smoke blue as it burns.\n" +
@@ -103,10 +86,6 @@ internal static class SmokeModelSection
                                     " * Values above 1 delay the oil-burning effect further towards the high RPM range.\n" +
                                     " * Values below 1 make the effect more uniform regardless of RPM", 0.1f, 5f,
             m => m.Tuning.OilRpmExponent, (m, v) => m.Tuning.OilRpmExponent = v);
-
-        section.AddProgressButton("Fill wet stack", "Immediately fill the wet stack to 100%, to test the effect.",
-            () => { foreach (var m in models) m.FillWetStack(); },
-            () => models.Max(m => m.WetStackAccumulator), TweakGrade.Basic);
 
         return section;
 

@@ -12,17 +12,6 @@ namespace TurboTurboTests
     {
         private readonly ExhaustSmokeModel _model = new ExhaustSmokeModel();
 
-        // enough zero-heat 1s steps to fill the wet-stack accumulator (2x margin)
-        private int FillSteps => Mathf.CeilToInt(2f / _model.Tuning.WetStackFillRate);
-
-        private void Fill()
-        {
-            for (var i = 0; i < FillSteps; i++)
-            {
-                _model.Update(2f, 0.3f, 0f, engineOn: true, 1f);
-            }
-        }
-
         // run frames until the soot lag converges on the current lambda
         private static void SettleSoot(ExhaustSmokeModel model, float lambda, float heat)
         {
@@ -58,18 +47,6 @@ namespace TurboTurboTests
             _model.Update(0.5f, 0.5f, 0.5f, engineOn: false, delta: 0.016f);
 
             _model.Color.ShouldBe(Color.clear);
-        }
-
-        [Fact]
-        public void EngineOff_PreservesAccumulator()
-        {
-            Fill();
-            var stored = _model.WetStackAccumulator;
-            stored.ShouldBeGreaterThan(0.9f);
-
-            _model.Update(0.5f, 0.5f, 1f, engineOn: false, 1000f);
-
-            _model.WetStackAccumulator.ShouldBe(stored);
         }
 
         // ------------------------------------------------------------
@@ -255,13 +232,12 @@ namespace TurboTurboTests
         public void ParticulateMass_StaysWithinCeiling()
         {
             var model = new ExhaustSmokeModel();
-            model.FillWetStack();
 
             for (var heat = 0f; heat <= 1f; heat += 0.1f)
             {
                 for (var lambda = 2f; lambda >= 0.3f; lambda -= 0.1f)
                 {
-                    model.Update(lambda, 0.5f, heat, engineOn: true, 0.5f);
+                    model.Update(lambda, 0.5f, heat, engineOn: true, 0.5f, vapour: 1f);
                     model.ParticulateMass.ShouldBeLessThanOrEqualTo(
                         model.MaxParticulateMass + 0.001f);
                 }
@@ -289,58 +265,34 @@ namespace TurboTurboTests
         }
 
         // ------------------------------------------------------------
-        // wet stacking
+        // fuel-vapour hookup
         // ------------------------------------------------------------
 
         [Fact]
-        public void WetStack_Fills_AtIdleHeat()
+        public void Vapour_IncreasesParticulateMass()
         {
-            Fill();
+            var dry = new ExhaustSmokeModel();
+            dry.Update(2f, 0f, 0.5f, engineOn: true, 0.016f, vapour: 0f);
 
-            _model.WetStackAccumulator.ShouldBeGreaterThan(0.9f);
+            var wet = new ExhaustSmokeModel();
+            wet.Update(2f, 0f, 0.5f, engineOn: true, 0.016f, vapour: 1f);
+
+            wet.ParticulateMass.ShouldBeGreaterThan(dry.ParticulateMass);
         }
 
         [Fact]
-        public void WetStack_NeutralBand_PreservesAccumulator()
+        public void Vapour_BlendsTowardWetStackColor()
         {
-            Fill();
-            var stored = _model.WetStackAccumulator;
+            var dry = new ExhaustSmokeModel();
+            dry.Update(2f, 0f, 1f, engineOn: true, 0.016f, vapour: 0f);
 
-            var midBandHeat = (_model.Tuning.WetStackFillHeat + _model.Tuning.WetStackReleaseHeat) * 0.5f;
-            _model.Update(2f, 0.3f, midBandHeat, engineOn: true, 1000f);
+            var wet = new ExhaustSmokeModel();
+            wet.Update(2f, 0f, 1f, engineOn: true, 0.016f, vapour: 1f);
 
-            _model.WetStackAccumulator.ShouldBe(stored, tolerance: 0.0001f);
-        }
-
-        [Fact]
-        public void WetStack_Releases_UnderHighHeat()
-        {
-            Fill();
-
-            _model.Update(2f, 0.3f, 1f, engineOn: true, 0.016f);
-
-            _model.WetStackAccumulator.ShouldBeLessThan(1f);
-            (_model.ParticulateMass / _model.Tuning.Density)
-                .ShouldBeGreaterThan(_model.Tuning.CleanMaxHeatAlpha);
-            _model.Color.r.ShouldBeGreaterThan(_model.Tuning.ColorIdleHaze.r,
-                "wet-stack mist should push the color toward off-white");
-        }
-
-        [Fact]
-        public void WetStack_Drains_Completely_UnderSustainedHeat()
-        {
-            Fill();
-
-            // 0.1s steps, generous margin over the linear release time
-            var steps = Mathf.CeilToInt(2f / (_model.Tuning.WetStackReleaseRate * 0.1f));
-            for (var i = 0; i < steps; i++)
-            {
-                _model.Update(2f, 0.3f, 1f, engineOn: true, 0.1f);
-            }
-
-            _model.WetStackAccumulator.ShouldBe(0f, tolerance: 0.001f);
-            (_model.ParticulateMass / _model.Tuning.Density)
-                .ShouldBe(_model.Tuning.CleanMaxHeatAlpha, tolerance: 0.01f);
+            var wetColor = _model.Tuning.ColorWetStack.Rgb();
+            wet.Color.Rgb().DistanceTo(wetColor).ShouldBeLessThan(
+                dry.Color.Rgb().DistanceTo(wetColor),
+                "fuel vapour should push the tint toward the wet-stack color");
         }
 
         [Fact]
@@ -388,23 +340,6 @@ namespace TurboTurboTests
             model.Tuning.Validate();
 
             model.Tuning.SootOpaqueLambda.ShouldBeLessThan(model.Tuning.SootOnsetLambda);
-        }
-
-        [Fact]
-        public void Validate_RestoresWetStackHeatOrdering()
-        {
-            var model = new ExhaustSmokeModel
-            {
-                Tuning =
-                {
-                    WetStackFillHeat = 0.8f,
-                    WetStackReleaseHeat = 0.3f,
-                },
-            };
-            model.Tuning.Validate();
-
-            model.Tuning.WetStackFillHeat.ShouldBeLessThan(model.Tuning.WetStackReleaseHeat);
-            model.Tuning.WetStackReleaseHeat.ShouldBeLessThanOrEqualTo(1f);
         }
 
         [Fact]

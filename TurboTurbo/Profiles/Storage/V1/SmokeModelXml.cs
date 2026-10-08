@@ -41,11 +41,6 @@ public sealed class SmokeModelXml
     internal const float DefaultSootMaxAlpha = 0.95f;
     internal const float DefaultSootPowerFloor = 0.1f;
     internal const float DefaultSootPowerExponent = 1f;
-    internal const float DefaultWetStackFillHeat = 0.1f;
-    internal const float DefaultWetStackReleaseHeat = 0.15f;
-    internal const float DefaultWetStackFillRate = 0.005f;
-    internal const float DefaultWetStackReleaseRate = 0.1f;
-    internal const float DefaultWetStackMistStrength = 4f;
     internal const float DefaultWetStackMaxAlpha = 0.95f;
     internal const float DefaultOilTintStrength = 0.3f;
     internal const float DefaultOilRpmExponent = 2.5f;
@@ -82,21 +77,6 @@ public sealed class SmokeModelXml
 
     [DefaultValue(DefaultSootPowerExponent)]
     public float SootPowerExponent = DefaultSootPowerExponent;
-
-    [DefaultValue(DefaultWetStackFillHeat)]
-    public float WetStackFillHeat = DefaultWetStackFillHeat;
-
-    [DefaultValue(DefaultWetStackReleaseHeat)]
-    public float WetStackReleaseHeat = DefaultWetStackReleaseHeat;
-
-    [DefaultValue(DefaultWetStackFillRate)]
-    public float WetStackFillRate = DefaultWetStackFillRate;
-
-    [DefaultValue(DefaultWetStackReleaseRate)]
-    public float WetStackReleaseRate = DefaultWetStackReleaseRate;
-
-    [DefaultValue(DefaultWetStackMistStrength)]
-    public float WetStackMistStrength = DefaultWetStackMistStrength;
 
     [DefaultValue(DefaultWetStackMaxAlpha)]
     public float WetStackMaxAlpha = DefaultWetStackMaxAlpha;

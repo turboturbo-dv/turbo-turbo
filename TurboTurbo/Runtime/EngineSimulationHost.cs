@@ -50,6 +50,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     private readonly List<ParticleSystem> _replacedExhausts = new();
 
     public CombustionModel CombustionModel { get; private set; }
+    public StackModel Stack { get; private set; }
     public TrainCar TrainCar { get; private set; }
     public List<ExhaustEmitters> Exhausts { get; } = new();
 
@@ -94,6 +95,11 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         var engineOn = _engine.EngineRunning;
         CombustionModel.Tick(Time.deltaTime, engineOn);
+
+        var ambient = PhysicsConstants.ReferenceAmbientK;
+        var unburned = CombustionModel.FuelNorm * (1f - CombustionModel.BurnFractionTemp);
+        var flowNorm = CombustionModel.MassFlow / Mathf.Max(1e-4f, CombustionModel.Charger.ChargeAtFullPower);
+        Stack.Tick(Time.deltaTime, engineOn, unburned, flowNorm, CombustionModel.GasTemperature, ambient);
 
         // TODO: properly attach the combustion model to the simulation graph.
         // then we can apply the combustion model's torque limit, but that
@@ -157,6 +163,8 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             Profile.BuildCharger(),
             Profile.Combustion,
             Profile.Velocity);
+
+        Stack = new StackModel(Profile.Stack ?? new StackModel.Settings(), PhysicsConstants.ReferenceAmbientK);
 
         _log.Info($"combustion bound (throttle: {_engine.ThrottlePort.id}, " +
                      $"fuel: {DieselEngineBinding.DescribePort(_engine.FuelPort)})");
@@ -257,6 +265,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
         var heat = CombustionModel.ExhaustEnergy;
         var massFlow = CombustionModel.MassFlow;
         var gasDensity = CombustionModel.GasDensity;
+        var vapour = Stack.Vapour;
 
         foreach (var e in Exhausts)
         {
@@ -264,6 +273,7 @@ internal sealed class EngineSimulationHost : MonoBehaviour
             smoke.lambda = CombustionModel.Lambda;
             smoke.rpmNorm = CombustionModel.RpmNorm;
             smoke.heat = heat;
+            smoke.vapour = vapour;
             smoke.massFlow = massFlow;
             smoke.gasDensity = gasDensity;
             smoke.engineOn = engineOn;

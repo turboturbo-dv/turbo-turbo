@@ -10,8 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <Import Project="$(MSBuildThisFileDirectory)..\GameDir.props"
-          Condition="'$(GameDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\GameDir.props')" />
+  <Import Project="$(MSBuildThisFileDirectory)..\GameDir.props" Condition="'$(GameDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\GameDir.props')" />
 
   <PropertyGroup>
     <ManagedDir>$(GameDir)\DerailValley_Data\Managed</ManagedDir>
@@ -28,6 +27,9 @@
       <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
       <Private>true</Private>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 
   <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(GameDir)' == ''">

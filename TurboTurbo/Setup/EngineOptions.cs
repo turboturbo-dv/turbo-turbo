@@ -19,6 +19,7 @@ public class EngineOptions
     private readonly ShimmerParticles.Settings _shimmer = new();
     private readonly ExhaustVelocitySettings _velocity = new();
     private readonly CombustionModel.Settings _combustion = new();
+    private readonly StackModel.Settings _stack = new();
 
     private ChargerKind _chargerKind = ChargerKind.Turbo;
 
@@ -93,6 +94,13 @@ public class EngineOptions
         return this;
     }
 
+    /// <summary>Tunes the exhaust stack fouling model from its defaults.</summary>
+    public EngineOptions ConfigureStack(Action<StackModel.Settings> configure)
+    {
+        configure(_stack);
+        return this;
+    }
+
     /// <summary>
     /// Builds the assembled configuration into a complete, valid <see cref="LocoProfile"/>,
     /// or a failed result when the configuration is invalid.
@@ -111,6 +119,7 @@ public class EngineOptions
             ShimmerEmitter = _shimmer,
             Velocity = _velocity,
             Combustion = _combustion,
+            Stack = _stack,
         };
 
         var error = profile.Normalize();

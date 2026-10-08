@@ -123,6 +123,9 @@ namespace TurboTurbo.WorkBench
         [Range(0f, 1f)] public float rpmNorm = 0.5f;
         [Range(0f, 1f)] public float heat;
 
+        /// <summary>Normalized stack fuel-vapour driver from the stack model.</summary>
+        [Range(0f, 1f)] public float vapour;
+
         /// <summary>Exhaust mass-flow proxy, used by the coefficient velocity model.</summary>
         public float massFlow;
 
@@ -329,7 +332,7 @@ namespace TurboTurbo.WorkBench
         {
             var dt = Time.deltaTime;
 
-            Model.Update(lambda, rpmNorm, heat, engineOn, dt);
+            Model.Update(lambda, rpmNorm, heat, engineOn, dt, vapour);
 
             var s = tuning;
 

@@ -200,12 +200,17 @@ internal sealed class TurboDevPanel : MonoBehaviour
         GUILayout.Label($"exhaustVelocity {m.ExhaustVelocity:0.00} m/s");
         GUILayout.Label($"absSpeed {host.AbsSpeed:0.0} m/s ({host.AbsSpeed * PhysicsConstants.MpsToKmh:0.0} km/h)");
 
+        var stack = host.Stack;
+        GUILayout.Label($"stackWall {stack.ExhaustWallTempK - PhysicsConstants.KelvinOffset:0.0} C   " +
+                        $"wetStack {stack.WetStack:0.00}   vapour {stack.Vapour:0.00}");
+        GUILayout.Label($"deposit {stack.DepositRate:0.000}/s   slip {stack.SlipRate:0.000}/s   " +
+                        $"evap {stack.EvaporateRate:0.000}/s   overflow {stack.Overflow:0.000}/s");
+
         for (var i = 0; i < host.Exhausts.Count; i++)
         {
             var e = host.Exhausts[i];
             GUILayout.Label($"exhaust {i}: smoke {e.Smoke.ParticleCount} p, " +
-                            $"shimmer {e.Shimmer.ParticleCount} p, " +
-                            $"wetStack {e.Smoke.Model.WetStackAccumulator:0.00}");
+                            $"shimmer {e.Shimmer.ParticleCount} p");
         }
 
         GUILayout.EndVertical();

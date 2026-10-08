@@ -29,6 +29,7 @@ public sealed class LocoProfile
     public ShimmerParticles.Settings ShimmerEmitter { get; set; }
     public ExhaustVelocitySettings Velocity { get; set; }
     public CombustionModel.Settings Combustion { get; set; }
+    public StackModel.Settings Stack { get; set; }
 
     /// <summary>Builds the charger selected by this profile.</summary>
     public ICharger BuildCharger()
@@ -55,6 +56,7 @@ public sealed class LocoProfile
             ShimmerEmitter = ShimmerEmitter != null ? new ShimmerParticles.Settings(ShimmerEmitter) : null,
             Velocity = Velocity != null ? new ExhaustVelocitySettings(Velocity) : null,
             Combustion = Combustion != null ? new CombustionModel.Settings(Combustion) : null,
+            Stack = Stack != null ? new StackModel.Settings(Stack) : null,
         };
     }
 
@@ -115,6 +117,9 @@ public sealed class LocoProfile
 
         Combustion ??= new CombustionModel.Settings();
         Combustion.Validate();
+
+        Stack ??= new StackModel.Settings();
+        Stack.Validate();
 
         if (ChargerKind == ChargerKind.Atmospheric)
         {

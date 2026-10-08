@@ -51,7 +51,6 @@ internal static class StockConfiguration
                 // represents a more modern engine with better filtration, generating less soot
                 s.SootMaxAlpha = 0.33f;
                 s.CleanMaxHeatAlpha = 0.12f;
-                s.WetStackMistStrength = 1.2f;
                 s.OilRpmExponent = 2.1f;
             })
             .ConfigureSmokeEmitter(e =>
@@ -126,8 +125,6 @@ internal static class StockConfiguration
                 s.CleanMinHeatAlpha = 0.001f;
                 s.CleanMaxHeatAlpha = 0.15f;
 
-                // not much wet stacking occurs in a smaller engine
-                s.WetStackMistStrength = 1f;
                 s.OilTintStrength = 0.35f;
             })
             .ConfigureSmokeEmitter(e =>
