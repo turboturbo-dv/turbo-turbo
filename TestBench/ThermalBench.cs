@@ -1,73 +1,103 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
+
+using Spectre.Console;
+using Spectre.Console.Rendering;
 
 using TurboTurbo;
 using TurboTurbo.Modeling;
 
 namespace TestBench
 {
+    /// <summary>Reports on where the engine's heat goes, and how quickly the block and chamber respond.</summary>
     public sealed class ThermalBench
     {
-        public const float Dt = 0.1f;
-
-        private const float SettleWindowS = 600f;
-        private const float SettleEpsK = 0.01f;
-        private const float MaxRunS = 6f * 3600f;
-
-        private static readonly (string Name, float Rpm, float FuelPerStroke)[] Points =
-        {
-            ("idle", 0.3f, 0.10f),
-            ("light", 0.5f, 0.25f),
-            ("cruise", 0.7f, 0.50f),
-            ("heavy", 0.9f, 0.80f),
-            ("full", 1.0f, 1.00f),
-        };
-
         private readonly CombustionModel.Settings _settings;
+        private readonly ChargerKind _charger;
 
-        public ThermalBench(CombustionModel.Settings settings)
+        public ThermalBench(CombustionModel.Settings settings, ChargerKind charger = ChargerKind.Turbo)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _charger = charger;
         }
 
-        public string OperatingPointsReport(float ambientK)
+        public IRenderable Report(float ambientK)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"Operating points at ambient {ToC(ambientK):0.#} C (dt {Dt}s)");
-            sb.AppendLine(
-                $"{"point",-8} {"rpm",4} {"fps",5} | {"blockC",6} {"cylC",5} | " +
-                $"{"therm",5} {"burnAir",7} {"burnTemp",8} | {"lambda",6} {"EE",6} {"boost",5} | " +
-                $"{"t63s",7} {"t90s",7} {"tauS",6} {"tOpenS",7} {"rise1m",6}");
-
-            foreach (var (name, rpm, fps) in Points)
+            return new Rows(new IRenderable[]
             {
-                var inputs = new Inputs { Rpm = rpm, Fuel = rpm * fps, AmbientK = ambientK };
-                var trace = Measure(inputs.Build(_settings), ambientK);
+                OperatingPointsReport(ambientK),
+                new Rule(),
+                ThrottleStepReport(ambientK),
+                new Rule(),
+                AmbientSensitivityReport(),
+                new Rule(),
+                CooldownReport(ambientK),
+            });
+        }
 
-                var t63 = FirstCrossing(trace.Block, ambientK + ((trace.SettleBlockK - ambientK) * 0.63f));
-                var t90 = FirstCrossing(trace.Block, ambientK + ((trace.SettleBlockK - ambientK) * 0.90f));
-                var tau = TimeConstant(trace.Block, ambientK, trace.SettleBlockK);
-                var tOpen = FirstCrossing(trace.Thermostat, 0.001f);
-                var rise1m = trace.Block[(int)(60f / Dt)] - ambientK;
-
-                sb.AppendLine(
-                    $"{name,-8} {rpm,4:0.0} {fps,5:0.00} | " +
-                    $"{ToC(trace.SettleBlockK),6:0.0} {ToC(trace.SettleCylinderK),5:0.0} | " +
-                    $"{trace.SettleThermostat,5:0.00} {trace.SettleBurnAir,7:0.000} {trace.SettleBurnTemp,8:0.000} | " +
-                    $"{trace.SettleLambda,6:0.00} {trace.SettleExhaustEnergy,6:0.000} {trace.SettleBoost,5:0.00} | " +
-                    $"{Fmt(t63),7} {Fmt(t90),7} {Fmt(tau),6} {Fmt(tOpen),7} {rise1m,6:0.0}");
+        public IRenderable OperatingPointsReport(float ambientK)
+        {
+            var settle = new Table()
+                .RoundedBorder()
+                .Title($"Operating points (settle, {_charger})  " +
+                       $"[grey]ambient {BenchCommon.ToC(ambientK):0.#} C, dt {BenchCommon.Dt}s[/]");
+            settle.AddColumn(Render.Name("point"));
+            foreach (var h in new[] { "rpm", "fps", "block", "cyl", "therm", "rise1m" })
+            {
+                settle.AddColumn(Render.Num(h));
             }
 
-            return sb.ToString();
+            var response = new Table()
+                .RoundedBorder()
+                .Title("Operating points (thermal response)");
+            response.AddColumn(Render.Name("point"));
+            foreach (var h in new[] { "t63", "t90", "tauS", "tOpen" })
+            {
+                response.AddColumn(Render.Num(h));
+            }
+
+            foreach (var (name, rpm, fps) in BenchCommon.Points)
+            {
+                var inputs = BenchCommon.LoadInputs(_charger, rpm, fps, ambientK);
+                var trace = BenchCommon.Measure(inputs.Build(_settings));
+
+                var t63 = BenchCommon.FirstCrossing(trace.Block, ambientK + ((trace.SettleBlockK - ambientK) * 0.63f));
+                var t90 = BenchCommon.FirstCrossing(trace.Block, ambientK + ((trace.SettleBlockK - ambientK) * 0.90f));
+                var tau = BenchCommon.TimeConstant(trace.Block, ambientK, trace.SettleBlockK);
+                var tOpen = BenchCommon.FirstCrossing(trace.Thermostat, 0.001f);
+                var rise1m = trace.Block[Math.Min(trace.Block.Count - 1, (int)(60f / BenchCommon.Dt))] - ambientK;
+
+                settle.AddRow(
+                    name,
+                    $"{rpm:0.0}",
+                    $"{fps:0.00}",
+                    $"{BenchCommon.ToC(trace.SettleBlockK):0.0}",
+                    $"{BenchCommon.ToC(trace.SettleCylinderK):0.0}",
+                    $"{trace.SettleThermostat:0.00}",
+                    $"{rise1m:0.0}");
+
+                response.AddRow(
+                    name,
+                    Render.Duration(t63),
+                    Render.Duration(t90),
+                    Render.Duration(tau),
+                    Render.Duration(tOpen));
+            }
+
+            return new Columns(new IRenderable[] { settle, response }) { Expand = false };
         }
 
-        public string AmbientSensitivityReport()
+        public IRenderable AmbientSensitivityReport()
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("Settle vs ambient (idle = rpm 0.3 fps 0.1, full = rpm 1.0 fps 1.0)");
-            sb.AppendLine(
-                $"{"point",-7} {"ambientC",8}   {"blockC",6}  {"cylC",5}   {"therm",5}   blockAboveAmbientK");
+            var table = new Table()
+                .RoundedBorder()
+                .Title($"Settle vs ambient ({_charger})  [grey]idle = rpm 0.3 fps 0.1, full = rpm 1.0 fps 1.0[/]");
+
+            table.AddColumn(Render.Name("point"));
+            foreach (var h in new[] { "ambientC", "blockC", "cylC", "intakeC", "therm", "blockAboveAmbientK" })
+            {
+                table.AddColumn(Render.Num(h));
+            }
 
             var loads = new (string Name, float Rpm, float Fps)[]
             {
@@ -77,32 +107,34 @@ namespace TestBench
 
             foreach (var (name, rpm, fps) in loads)
             {
-                foreach (var c in new[] { 0f, 20f, 40f })
+                foreach (var c in new[] { -20f, 0f, 20f, 40f })
                 {
                     var ambientK = PhysicsConstants.KelvinOffset + c;
-                    var inputs = new Inputs { Rpm = rpm, Fuel = rpm * fps, AmbientK = ambientK };
-                    var trace = Measure(inputs.Build(_settings), ambientK);
+                    var inputs = BenchCommon.LoadInputs(_charger, rpm, fps, ambientK);
+                    var trace = BenchCommon.Measure(inputs.Build(_settings));
 
-                    sb.AppendLine(
-                        $"{name,-7} {c,8:0.#}   {ToC(trace.SettleBlockK),6:0.0}  {ToC(trace.SettleCylinderK),5:0.0}   " +
-                        $"{trace.SettleThermostat,5:0.00}   {trace.SettleBlockK - ambientK,8:0.0}");
+                    table.AddRow(
+                        name,
+                        $"{c:0.#}",
+                        $"{BenchCommon.ToC(trace.SettleBlockK):0.0}",
+                        $"{BenchCommon.ToC(trace.SettleCylinderK):0.0}",
+                        $"{BenchCommon.ToC(trace.SettleIntakeK):0.0}",
+                        $"{trace.SettleThermostat:0.00}",
+                        $"{trace.SettleBlockK - ambientK:0.0}");
                 }
             }
 
-            return sb.ToString();
+            return table;
         }
 
-        public string CooldownReport(float ambientK)
+        public IRenderable CooldownReport(float ambientK)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"Cooldown after full load to idle (ambient {ToC(ambientK):0.#} C)");
-
-            var inputs = new Inputs { Rpm = 1f, Fuel = 1f, AmbientK = ambientK };
+            var inputs = BenchCommon.LoadInputs(_charger, 1f, 1f, ambientK);
             var model = inputs.Build(_settings);
-            var warm = Measure(model, ambientK);
+            var warm = BenchCommon.Measure(model);
 
             inputs.Fuel = 0f;
-            inputs.Rpm = 0.3f;
+            inputs.Rpm = 0f;
 
             var openK = CombustionModel.Settings.ThermostatOpenK;
             var halfTarget = ambientK + ((warm.SettleBlockK - ambientK) * 0.5f);
@@ -110,10 +142,10 @@ namespace TestBench
             var halfLife = -1f;
             var toAmbient5 = -1f;
 
-            for (var step = 0; step < (int)(MaxRunS / Dt); step++)
+            for (var step = 0; step < (int)(BenchCommon.MaxRunS / BenchCommon.Dt); step++)
             {
-                model.Tick(Dt, engineOn: true);
-                var t = (step + 1) * Dt;
+                model.Tick(BenchCommon.Dt, engineOn: false);
+                var t = (step + 1) * BenchCommon.Dt;
                 if (toOpen < 0f && model.EngineTempK <= openK)
                 {
                     toOpen = t;
@@ -135,20 +167,35 @@ namespace TestBench
                 }
             }
 
-            sb.AppendLine($"warm block                 : {ToC(warm.SettleBlockK):0.0} C");
-            sb.AppendLine($"thermostat closes          : {Fmt(toOpen)}");
-            sb.AppendLine($"excess half-life           : {Fmt(halfLife)}");
-            sb.AppendLine($"block within 5 C of ambient: {Fmt(toAmbient5)}");
-            return sb.ToString();
+            var table = new Table().Border(TableBorder.None).HideHeaders();
+            table.AddColumn(Render.Name("metric"));
+            table.AddColumn(Render.Num("value"));
+            table.AddRow("warm block", $"{BenchCommon.ToC(warm.SettleBlockK):0.0} C");
+            table.AddRow("thermostat closes", Render.Duration(toOpen));
+            table.AddRow("excess half-life", Render.Duration(halfLife));
+            table.AddRow("block within 5 C of ambient", Render.Duration(toAmbient5));
+
+            return new Panel(table)
+                .Header($"Cooldown after full load (engine off, {_charger})  " +
+                        $"[grey]ambient {BenchCommon.ToC(ambientK):0.#} C[/]")
+                .RoundedBorder();
         }
 
-        public string ThrottleStepReport(float ambientK)
+        public IRenderable ThrottleStepReport(float ambientK)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"Throttle step to full load at ambient {ToC(ambientK):0.#} C (decoupled turbo, dt {Dt}s)");
-            sb.AppendLine(
-                $"{"step",-8} {"fromC",6} {"toC",5} | {"dCyl",5} {"dBlock",6} | " +
-                $"{"excT63",7} {"excT90",7} {"excTau",6} | {"rise5",6} {"rise10",7} {"rise30",7}");
+            var table = new Table()
+                .RoundedBorder()
+                .Title($"Throttle step to full load ({_charger})  [grey]ambient {BenchCommon.ToC(ambientK):0.#} C, " +
+                       (_charger == ChargerKind.Turbo ? "decoupled turbo, " : "") + $"dt {BenchCommon.Dt}s[/]");
+
+            table.AddColumn(Render.Name("step"));
+            foreach (var h in new[]
+                     {
+                         "from", "to", "dCyl", "dBlk", "t63", "t90", "tau", "r5", "r10", "r30",
+                     })
+            {
+                table.AddColumn(Render.Num(h));
+            }
 
             var baselines = new (string Name, float Rpm, float Fps)[]
             {
@@ -158,11 +205,11 @@ namespace TestBench
 
             foreach (var (name, baseRpm, baseFps) in baselines)
             {
-                var inputs = new Inputs { Rpm = baseRpm, Fuel = baseRpm * baseFps, AmbientK = ambientK };
+                var inputs = BenchCommon.LoadInputs(_charger, baseRpm, baseFps, ambientK);
                 var model = inputs.Build(_settings);
-                Measure(model, ambientK); // warm to the baseline load
+                BenchCommon.Measure(model); // warm to the baseline load
 
-                var baseCyl = model.CylinderTempK;
+                var baseCyl = model.ChamberTempK;
                 var baseBlock = model.EngineTempK;
 
                 inputs.Rpm = 1f;
@@ -171,201 +218,51 @@ namespace TestBench
                 var cyl = new List<float>();
                 var block = new List<float>();
                 var excess = new List<float>();
-                var window = (int)(SettleWindowS / Dt);
-                var maxSteps = (int)(MaxRunS / Dt);
+                var window = (int)(BenchCommon.SettleWindowS / BenchCommon.Dt);
+                var maxSteps = (int)(BenchCommon.MaxRunS / BenchCommon.Dt);
                 for (var step = 0; step < maxSteps; step++)
                 {
-                    model.Tick(Dt, engineOn: true);
-                    cyl.Add(model.CylinderTempK);
+                    model.Tick(BenchCommon.Dt, engineOn: true);
+                    cyl.Add(model.ChamberTempK);
                     block.Add(model.EngineTempK);
-                    excess.Add(model.CylinderTempK - model.EngineTempK);
+                    excess.Add(model.ChamberTempK - model.EngineTempK);
 
-                    if (step >= window && Math.Abs(block[step] - block[step - window]) < SettleEpsK)
+                    if (step >= window && Math.Abs(block[step] - block[step - window]) < BenchCommon.SettleEpsK)
                     {
                         break;
                     }
                 }
 
-                var endCyl = model.CylinderTempK;
+                var endCyl = model.ChamberTempK;
                 var endBlock = model.EngineTempK;
                 var baseExcess = baseCyl - baseBlock;
                 var endExcess = endCyl - endBlock;
 
-                // the cylinder-above-block gap isolates TauCylinder: the block moves slowly, so
+                // the cylinder-above-block gap isolates TauChamber: the block moves slowly, so
                 // fitting this signal avoids the slow block rise dominating the time constant
-                var t63 = FirstCrossing(excess, baseExcess + ((endExcess - baseExcess) * 0.63f));
-                var t90 = FirstCrossing(excess, baseExcess + ((endExcess - baseExcess) * 0.90f));
-                var tau = TimeConstant(excess, baseExcess, endExcess);
+                var t63 = BenchCommon.FirstCrossing(excess, baseExcess + ((endExcess - baseExcess) * 0.63f));
+                var t90 = BenchCommon.FirstCrossing(excess, baseExcess + ((endExcess - baseExcess) * 0.90f));
+                var tau = BenchCommon.TimeConstant(excess, baseExcess, endExcess);
 
-                var r5 = cyl[Math.Min(cyl.Count - 1, (int)(5f / Dt))] - baseCyl;
-                var r10 = cyl[Math.Min(cyl.Count - 1, (int)(10f / Dt))] - baseCyl;
-                var r30 = cyl[Math.Min(cyl.Count - 1, (int)(30f / Dt))] - baseCyl;
+                var r5 = cyl[Math.Min(cyl.Count - 1, (int)(5f / BenchCommon.Dt))] - baseCyl;
+                var r10 = cyl[Math.Min(cyl.Count - 1, (int)(10f / BenchCommon.Dt))] - baseCyl;
+                var r30 = cyl[Math.Min(cyl.Count - 1, (int)(30f / BenchCommon.Dt))] - baseCyl;
 
-                sb.AppendLine(
-                    $"{name,-8} {ToC(baseCyl),6:0.0} {ToC(endCyl),5:0.0} | " +
-                    $"{endCyl - baseCyl,5:0.0} {endBlock - baseBlock,6:0.0} | " +
-                    $"{Fmt(t63),7} {Fmt(t90),7} {Fmt(tau),6} | " +
-                    $"{r5,6:0.0} {r10,7:0.0} {r30,7:0.0}");
+                table.AddRow(
+                    name,
+                    $"{BenchCommon.ToC(baseCyl):0.0}",
+                    $"{BenchCommon.ToC(endCyl):0.0}",
+                    $"{endCyl - baseCyl:0.0}",
+                    $"{endBlock - baseBlock:0.0}",
+                    Render.Duration(t63),
+                    Render.Duration(t90),
+                    Render.Duration(tau),
+                    $"{r5:0.0}",
+                    $"{r10:0.0}",
+                    $"{r30:0.0}");
             }
 
-            return sb.ToString();
-        }
-
-        private static Trace Measure(CombustionModel model, float ambientK)
-        {
-            var trace = new Trace();
-            var window = (int)(SettleWindowS / Dt);
-            var maxSteps = (int)(MaxRunS / Dt);
-
-            for (var step = 0; step < maxSteps; step++)
-            {
-                model.Tick(Dt, engineOn: true);
-                trace.Block.Add(model.EngineTempK);
-                trace.Cylinder.Add(model.CylinderTempK);
-                trace.Thermostat.Add(model.ThermostatOpen);
-
-                if (step >= window && Math.Abs(trace.Block[step] - trace.Block[step - window]) < SettleEpsK)
-                {
-                    trace.Settled = true;
-                    Capture(trace, model, step);
-                    break;
-                }
-            }
-
-            if (!trace.Settled)
-            {
-                Capture(trace, model, trace.Block.Count - 1);
-            }
-
-            return trace;
-        }
-
-        private static void Capture(Trace trace, CombustionModel model, int step)
-        {
-            trace.SettleBlockK = model.EngineTempK;
-            trace.SettleCylinderK = model.CylinderTempK;
-            trace.SettleThermostat = model.ThermostatOpen;
-            trace.SettleBurnAir = model.BurnFractionAir;
-            trace.SettleBurnTemp = model.BurnFractionTemp;
-            trace.SettleLambda = model.Lambda;
-            trace.SettleExhaustEnergy = model.ExhaustEnergy;
-            trace.SettleBoost = model.Boost;
-        }
-
-        private static float FirstCrossing(List<float> series, float threshold)
-        {
-            for (var i = 0; i < series.Count; i++)
-            {
-                if (series[i] >= threshold)
-                {
-                    return i * Dt;
-                }
-            }
-
-            return -1f;
-        }
-
-        // least-squares fit of ln(deficit) vs time over the 20%..70% rise band; -1 when flat
-        private static float TimeConstant(List<float> series, float ambient, float settle)
-        {
-            var span = settle - ambient;
-            if (span <= 0f)
-            {
-                return -1f;
-            }
-
-            double n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
-            for (var i = 0; i < series.Count; i++)
-            {
-                var frac = (series[i] - ambient) / span;
-                if (frac < 0.2f || frac > 0.7f)
-                {
-                    continue;
-                }
-
-                var deficit = settle - series[i];
-                if (deficit <= 0f)
-                {
-                    continue;
-                }
-
-                double x = i * Dt;
-                var y = Math.Log(deficit);
-                n++;
-                sx += x;
-                sy += y;
-                sxx += x * x;
-                sxy += x * y;
-            }
-
-            if (n < 2)
-            {
-                return -1f;
-            }
-
-            var denom = n * sxx - sx * sx;
-            if (Math.Abs(denom) < 1e-9)
-            {
-                return -1f;
-            }
-
-            var slope = (n * sxy - sx * sy) / denom;
-            return slope >= 0 ? -1f : (float)(-1.0 / slope);
-        }
-
-        private static string Fmt(float seconds)
-        {
-            if (seconds < 0f)
-            {
-                return "n/a";
-            }
-
-            var total = (int)Math.Round(seconds);
-            var h = total / 3600;
-            var m = (total % 3600) / 60;
-            var s = total % 60;
-            if (h > 0)
-            {
-                return $"{h}h{m}m";
-            }
-
-            return m > 0 ? $"{m}m{s}s" : $"{s}s";
-        }
-
-        private static float ToC(float kelvin) => kelvin - PhysicsConstants.KelvinOffset;
-
-        private sealed class Inputs
-        {
-            public float Fuel;
-            public float Rpm = 1f;
-            public float AmbientK;
-
-            public CombustionModel Build(CombustionModel.Settings settings)
-            {
-                var copy = new CombustionModel.Settings(settings);
-                copy.Validate();
-                // near-zero spool constants make the charger instantaneous, so the bench measures
-                // pure thermal dynamics with no turbo transient mixed in
-                var turbo = new TurboCharger.Settings { TauUp = 0.01f, TauDown = 0.01f, MinSpoolTau = 0.01f };
-                return new CombustionModel(() => 0f, () => Fuel, () => Rpm, () => AmbientK,
-                    new TurboCharger(turbo), copy, new ExhaustVelocitySettings());
-            }
-        }
-
-        private sealed class Trace
-        {
-            public readonly List<float> Block = new List<float>();
-            public readonly List<float> Cylinder = new List<float>();
-            public readonly List<float> Thermostat = new List<float>();
-            public bool Settled;
-            public float SettleBlockK;
-            public float SettleCylinderK;
-            public float SettleThermostat;
-            public float SettleBurnAir;
-            public float SettleBurnTemp;
-            public float SettleLambda;
-            public float SettleExhaustEnergy;
-            public float SettleBoost;
+            return table;
         }
     }
 }
