@@ -144,8 +144,19 @@ Shader "TurboTurbo/HeatShimmer"
                     return half4(offset * 20.0 + 0.5, edgeFade, 1.0);
                 }
 
+                #if defined(UNITY_SINGLE_PASS_STEREO)
+                // the grab holds both eyes side by side, so we need to ensure
+                // that the shimmer can't pull in pixels from the other eye when
+                // rendering the shimmer effect all the way at the edge of the
+                // viewport
+                float4 eye = unity_StereoScaleOffset[unity_StereoEyeIndex];
+                float2 grabUV = UnityStereoClamp(suvBase + offset * eye.xy, eye);
+                #else
+                float2 grabUV = suvBase + offset;
+                #endif
+
                 // this is where the magic happens
-                half4 scene = tex2D(_TurboHeatGrab, suvBase + offset);
+                half4 scene = tex2D(_TurboHeatGrab, grabUV);
                 return half4(scene.rgb, a);
             }
 

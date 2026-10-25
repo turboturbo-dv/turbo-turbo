@@ -72,7 +72,7 @@ Shader "TurboTurbo/Smoke"
                 }
                 if (_DistanceParams.w == 1)
                 {
-                    float4 h = _HeightParams[0];
+                    float4 h = _HeightParams[unity_StereoEyeIndex];
                     float fDotP = worldPos.y - h.x;
                     float c1 = h.z * (fDotP + h.y);
                     float c2 = min((1 - 2 * h.z) * fDotP, 0);

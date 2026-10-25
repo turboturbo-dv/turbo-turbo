@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditorInternal.VR;
 using UnityEngine;
 
 public static class BuildBundle
@@ -74,11 +75,26 @@ public static class BuildBundle
             Directory.CreateDirectory(OutputPath);
         }
 
-        AssetBundleManifest manifest = BuildPipeline.BuildAssetBundles(
-            OutputPath,
-            builds,
-            BuildAssetBundleOptions.UncompressedAssetBundle,
-            BuildTarget.StandaloneWindows64);
+        // make sure we build for VR mode no matter whether it's enabled in the bench
+        bool vrWasEnabled = VREditor.GetVREnabledOnTargetGroup(BuildTargetGroup.Standalone);
+        StereoRenderingPath stereoPathWas = PlayerSettings.stereoRenderingPath;
+        AssetBundleManifest manifest;
+        try
+        {
+            VREditor.SetVREnabledOnTargetGroup(BuildTargetGroup.Standalone, true);
+            PlayerSettings.stereoRenderingPath = StereoRenderingPath.SinglePass;
+
+            manifest = BuildPipeline.BuildAssetBundles(
+                OutputPath,
+                builds,
+                BuildAssetBundleOptions.UncompressedAssetBundle,
+                BuildTarget.StandaloneWindows64);
+        }
+        finally
+        {
+            PlayerSettings.stereoRenderingPath = stereoPathWas;
+            VREditor.SetVREnabledOnTargetGroup(BuildTargetGroup.Standalone, vrWasEnabled);
+        }
 
         if (manifest == null)
         {
