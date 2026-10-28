@@ -98,11 +98,9 @@ internal sealed class ExhaustsPanel : IEditorPanel
     private void DrawHeader(LocoProfile profile, TrainCar car)
     {
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button(
-            new GUIContent(
-                (Open ? "▾ " : "▸ ") + "Exhausts",
-                "Add or remove exhaust outlets on this locomotive. Each exhaust gets its own smoke and shimmer emitters."),
-            Styles.SectionHeader))
+        if (Foldout.Header(Open, new GUIContent(
+                "Exhausts",
+                "Add or remove exhaust outlets on this locomotive. Each exhaust gets its own smoke and shimmer emitters.")))
         {
             Open = !Open;
             _onNeedsShrink();
@@ -140,12 +138,10 @@ internal sealed class ExhaustsPanel : IEditorPanel
 
         var position = _openPosition == index;
         GUI.enabled = bound;
-        if (GUILayout.Button(
-            new GUIContent(
-                (position ? "▾ " : "▸ ") + "position",
+        if (Foldout.Header(position, new GUIContent(
+                "position",
                 "Show the position offset controls for this exhaust.\n" +
-                "While open, an axis marker shows the exhaust position on the locomotive."),
-            Styles.SectionHeader)) TogglePosition(index);
+                "While open, an axis marker shows the exhaust position on the locomotive."))) TogglePosition(index);
         GUI.enabled = true;
 
         if (position) DrawPosition(entry, bound);

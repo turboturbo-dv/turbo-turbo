@@ -80,16 +80,10 @@ internal sealed class Section : IEditorPanel
         }
 
         GUILayout.BeginHorizontal();
-        bool clicked;
-        if (HeaderWidth > 0)
-        {
-            clicked = GUILayout.Button((Open ? "▾ " : "▸ ") + Title, Styles.SectionHeader, GUILayout.Width(HeaderWidth));
-        }
-        else
-        {
-            clicked = GUILayout.Button((Open ? "▾ " : "▸ ") + Title, Styles.SectionHeader);
-        }
-        if (clicked)
+        var headerOptions = HeaderWidth > 0
+            ? new[] { GUILayout.Width(HeaderWidth) }
+            : Array.Empty<GUILayoutOption>();
+        if (Foldout.Header(Open, new GUIContent(Title), headerOptions))
         {
             Open = !Open;
             if (OnToggle != null) OnToggle();
