@@ -28,6 +28,15 @@ public interface ICharger
     /// </summary>
     float IntakeNtu { get; }
 
+    /// <summary>
+    /// Isentropic efficiency of the compressor. 1 is 100% efficient,
+    /// lower values heat intake air more to achieve the same charge.
+    /// </summary>
+    float CompressorEfficiency { get; }
+
+    /// <summary>Pressure ratio across the exhaust turbine; 1 when there is none.</summary>
+    float TurbinePressureRatio { get; }
+
     float Boost { get; }
     bool Surging { get; }
     float LambdaCalibration { get; }

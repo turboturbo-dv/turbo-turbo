@@ -76,6 +76,11 @@ public sealed class TurboCharger : ICharger
 
     public float IntakeNtu => Tuning.IntakeNtu;
 
+    public float CompressorEfficiency => 0.75f;
+
+    // this is just charge here, because the pressure ratio generally tracks the charge ratio
+    public float TurbinePressureRatio => Charge;
+
     /// <summary>
     /// Per-stroke cylinder charge.
     /// </summary>

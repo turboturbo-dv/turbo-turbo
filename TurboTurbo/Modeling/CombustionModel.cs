@@ -104,10 +104,6 @@ public sealed class CombustionModel
     private readonly Func<float> _rpmNorm;
     private readonly Func<float> _ambientTemperatureK;
 
-    // isentropic expansion exponent of intake/exhaust gas
-    private const float IsentropicExponent =
-        (PhysicsConstants.SpecificHeatRatio - 1f) / PhysicsConstants.SpecificHeatRatio;
-
     // the turbine extracts this fraction of the isentropic temperature drop
     private const float TurbineEfficiency = 0.78f;
 
@@ -126,8 +122,6 @@ public sealed class CombustionModel
     // wall temperature drop below ThermostatFullOpenK at which the cold wall exponent drop fully applies
     private const float ColdWallSpanK = 100f;
 
-    // isentropic efficiency of the compressor, which sets how much it heats the intake air
-    private const float CompressorEfficiency = 0.75f;
     // how quickly the polytropic exponent falls towards 1 as the engine slows down, from heat loss and leakage
     // during the longer compression stroke
     private const float LowSpeedCompressionLoss = 0.035f;
@@ -392,16 +386,18 @@ public sealed class CombustionModel
 
         // hot exhaust gas drives the turbine
         ManifoldTempK = ambient + combustionRiseK;
-        var turbinePressureRatio = Mathf.Max(1f, Charge);
-        TurbineTemperatureDropK = ManifoldTempK * TurbineEfficiency *
-                                  (1f - Mathf.Pow(turbinePressureRatio, -IsentropicExponent));
+
+        // exhaust gas has a slightly lower isentropic exponent, but for our model, air is fine
+        var isentropicDrop =
+            1f - Mathf.Pow(Charger.TurbinePressureRatio, -PhysicsConstants.IsentropicTemperatureExponent);
+        TurbineTemperatureDropK = ManifoldTempK * TurbineEfficiency * isentropicDrop;
 
         GasTemperature = ManifoldTempK - TurbineTemperatureDropK;
         GasDensity = PhysicsConstants.ReferenceAirDensity * ambient / Mathf.Max(1f, GasTemperature);
         ExhaustEnergy = MassFlow * (ManifoldTempK - ambient) / tempGainK;
         ExhaustVelocity = _velocity.Calculate(MassFlow, GasDensity);
 
-        // charger always lags 1 tick behind the combustion model, as it depends on exhaust 
+        // charger always lags 1 tick behind the combustion model, as it depends on exhaust
         Charger.Tick(delta, rpm, governor, ExhaustEnergy, engineOn);
 
         Boost = Charger.Boost;
@@ -421,7 +417,10 @@ public sealed class CombustionModel
         var s = Tuning;
         // air heats up from compression
         var pressureRatio = Mathf.Max(1f, charge);
-        var compressorK = ambientK * (1f + (Mathf.Pow(pressureRatio, IsentropicExponent) - 1f) / CompressorEfficiency);
+        
+        // a perfectly efficient compressor would heat air by a factor of ratio^exponent
+        var isentropicRise = Mathf.Pow(pressureRatio, PhysicsConstants.IsentropicTemperatureExponent) - 1f;
+        var compressorK = ambientK * (1f + isentropicRise / Charger.CompressorEfficiency);
 
         // and exchanges heat with the manifold
         var flow = Mathf.Max(1e-3f, flowNorm);

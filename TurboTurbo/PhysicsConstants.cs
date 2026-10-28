@@ -12,6 +12,10 @@ internal static class PhysicsConstants
     /// <summary>Specific heat ratio of air.</summary>
     public const float SpecificHeatRatio = 1.4f;
 
+    /// <summary>Isentropic compression/expansion temperature exponent of air.</summary>
+    public const float IsentropicTemperatureExponent =
+        (SpecificHeatRatio - 1f) / SpecificHeatRatio;
+
     /// <summary>Kelvin = Celsius + this.</summary>
     public const float KelvinOffset = 273.15f;
 

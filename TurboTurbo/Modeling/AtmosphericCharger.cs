@@ -79,6 +79,12 @@ public sealed class AtmosphericCharger : ICharger
 
     public float IntakeNtu => Tuning.IntakeNtu;
 
+    // we'll just say it is 100% efficient.
+    // it doesn't matter much as there is no compressor, so intake air gets no compression heating.
+    public float CompressorEfficiency => 1f;
+
+    public float TurbinePressureRatio => 1f;
+
     public AtmosphericCharger(Settings settings)
     {
         Tuning = settings ?? throw new ArgumentNullException(nameof(settings));
