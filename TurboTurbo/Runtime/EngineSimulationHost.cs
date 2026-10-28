@@ -240,24 +240,25 @@ internal sealed class EngineSimulationHost : MonoBehaviour
 
         Velocity = Profile.Velocity;
 
-        var exhausts = Profile.Exhausts;
-        for (var i = 0; i < exhausts.Count; i++)
+        var profileExhausts = Profile.Exhausts;
+        var exhaustShare = 1f / profileExhausts.Count;
+        for (var i = 0; i < profileExhausts.Count; i++)
         {
-            var exhaust = exhausts[i];
+            var profileExhaust = profileExhausts[i];
 
-            var exhaustTransform = ResolveExhaustTransform(exhaust);
+            var exhaustTransform = ResolveExhaustTransform(profileExhaust);
             if (exhaustTransform == null)
             {
-                _log.Warn($"exhaust {i} ('{exhaust.Path}') resolved to null, skipping");
+                _log.Warn($"exhaust {i} ('{profileExhaust.Path}') resolved to null, skipping");
                 continue;
             }
 
             var emitters = new ExhaustEmitters
             {
                 Mouth = TrainCar.transform.InverseTransformPoint(exhaustTransform.position),
-                Offset = exhaust.Offset,
-                Source = exhaust,
-                Smoke = CreateSmokeEmitter(i, Profile.SmokeEmitter, Profile.Smoke),
+                Offset = profileExhaust.Offset,
+                Source = profileExhaust,
+                Smoke = CreateSmokeEmitter(i, Profile.SmokeEmitter, Profile.Smoke, exhaustShare),
                 Shimmer = CreateShimmerEmitter(i, Profile.ShimmerEmitter)
             };
             emitters.Reposition();
@@ -290,13 +291,14 @@ internal sealed class EngineSimulationHost : MonoBehaviour
     }
 
     private SmokeParticles CreateSmokeEmitter(int index, SmokeParticles.Settings tuning,
-        ExhaustSmokeModel.Settings smokeTuning)
+        ExhaustSmokeModel.Settings smokeTuning, float exhaustShare)
     {
         var go = new GameObject(Naming.Create($"Smoke[{index}]"));
         ExhaustPlacement.AttachTo(go.transform, TrainCar.transform);
         var smoke = go.AddComponent<SmokeParticles>();
         smoke.tuning = tuning;
         smoke.Model.Tuning = smokeTuning;
+        smoke.Model.ExhaustShare = exhaustShare;
         smoke.velocity = Velocity;
         smoke.shader = ModAssets.SmokeShader;
         smoke.atlas = GameAssets.SmokeAtlas;

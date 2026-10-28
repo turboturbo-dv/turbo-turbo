@@ -367,6 +367,56 @@ namespace TurboTurboTests
 
             model.Tuning.Density.ShouldBe(0f);
         }
+
+        // ------------------------------------------------------------
+        // exhaust share
+        // ------------------------------------------------------------
+
+        [Fact]
+        public void ExhaustShare_DefaultsToWholeEngine()
+        {
+            new ExhaustSmokeModel().ExhaustShare.ShouldBe(1f);
+        }
+
+        [Fact]
+        public void ExhaustShare_ScalesParticulateMass_AndItsUpperBound()
+        {
+            var whole = new ExhaustSmokeModel();
+            var half = new ExhaustSmokeModel { ExhaustShare = 0.5f };
+
+            // rich, so soot contributes as well as the clean burn
+            SettleSoot(whole, 0.9f, 1f);
+            SettleSoot(half, 0.9f, 1f);
+
+            half.ParticulateMass.ShouldBe(whole.ParticulateMass * 0.5f, tolerance: 1e-4f);
+            half.MaxParticulateMass.ShouldBe(whole.MaxParticulateMass * 0.5f, tolerance: 1e-4f);
+        }
+
+        [Fact]
+        public void ExhaustShare_SplitAcrossExhausts_AddsUpToWholeEngine()
+        {
+            var whole = new ExhaustSmokeModel();
+            var left = new ExhaustSmokeModel { ExhaustShare = 0.5f };
+            var right = new ExhaustSmokeModel { ExhaustShare = 0.5f };
+
+            SettleSoot(whole, 1.1f, 0.6f);
+            SettleSoot(left, 1.1f, 0.6f);
+            SettleSoot(right, 1.1f, 0.6f);
+
+            (left.ParticulateMass + right.ParticulateMass).ShouldBe(whole.ParticulateMass, tolerance: 1e-4f);
+        }
+
+        [Fact]
+        public void ExhaustShare_LeavesColorUnchanged()
+        {
+            var whole = new ExhaustSmokeModel();
+            var half = new ExhaustSmokeModel { ExhaustShare = 0.5f };
+
+            SettleSoot(whole, 0.9f, 1f);
+            SettleSoot(half, 0.9f, 1f);
+
+            half.Color.ShouldBe(whole.Color);
+        }
     }
 
     internal static class SmokeColorExtensions

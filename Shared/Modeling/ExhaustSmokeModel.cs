@@ -134,15 +134,20 @@ namespace TurboTurbo.Modeling
         public Color Color { get; private set; } = Color.clear;
 
         /// <summary>
-        /// Total particulate mass produced per unit time (sum of all exhaust fractions).
+        /// Share of the exhaust gases and particulates that leave through this exhasut (1 = 100%).
+        /// </summary>
+        public float ExhaustShare { get; set; } = 1f;
+
+        /// <summary>
+        /// Sum of all particulate mass fractions leaving this exhaust per unit time.
         /// </summary>
         public float ParticulateMass { get; private set; }
 
         /// <summary>
-        /// Upper bound of <see cref="ParticulateMass"/> derived from the current tuning.
-        /// As long as the tuning does not change, ParticulateMass is guaranteed to never exceed this.
+        /// Upper bound of <see cref="ParticulateMass"/> derived from the current tuning and exhaust share.
+        /// As long as neither changes, ParticulateMass is guaranteed to never exceed this.
         /// </summary>
-        public float MaxParticulateMass => Tuning.Density
+        public float MaxParticulateMass => Tuning.Density * ExhaustShare
             * (Tuning.CleanMaxHeatAlpha + Tuning.WetStackMaxAlpha + Tuning.SootMaxAlpha);
 
         public void Update(float lambda, float rpmNorm, float heat, bool engineOn, float delta, float vapour = 0f)
@@ -188,7 +193,7 @@ namespace TurboTurbo.Modeling
             finalColor.a = 1f;
 
             Color = finalColor;
-            ParticulateMass = s.Density * totalWeight;
+            ParticulateMass = s.Density * ExhaustShare * totalWeight;
         }
     }
 }
