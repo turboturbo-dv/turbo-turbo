@@ -14,7 +14,7 @@ Shader "TurboTurbo/HeatShimmer"
         Tags { "Queue"="Transparent+1" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
         // named grab, as multiple instances of the effect will be live at the same time
-        GrabPass { "_TurboHeatGrab" }
+        GrabPass { "_SharedGrab_Transparent1_Order0" }
 
         Pass
         {
@@ -33,7 +33,7 @@ Shader "TurboTurbo/HeatShimmer"
             float _Freq;
             float _Debug;
             float _Outline;
-            sampler2D _TurboHeatGrab;
+            sampler2D _SharedGrab_Transparent1_Order0;
             sampler2D_float _CameraDepthTexture;
 
             static const float MinVisibleAlpha = 0.004;
@@ -155,7 +155,7 @@ Shader "TurboTurbo/HeatShimmer"
                 #endif
 
                 // this is where the magic happens
-                half4 scene = tex2D(_TurboHeatGrab, grabUV);
+                half4 scene = tex2D(_SharedGrab_Transparent1_Order0, grabUV);
                 return half4(scene.rgb, a);
             }
 
