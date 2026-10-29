@@ -26,6 +26,20 @@ internal sealed class ProfileEditor : MonoBehaviour
             "Naturally aspirated engines do not generally produce much soot, although at high RPM airflow may become " +
             "restricted, resulting in soot when running at maximum power.\n\n" +
             "Adjust the 'Atmospheric charger' section below to tune this behaviour."),
+        new GUIContent("Roots",
+            "Simulate a two-stroke engine with a Roots blower on this locomotive.\n" +
+            "A blower is geared to the crankshaft, so smoke appears only when throttling up fast from low RPM. As " +
+            "the engine speeds up, it vanishes. Because the compression ratio of a blower is quite low, " +
+            "this effect is much less pronounced than in a turbocharger." +
+            "Adjust the 'Roots blower' section below to tune this behaviour."),
+    };
+
+    // matches the order of ChargerOptions
+    private static readonly ChargerKind[] ChargerKinds =
+    {
+        ChargerKind.Turbo,
+        ChargerKind.Atmospheric,
+        ChargerKind.Roots,
     };
 
     internal event Action Closed;
@@ -118,9 +132,9 @@ internal sealed class ProfileEditor : MonoBehaviour
     {
         GUILayout.Label("Select a charger model to use.", Styles.WrappedLabel);
 
-        var selected = _host.Profile.ChargerKind == ChargerKind.Atmospheric ? 1 : 0;
+        var selected = Array.IndexOf(ChargerKinds, _host.Profile.ChargerKind);
         var next = GUILayout.Toolbar(selected, ChargerOptions);
-        if (next != selected) SwitchCharger(next == 1 ? ChargerKind.Atmospheric : ChargerKind.Turbo);
+        if (next != selected) SwitchCharger(ChargerKinds[next]);
     }
 
     private void DrawIntro()

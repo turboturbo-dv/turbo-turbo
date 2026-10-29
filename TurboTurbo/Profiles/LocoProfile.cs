@@ -21,6 +21,7 @@ public sealed class LocoProfile
 
     public TurboCharger.Settings TurboCharger { get; set; }
     public AtmosphericCharger.Settings Atmospheric { get; set; }
+    public RootsCharger.Settings Roots { get; set; }
     public ExhaustSmokeModel.Settings Smoke { get; set; }
     public SmokeParticles.Settings SmokeEmitter { get; set; }
     public ShimmerParticles.Settings ShimmerEmitter { get; set; }
@@ -31,9 +32,12 @@ public sealed class LocoProfile
     /// <summary>Builds the charger selected by this profile.</summary>
     public ICharger BuildCharger()
     {
-        return ChargerKind == ChargerKind.Atmospheric
-            ? new AtmosphericCharger(Atmospheric)
-            : new TurboCharger(TurboCharger);
+        return ChargerKind switch
+        {
+            ChargerKind.Atmospheric => new AtmosphericCharger(Atmospheric),
+            ChargerKind.Roots => new RootsCharger(Roots),
+            _ => new TurboCharger(TurboCharger),
+        };
     }
 
     /// <summary>Returns a deep copy of this profile.</summary>
@@ -47,7 +51,8 @@ public sealed class LocoProfile
             Exhausts = Exhausts?.Select(e => e.Clone()).ToList() ?? new List<LocoExhaust>(),
             TurboCharger = TurboCharger != null ? new TurboCharger.Settings(TurboCharger) : null,
             Atmospheric = Atmospheric != null ? new AtmosphericCharger.Settings(Atmospheric) : null,
-            Smoke = Smoke != null ? new ExhaustSmokeModel.Settings(Smoke) : null,
+            Roots = Roots != null ? new RootsCharger.Settings(Roots) : null,
+            Smoke =Smoke != null ? new ExhaustSmokeModel.Settings(Smoke) : null,
             SmokeEmitter = SmokeEmitter != null ? new SmokeParticles.Settings(SmokeEmitter) : null,
             ShimmerEmitter = ShimmerEmitter != null ? new ShimmerParticles.Settings(ShimmerEmitter) : null,
             Velocity = Velocity != null ? new ExhaustVelocitySettings(Velocity) : null,
@@ -117,17 +122,24 @@ public sealed class LocoProfile
         Stack ??= new StackModel.Settings();
         Stack.Validate();
 
-        if (ChargerKind == ChargerKind.Atmospheric)
+        if (ChargerKind != ChargerKind.Turbo) TurboCharger = null;
+        if (ChargerKind != ChargerKind.Atmospheric) Atmospheric = null;
+        if (ChargerKind != ChargerKind.Roots) Roots = null;
+
+        switch (ChargerKind)
         {
-            Atmospheric ??= new AtmosphericCharger.Settings();
-            TurboCharger = null;
-            Atmospheric.Validate();
-        }
-        else
-        {
-            TurboCharger ??= new TurboCharger.Settings();
-            Atmospheric = null;
-            TurboCharger.Validate();
+            case ChargerKind.Atmospheric:
+                Atmospheric ??= new AtmosphericCharger.Settings();
+                Atmospheric.Validate();
+                break;
+            case ChargerKind.Roots:
+                Roots ??= new RootsCharger.Settings();
+                Roots.Validate();
+                break;
+            default:
+                TurboCharger ??= new TurboCharger.Settings();
+                TurboCharger.Validate();
+                break;
         }
 
         return null;

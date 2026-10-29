@@ -22,6 +22,7 @@ internal static class ProfileMapper
             Exhausts = xml.Exhausts?.Select(ToRuntime).ToList() ?? new List<LocoExhaust>(),
             TurboCharger = ToRuntime(xml.TurboCharger),
             Atmospheric = ToRuntime(xml.Atmospheric),
+            Roots = ToRuntime(xml.Roots),
             Smoke = ToRuntime(xml.Smoke),
             SmokeEmitter = ToRuntime(xml.SmokeEmitter),
             ShimmerEmitter = ToRuntime(xml.ShimmerEmitter),
@@ -43,6 +44,7 @@ internal static class ProfileMapper
             Exhausts = profile.Exhausts?.Select(ToXml).ToList() ?? new List<ExhaustXml>(),
             TurboCharger = ToXml(profile.TurboCharger),
             Atmospheric = ToXml(profile.Atmospheric),
+            Roots = ToXml(profile.Roots),
             Smoke = ToXml(profile.Smoke),
             SmokeEmitter = ToXml(profile.SmokeEmitter),
             ShimmerEmitter = ToXml(profile.ShimmerEmitter),
@@ -99,6 +101,28 @@ internal static class ProfileMapper
             EtaPeak = settings.EtaPeak,
             ChokeK = settings.ChokeK,
             ChokeBeta = settings.ChokeBeta,
+            LambdaCalibration = settings.LambdaCalibration,
+            CompressionRatio = settings.CompressionRatio,
+            IntakeNtu = settings.IntakeNtu,
+        };
+
+    private static RootsCharger.Settings ToRuntime(RootsChargerXml xml) =>
+        xml == null ? null : new RootsCharger.Settings
+        {
+            PressureRatio = xml.PressureRatio,
+            BoostExponent = xml.BoostExponent,
+            CompressorEfficiency = xml.CompressorEfficiency,
+            LambdaCalibration = xml.LambdaCalibration,
+            CompressionRatio = xml.CompressionRatio,
+            IntakeNtu = xml.IntakeNtu,
+        };
+
+    private static RootsChargerXml ToXml(RootsCharger.Settings settings) =>
+        settings == null ? null : new RootsChargerXml
+        {
+            PressureRatio = settings.PressureRatio,
+            BoostExponent = settings.BoostExponent,
+            CompressorEfficiency = settings.CompressorEfficiency,
             LambdaCalibration = settings.LambdaCalibration,
             CompressionRatio = settings.CompressionRatio,
             IntakeNtu = settings.IntakeNtu,

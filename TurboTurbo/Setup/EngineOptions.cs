@@ -14,6 +14,7 @@ public class EngineOptions
     private readonly List<LocoExhaust> _exhausts = new();
     private readonly TurboCharger.Settings _turboCharger = new();
     private readonly AtmosphericCharger.Settings _atmospheric = new();
+    private readonly RootsCharger.Settings _roots = new();
     private readonly ExhaustSmokeModel.Settings _smoke = new();
     private readonly SmokeParticles.Settings _smokeEmitter = new();
     private readonly ShimmerParticles.Settings _shimmer = new();
@@ -49,6 +50,14 @@ public class EngineOptions
     {
         _chargerKind = ChargerKind.Atmospheric;
         configure(_atmospheric);
+        return this;
+    }
+
+    /// <summary>Switches the engine to a two-stroke with a Roots blower.</summary>
+    public EngineOptions UseRootsCharger(Action<RootsCharger.Settings> configure)
+    {
+        _chargerKind = ChargerKind.Roots;
+        configure(_roots);
         return this;
     }
 
@@ -114,6 +123,7 @@ public class EngineOptions
             Exhausts = _exhausts,
             TurboCharger = _turboCharger,
             Atmospheric = _atmospheric,
+            Roots = _roots,
             Smoke = _smoke,
             SmokeEmitter = _smokeEmitter,
             ShimmerEmitter = _shimmer,

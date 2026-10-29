@@ -4,6 +4,7 @@ public enum ChargerKind
 {
     Turbo,
     Atmospheric,
+    Roots,
 }
 
 /// <summary>Charger abstraction: allows the CombustionModel to be reused for both N/A and turbocharged engines.</summary>

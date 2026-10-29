@@ -15,22 +15,30 @@ internal static class ChargerSection
         "As a starting guideline, bring the engine to full load, then adjust the calibration so that lambda remains just above 1.3.";
 
     private const string CompressionRatioToolTip =
-        "Effective compression ratio of the cylinders, counted from the moment the intake closes.\n" +
+        "Effective compression ratio of the cylinders, counted from the moment the cylinder is sealed.\n" +
         "Higher values result in hotter compression. Naturally aspirated engines " +
-        "typically sit near 16, turbocharged engines somewhat lower.";
+        "typically sit near 16, turbocharged engines somewhat lower, roots-blown around 13.\n" +
+        "Note that nominal compression ratio is often the published value, but that is not what this is. " +
+        "The effective ratio is always lower, by an amount that generally depends on the type of engine and charger.";
 
     private const string IntakeNtuToolTip =
         "Intake manifold heat transfer effectiveness at rated flow.\n" +
         "When intake air is cooler than the block, the air is warmed up by it. If it is warmer (generally as a result of " +
-        "being warmed up by turbocharger compression) the air is instead cooled down.\n" +
+        "being warmed up by compression in the intake) the air is instead cooled down.\n" +
         " * On a naturally aspirated engine, this value tends to be low, as air only exchanges heat while flowing through the manifold.\n" +
-        " * On a turbocharged engine equipped with an intercooler, this value will be high.";
+        " * On a turbocharged engine equipped with an intercooler, this value will be high.\n" +
+        " * On a roots-blown engine, there is normally no intercooler installed, so it will again be quite low.";
 
     public static Section Build(EngineSimulationHost host, Action onRequiresReconfigure, Action onToggle)
     {
         var model = host.CombustionModel;
-        var aspirated = model.Charger is AtmosphericCharger;
-        var section = new Section(aspirated ? "Atmospheric charger" : "Turbocharger", onRequiresReconfigure)
+        var title = model.Charger switch
+        {
+            AtmosphericCharger => "Atmospheric charger",
+            RootsCharger => "Roots blower",
+            _ => "Turbocharger",
+        };
+        var section = new Section(title, onRequiresReconfigure)
         {
             Open = true,
             OnToggle = onToggle,
@@ -98,6 +106,37 @@ internal static class ChargerSection
             section.AddFloat("Intake NTU",
                 IntakeNtuToolTip,
                 0f, 3f, false, () => a.IntakeNtu, v => { a.IntakeNtu = v; a.Validate(); }, TweakGrade.Developer);
+        }
+        else if (model.Charger is RootsCharger roots)
+        {
+            var r = roots.Tuning;
+            section.AddFloat("Lambda calibration",
+                LambdaCalibrationToolTip,
+                0.2f, 2f, false, () => r.LambdaCalibration, v => { r.LambdaCalibration = v; r.Validate(); }, TweakGrade.Basic);
+            section.AddFloat("Pressure ratio",
+                "Air box pressure at full engine speed, relative to atmospheric.\n" +
+                "This sets how much air the blower supplies at full speed. At lower speeds, boost falls off quickly, " +
+                "so it has much less effect there.\n" +
+                "Roots-blown engines sit around 1.2 - 1.3 (an EMD 567 is about 1.26).\n" +
+                "Adjusting this affects available air at full power, and therefore may require you to make a " +
+                "corresponding change to lambda calibration as well.",
+                1f, 1.6f, false, () => r.PressureRatio, v => { r.PressureRatio = v; r.Validate(); }, TweakGrade.Basic);
+            section.AddFloat("Boost curve shape",
+                "Shapes how boost builds up with engine speed. Higher values delay boost until higher RPM, " +
+                "resulting in more smoke when throttling up from low speed.\n" +
+                "The default value of 2 is generally realistic here (pressure scales with the square of RPM).",
+                1f, 3f, false, () => r.BoostExponent, v => { r.BoostExponent = v; r.Validate(); });
+            section.AddFloat("Blower efficiency",
+                "How efficiently the blower compresses air. Less efficiency means air heats up more by being compressed.\n" +
+                "As roots blowers are quite inefficient, expect a realistic value to be in the range of 0.5 - 0.65.",
+                0.3f, 1f, false, () => r.CompressorEfficiency, v => { r.CompressorEfficiency = v; r.Validate(); },
+                TweakGrade.Developer);
+            section.AddFloat("Compression ratio",
+                CompressionRatioToolTip,
+                10f, 25f, false, () => r.CompressionRatio, v => { r.CompressionRatio = v; r.Validate(); }, TweakGrade.Developer);
+            section.AddFloat("Intake NTU",
+                IntakeNtuToolTip,
+                0f, 3f, false, () => r.IntakeNtu, v => { r.IntakeNtu = v; r.Validate(); }, TweakGrade.Developer);
         }
 
         return section;

@@ -620,6 +620,151 @@ namespace TurboTurboTests
             ProfileService.User.Get("anything").ShouldBeNull();
         }
 
+        [Fact]
+        public void Build_RootsSwitchesCharger()
+        {
+            var config = new EngineOptions()
+                .AddEngineExhaust()
+                .UseRootsCharger(r => r.PressureRatio = 1.4f)
+                .TryBuild("test-livery").ShouldSucceed();
+
+            config.ChargerKind.ShouldBe(ChargerKind.Roots);
+            config.Roots.PressureRatio.ShouldBe(1.4f);
+            config.TurboCharger.ShouldBeNull();
+            config.Atmospheric.ShouldBeNull();
+            config.BuildCharger().ShouldBeOfType<RootsCharger>();
+        }
+
+        [Fact]
+        public void LoadUserProfiles_CompleteRootsProfile_NullsOtherChargerBlocks()
+        {
+            var sparse = new LocoProfileXml
+            {
+                LiveryId = "sparse-roots",
+                ChargerKind = ChargerKind.Roots,
+                Exhausts = [new ExhaustXml { Kind = ExhaustKind.Replacement, Path = "ExhaustSmoke" }],
+            };
+
+            var completed = ProfileLoader.LoadUserProfiles([LocoProfileCodec.ToElement(sparse)])["sparse-roots"];
+
+            completed.Roots.ShouldNotBeNull();
+            completed.TurboCharger.ShouldBeNull();
+            completed.Atmospheric.ShouldBeNull();
+        }
+
+        [Fact]
+        public void Normalize_SwitchingAwayFromRoots_DropsRootsBlock()
+        {
+            var profile = ValidProfile();
+            profile.ChargerKind = ChargerKind.Roots;
+            profile.Normalize().ShouldBeNull();
+            profile.Roots.ShouldNotBeNull();
+
+            profile.ChargerKind = ChargerKind.Turbo;
+            profile.Normalize().ShouldBeNull();
+
+            profile.Roots.ShouldBeNull();
+            profile.TurboCharger.ShouldNotBeNull();
+        }
+
+        [Fact]
+        public void Normalize_Roots_ValidatesSettings()
+        {
+            var profile = ValidProfile();
+            profile.ChargerKind = ChargerKind.Roots;
+            profile.Roots = new RootsCharger.Settings { PressureRatio = 0.5f };
+
+            profile.Normalize().ShouldBeNull();
+
+            profile.Roots.PressureRatio.ShouldBe(1f);
+        }
+
+        [Fact]
+        public void Clone_DeepCopiesRootsSettings()
+        {
+            var profile = ValidProfile();
+            profile.ChargerKind = ChargerKind.Roots;
+            profile.Roots = new RootsCharger.Settings { PressureRatio = 1.4f };
+
+            var clone = profile.Clone();
+            clone.Roots.PressureRatio = 1.2f;
+
+            clone.ChargerKind.ShouldBe(ChargerKind.Roots);
+            profile.Roots.PressureRatio.ShouldBe(1.4f);
+        }
+
+        [Fact]
+        public void Xml_RoundTrip_PreservesRootsSettings()
+        {
+            var profile = ValidProfile("roots");
+            profile.ChargerKind = ChargerKind.Roots;
+            profile.Roots = new RootsCharger.Settings
+            {
+                PressureRatio = 1.35f,
+                BoostExponent = 1.8f,
+                CompressorEfficiency = 0.6f,
+                LambdaCalibration = 0.85f,
+                CompressionRatio = 15f,
+                IntakeNtu = 0.2f,
+            };
+
+            var xml = Serialize(profile);
+            xml.ShouldContain("<ChargerKind>Roots</ChargerKind>");
+
+            var restored = ProfileMapper.ToRuntime(Deserialize(xml));
+            restored.ChargerKind.ShouldBe(ChargerKind.Roots);
+            restored.Roots.PressureRatio.ShouldBe(1.35f);
+            restored.Roots.BoostExponent.ShouldBe(1.8f);
+            restored.Roots.CompressorEfficiency.ShouldBe(0.6f);
+            restored.Roots.LambdaCalibration.ShouldBe(0.85f);
+            restored.Roots.CompressionRatio.ShouldBe(15f);
+            restored.Roots.IntakeNtu.ShouldBe(0.2f);
+            restored.Validate().ShouldBeNull();
+        }
+
+        [Fact]
+        public void Xml_PartialRootsBlock_FallsBackToDefaults()
+        {
+            var restored = Deserialize(
+                @"<LocoProfile><Version>1</Version><LiveryId>partial</LiveryId>" +
+                @"<Enabled>true</Enabled><Exhausts><LocoExhaust><Kind>Replacement</Kind>" +
+                @"<Path>ExhaustSmoke</Path></LocoExhaust></Exhausts>" +
+                @"<ChargerKind>Roots</ChargerKind>" +
+                @"<Roots><PressureRatio>1.4</PressureRatio></Roots></LocoProfile>");
+
+            restored.Roots.PressureRatio.ShouldBe(1.4f);
+            restored.Roots.BoostExponent.ShouldBe(RootsChargerXml.DefaultBoostExponent);
+            ProfileMapper.ToRuntime(restored).Validate().ShouldBeNull();
+        }
+
+        [Fact]
+        public void Xml_RootsDefaults_MatchRuntimeDefaults()
+        {
+            var xml = new RootsChargerXml();
+            var runtime = new RootsCharger.Settings();
+
+            xml.PressureRatio.ShouldBe(runtime.PressureRatio);
+            xml.BoostExponent.ShouldBe(runtime.BoostExponent);
+            xml.CompressorEfficiency.ShouldBe(runtime.CompressorEfficiency);
+            xml.LambdaCalibration.ShouldBe(runtime.LambdaCalibration);
+            xml.CompressionRatio.ShouldBe(runtime.CompressionRatio);
+            xml.IntakeNtu.ShouldBe(runtime.IntakeNtu);
+        }
+
+        [Fact]
+        public void Xml_DefaultRootsBlock_OmitsMembers()
+        {
+            var profile = ValidProfile("sparse");
+            profile.ChargerKind = ChargerKind.Roots;
+            profile.Roots = new RootsCharger.Settings();
+
+            var xml = Serialize(profile);
+
+            xml.ShouldContain("<Roots");
+            xml.ShouldNotContain("PressureRatio");
+            xml.ShouldNotContain("BoostExponent");
+        }
+
         private static string Serialize(LocoProfile profile) => Serialize(ProfileMapper.ToXml(profile));
 
         private static string Serialize(LocoProfileXml xml)

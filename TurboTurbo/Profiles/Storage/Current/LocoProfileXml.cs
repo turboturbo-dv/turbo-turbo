@@ -20,6 +20,7 @@ public sealed class LocoProfileXml
 
     public TurboChargerXml TurboCharger { get; set; }
     public AtmosphericXml Atmospheric { get; set; }
+    public RootsChargerXml Roots { get; set; }
     public SmokeModelXml Smoke { get; set; }
     public SmokeEmitterXml SmokeEmitter { get; set; }
     public ShimmerEmitterXml ShimmerEmitter { get; set; }
