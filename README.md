@@ -29,8 +29,9 @@ import the generated `GameDir.props`.
 
 Manual for now.
 
-1. Update `repository.json` with the new version
-2. Commit as `Release vx.x.x`
-3. Run `build.ps1`
-4. Create GH release and upload the file
-5. Upload the file to Nexus
+1. Update the changelog
+2. Update `repository.json` with the new version
+3. Commit as `Release vx.x.x`
+4. Run `build.ps1`
+5. Create GH release and upload the file
+6. Upload the file to Nexus

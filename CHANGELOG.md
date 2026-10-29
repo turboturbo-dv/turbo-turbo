@@ -1,3 +1,17 @@
+## v1.2.0
+
+### Added
+- Roots-blown charger simulation. A Roots blower provides a slight boost and is
+  tied to the crankshaft, which affects how it behaves in game (lighter, shorter
+  bursts of soot on throttle up).
+
+### Changed
+- Smoke intensity now gets divided by the number of exhausts that are present,
+  to ensure that two overlapping plumes look just as strong as one single plume.
+
+### Fixed
+- Effects now render properly in VR mode
+
 ## v1.1.0
 
 ### Added
