@@ -1,5 +1,7 @@
 using System;
 
+using JetBrains.Annotations;
+
 using TurboTurbo.Assets;
 using TurboTurbo.Configuration;
 using TurboTurbo.DevUI;
@@ -13,6 +15,7 @@ using UnityModManagerNet;
 
 public static class Main
 {
+    [UsedImplicitly]
     public static void Load(UnityModManager.ModEntry entry)
     {
         Log.Init(new UmmLogSink(entry.Logger));
