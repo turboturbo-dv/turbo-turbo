@@ -11,8 +11,7 @@ Shader "TurboTurbo/HeatShimmer"
     }
     SubShader
     {
-        // since Seasons draws its ice effect at +100, we should draw slightly afterwards
-        Tags { "Queue"="Transparent+120" "RenderType"="Transparent" "IgnoreProjector"="True" }
+        Tags { "Queue"="Transparent+1" "RenderType"="Transparent" "IgnoreProjector"="True" }
 
         // named grab, as multiple instances of the effect will be live at the same time
         GrabPass { "_TurboHeatGrab" }

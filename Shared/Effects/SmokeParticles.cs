@@ -64,6 +64,12 @@ namespace TurboTurbo.Effects
         // texture sheet animation rate
         private const float AnimationFps = 30f;
 
+        // DV's steam effects use these sorting parameters, so we should adopt them as well
+        // to ensure our smoke gets properly sorted by distance against steam.
+        private const int SortingRenderQueue = 3000;
+        private const int SortingOrder = 5;
+        private const float SortingFudge = 10f;
+
         // relative spread of particle lifetimes around the nominal lifetime
         private const float LifetimeJitter = 0.1f;
 
@@ -289,6 +295,8 @@ namespace TurboTurbo.Effects
             // can look a bit weird, but sorting by distance is worse as it can make particles pop through each 
             // other over time, which looks very unnatural.
             rend.sortMode = ParticleSystemSortMode.YoungestInFront;
+            rend.sortingOrder = SortingOrder;
+            rend.sortingFudge = SortingFudge;
             rend.SetActiveVertexStreams(new List<ParticleSystemVertexStream>
             {
                 ParticleSystemVertexStream.Position,
@@ -302,6 +310,7 @@ namespace TurboTurbo.Effects
             {
                 rend.material.shader = shader;
                 rend.material.mainTexture = atlas;
+                rend.material.renderQueue = SortingRenderQueue;
                 SetLightSaturation(s.lightSaturation);
                 SetMaxShadowFloor(s.maxShadowFloor);
                 rend.material.SetFloat(MinFadeDist, FadeDistMin);
@@ -364,6 +373,21 @@ namespace TurboTurbo.Effects
         private void OnDestroy()
         {
             if (windFrame != null) windFrame.Unbind(_ps);
+        }
+
+        private void OnEnable() => Camera.onPreCull += SortAtEmitter;
+
+        private void OnDisable() => Camera.onPreCull -= SortAtEmitter;
+
+        // Unity sorts the renderer by its bounds centre, which trails far behind the exhaust once the plume is
+        // long. offset the fudge so the plume sorts as if it were at the exhaust instead.
+        private void SortAtEmitter(Camera cam)
+        {
+            if (_renderer == null) return;
+            var eye = cam.transform.position;
+            var emitterDistance = Vector3.Distance(eye, transform.position);
+            var boundsDistance = Vector3.Distance(eye, _renderer.bounds.center);
+            _renderer.sortingFudge = SortingFudge + emitterDistance - boundsDistance;
         }
 
         private void Update()

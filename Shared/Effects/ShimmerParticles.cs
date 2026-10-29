@@ -20,6 +20,11 @@ namespace TurboTurbo.Effects
         // relative spread of particle lifetimes around the nominal lifetime
         private const float LifetimeJitter = 0.1f;
 
+        // transparent + 1 means we draw after most effects at order 0, queue transparent,
+        // but before most of the particle effects, which tend to draw at a later order
+        private const int SortingRenderQueue = 3001;
+        private const int SortingOrder = 0;
+
         public sealed class Settings
         {
             internal const float DefaultIdleRate = 5f;
@@ -217,6 +222,7 @@ namespace TurboTurbo.Effects
             // we may want YoungestInFront here too, though it probably won't matter too much.
             // any flicker that results from sorting issues just looks like shimmer noise anyway.
             rend.sortMode = ParticleSystemSortMode.Distance;
+            rend.sortingOrder = SortingOrder;
             if (shader != null)
             {
                 if (_material == null || _material.shader != shader)
@@ -224,6 +230,7 @@ namespace TurboTurbo.Effects
                     _material = new Material(shader) { name = "TurboTurbo.ShimmerParticleMat" };
                     rend.material = _material;
                 }
+                _material.renderQueue = SortingRenderQueue;
             }
             else
             {
